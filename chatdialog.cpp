@@ -76,3 +76,4 @@ ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
   time_t seconds = time(NULL);
   msg.set_timestamp(seconds);
 }
+
