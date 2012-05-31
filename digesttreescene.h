@@ -11,6 +11,7 @@ class DigestTreeScene : public QGraphicsScene
 
 public:
   DigestTreeScene(QWidget *parent = 0);
+  void plot();
 private:
   ogdf::Graph m_graph;
 };

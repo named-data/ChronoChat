@@ -7,4 +7,6 @@ DigestTreeViewer::DigestTreeViewer(QWidget *parent)
 {
   DigestTreeScene *scene = new DigestTreeScene(this);
   setScene(scene);
+  scene->plot();
+  scene->plot();
 }

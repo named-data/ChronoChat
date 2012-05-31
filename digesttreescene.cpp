@@ -8,11 +8,15 @@
 #include <assert.h>
 
 static const double Pi = 3.14159265358979323846264338327950288419717;
-static double TwoPi = 2.0 * Pi;
 
 DigestTreeScene::DigestTreeScene(QWidget *parent)
   : QGraphicsScene(parent)
 {
+}
+
+void
+DigestTreeScene::plot() {
+  clear();
   m_graph.clear();
   std::vector<ogdf::node> v(5);
   for (int i = 0; i < 5; i++)
@@ -74,11 +78,12 @@ DigestTreeScene::DigestTreeScene(QWidget *parent)
     QLineF line1(sourceArrowP1, sourceArrowP2);
     addLine(line1, QPen(Qt::black));
      
-      addPolygon(QPolygonF() << sourceArrowP0<< sourceArrowP1 << sourceArrowP2, QPen(Qt::black), QBrush(Qt::black));
+     addPolygon(QPolygonF() << sourceArrowP0<< sourceArrowP1 << sourceArrowP2, QPen(Qt::black), QBrush(Qt::black));
   }
 
-  /*
   ogdf::node n;
+  int i = 0;
+  std::string s[5] = {"A", "B", "C", "D", "E"};
   forall_nodes(n, m_graph) {
     double x = GA.x(n);
 
@@ -86,12 +91,10 @@ DigestTreeScene::DigestTreeScene(QWidget *parent)
     double w = GA.width(n);
     double h = GA.height(n);
     QRectF boundingRect(x, y, w, h);
- 
     addEllipse(boundingRect, QPen(Qt::black), QBrush(Qt::green));
-    QGraphicsTextItem *text = addText(QString(GA.labelNode(n).cstr()));
-    text->setPos(x, y);
- 
+    QGraphicsTextItem *text = addText(s[i].c_str());
+    text->setPos(x + 5, y + 5);
+    i++; 
   }
-    */
 }
 
