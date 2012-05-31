@@ -1,14 +1,14 @@
 package SyncDemo;
 
 message ChatMessage {
-  optional string msgData = 1;
-  required string to = 2;
-  required string from = 3;
-  optional int32 timestamp = 4;
+  required string to = 1;
+  required string from = 2;
   enum ChatMessageType {
     CHAT = 0;
     HELLO = 1;
     OTHER = 2;
   }
-  required ChatMessageType type = 5;
+  required ChatMessageType type = 3 [default = CHAT];
+  optional string data = 4;
+  optional int32 timestamp = 5;
 }

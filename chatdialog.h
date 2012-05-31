@@ -11,7 +11,7 @@ public:
 	ChatDialog(QWidget *parent = 0);
 
 public slots:
-  void appendMessage(SyncDemo::ChatMessage &msg);
+  void appendMessage(const SyncDemo::ChatMessage &msg);
   void updateTreeView();
 
 private slots:
