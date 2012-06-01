@@ -12,9 +12,9 @@ FORMS = chatdialog.ui
 QMAKE_CXXFLAGS *= -g 
 QMAKE_CFLAGS *= -g 
 
-QMAKE_LIBDIR *= /opt/local/lib /usr/local/lib /usr/lib ../../../third_party/OGDF/_release
-INCLUDEPATH *= /opt/local/include /usr/local/include ../../../third_party/OGDF
-LIBS *= -lccn -lssl -lcrypto -lpthread -lOGDF -lprotobuf
+QMAKE_LIBDIR *= /opt/local/lib /usr/local/lib /usr/lib ../../../third_party/OGDF/_release ../build
+INCLUDEPATH *= /opt/local/include /usr/local/include ../../../third_party/OGDF ../include
+LIBS *= -lccn -lssl -lcrypto -lpthread -lOGDF -lprotobuf -lsync
 CONFIG += console 
 
 PROTOS = chatbuf.proto

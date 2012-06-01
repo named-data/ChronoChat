@@ -5,6 +5,7 @@
 #include "digesttreescene.h"
 #include "ui_chatdialog.h"
 #include "chatbuf.pb.h"
+#include <sync-app-socket.h>
 
 class ChatDialog : public QDialog,  private Ui::ChatDialog 
 {
@@ -13,7 +14,7 @@ class ChatDialog : public QDialog,  private Ui::ChatDialog
 public:
 	ChatDialog(QWidget *parent = 0);
   void appendMessage(const SyncDemo::ChatMessage &msg);
-  void processData(const std::vector<MisingDataInfo> &, SyncAppSocket *);
+  void processData(const std::vector<MissingDataInfo> &, SyncAppSocket *);
 
 private:
   void formChatMessage(const QString &text, SyncDemo::ChatMessage &msg);
