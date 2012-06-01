@@ -13,6 +13,11 @@ ChatDialog::ChatDialog(QWidget *parent)
   m_nick = "Tester";
   m_chatroom = "Test";
 
+  DigestTreeScene *scene = new DigestTreeScene();
+
+  treeViewer->setScene(scene);
+  scene->plot();
+
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
 }
 

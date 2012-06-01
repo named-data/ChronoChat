@@ -1,12 +1,10 @@
 TEMPLATE = app
 TARGET = sync-demo
 HEADERS = chatdialog.h \
-          digesttreeviewer.h \
           digesttreescene.h
 
 SOURCES = main.cpp \
           chatdialog.cpp \
-          digesttreeviewer.cpp \
           digesttreescene.cpp
 
 FORMS = chatdialog.ui
