@@ -3,23 +3,17 @@
 #include "settingdialog.h"
 #include <ctime>
 #include <iostream>
+#include <QTimer>
 
 ChatDialog::ChatDialog(QWidget *parent)
   : QDialog(parent)
 {
   setupUi(this);
+
+  readSettings();
+  updateLabels();
+
   lineEdit->setFocusPolicy(Qt::StrongFocus);
-
-  // for test only
-  m_nick = "Tester";
-  m_chatroom = "Test";
-  m_prefix = "/ndn/ucla.edu/cs/tester";
-
-  QString settingDisp = QString("<User: %1>, <Chatroom: %2>").arg(m_nick).arg(m_chatroom);
-  infoLabel->setText(settingDisp);
-  QString prefixDisp = QString("<Prefix: %1>").arg(m_prefix);
-  prefixLabel->setText(prefixDisp);
-
   DigestTreeScene *scene = new DigestTreeScene();
 
   treeViewer->setScene(scene);
@@ -66,6 +60,36 @@ ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
   msg.set_timestamp(seconds);
 }
 
+void
+ChatDialog::readSettings()
+{
+  QSettings s(ORGANIZATION, APPLICATION);
+  m_nick = s.value("nick", "").toString();
+  m_chatroom = s.value("chatroom", "").toString();
+  m_prefix = s.value("prefix", "").toString();
+  if (m_nick == "" || m_chatroom == "" || m_prefix == "") {
+    QTimer::singleShot(500, this, SLOT(buttonPressed()));
+  }
+}
+
+void 
+ChatDialog::writeSettings()
+{
+  QSettings s(ORGANIZATION, APPLICATION);
+  s.setValue("nick", m_nick);
+  s.setValue("chatroom", m_chatroom);
+  s.setValue("prefix", m_prefix);
+}
+
+void
+ChatDialog::updateLabels()
+{
+  QString settingDisp = QString("<User: %1>, <Chatroom: %2>").arg(m_nick).arg(m_chatroom);
+  infoLabel->setText(settingDisp);
+  QString prefixDisp = QString("<Prefix: %1>").arg(m_prefix);
+  prefixLabel->setText(prefixDisp);
+}
+
 void 
 ChatDialog::returnPressed()
 {
@@ -88,7 +112,30 @@ void
 ChatDialog::buttonPressed()
 {
   SettingDialog dialog(this, m_nick, m_chatroom, m_prefix);
+  connect(&dialog, SIGNAL(updated(QString, QString, QString)), this, SLOT(settingUpdated(QString, QString, QString)));
   dialog.exec();
-  setButton->setFocusPolicy(Qt::NoFocus);
 }
 
+void
+ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
+{
+  bool needWrite = false;
+  if (!nick.isEmpty() && nick != m_nick) {
+    m_nick = nick;
+    needWrite = true;
+  }
+  if (!prefix.isEmpty() && prefix != m_prefix) {
+    m_prefix = prefix;
+    needWrite = true;
+    // TODO: set the previous prefix as left?
+  }
+  if (!chatroom.isEmpty() && chatroom != m_chatroom) {
+    m_chatroom = chatroom;
+    needWrite = true;
+    // TODO: perhaps need to do a lot. e.g. use a new SyncAppSokcet
+  }
+  if (needWrite) {
+    writeSettings();
+    updateLabels();
+  }
+}

@@ -9,6 +9,9 @@
 #include <sync-logic.h>
 #include <sync-seq-no.h>
 
+#define ORGANIZATION "IRL@UCLA"
+#define APPLICATION "SYNC-DEMO"
+
 class ChatDialog : public QDialog,  private Ui::ChatDialog 
 {
 	Q_OBJECT
@@ -20,10 +23,14 @@ public:
 
 private:
   void formChatMessage(const QString &text, SyncDemo::ChatMessage &msg);
+  void readSettings();
+  void writeSettings();
+  void updateLabels();
 
 private slots:
   void returnPressed();
   void buttonPressed();
+  void settingUpdated(QString, QString, QString);
 
 private:
   QString m_nick;

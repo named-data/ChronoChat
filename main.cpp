@@ -7,5 +7,6 @@ int main(int argc, char *argv[])
   
   ChatDialog dialog;
   dialog.show();
+  dialog.activateWindow();
   return app.exec();
 }

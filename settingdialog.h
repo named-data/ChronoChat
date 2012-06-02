@@ -8,6 +8,13 @@ class SettingDialog : public QDialog, private Ui::SettingDialog
 
 public:
   SettingDialog(QWidget *parent = 0, QString nick = QString("NULL"), QString chatroom = QString("NULL"), QString prefix = QString("NULL"));
+
+private slots:
+  void update();
+  
+signals:
+  void updated(QString, QString, QString);
+
 };
 
 #endif
