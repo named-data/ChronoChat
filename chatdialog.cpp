@@ -1,5 +1,6 @@
 #include <QtGui>
 #include "chatdialog.h"
+#include "settingdialog.h"
 #include <ctime>
 #include <iostream>
 
@@ -12,6 +13,12 @@ ChatDialog::ChatDialog(QWidget *parent)
   // for test only
   m_nick = "Tester";
   m_chatroom = "Test";
+  m_prefix = "/ndn/ucla.edu/cs/tester";
+
+  QString settingDisp = QString("<User: %1>, <Chatroom: %2>").arg(m_nick).arg(m_chatroom);
+  infoLabel->setText(settingDisp);
+  QString prefixDisp = QString("<Prefix: %1>").arg(m_prefix);
+  prefixLabel->setText(prefixDisp);
 
   DigestTreeScene *scene = new DigestTreeScene();
 
@@ -19,6 +26,7 @@ ChatDialog::ChatDialog(QWidget *parent)
   scene->plot();
 
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
+  connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
 }
 
 void
@@ -49,9 +57,13 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage &msg)
   bar->setValue(bar->maximum());
 }
 
-void 
-ChatDialog::updateTreeView() 
-{
+void
+ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
+  msg.set_from(m_nick.toStdString());
+  msg.set_to(m_chatroom.toStdString());
+  msg.set_data(text.toStdString());
+  time_t seconds = time(NULL);
+  msg.set_timestamp(seconds);
 }
 
 void 
@@ -69,16 +81,14 @@ ChatDialog::returnPressed()
   // TODO:
   // send message
   appendMessage(msg);
-  updateTreeView();
   
 }
 
 void
-ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
-  msg.set_from(m_nick.toStdString());
-  msg.set_to(m_chatroom.toStdString());
-  msg.set_data(text.toStdString());
-  time_t seconds = time(NULL);
-  msg.set_timestamp(seconds);
+ChatDialog::buttonPressed()
+{
+  SettingDialog dialog(this, m_nick, m_chatroom, m_prefix);
+  dialog.exec();
+  setButton->setFocusPolicy(Qt::NoFocus);
 }
 

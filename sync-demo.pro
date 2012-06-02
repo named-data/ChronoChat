@@ -1,13 +1,16 @@
 TEMPLATE = app
 TARGET = sync-demo
 HEADERS = chatdialog.h \
-          digesttreescene.h
+          digesttreescene.h \
+          settingdialog.h
 
 SOURCES = main.cpp \
           chatdialog.cpp \
-          digesttreescene.cpp
+          digesttreescene.cpp \
+          settingdialog.cpp
 
-FORMS = chatdialog.ui
+FORMS = chatdialog.ui \
+        settingdialog.ui
 
 QMAKE_CXXFLAGS *= -g 
 QMAKE_CFLAGS *= -g 
