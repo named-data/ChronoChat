@@ -17,7 +17,7 @@ ChatDialog::ChatDialog(QWidget *parent)
   DigestTreeScene *scene = new DigestTreeScene();
 
   treeViewer->setScene(scene);
-  scene->plot();
+  //scene->plot();
 
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
@@ -53,8 +53,8 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage &msg)
 
 void
 ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
-  msg.set_from(m_nick.toStdString());
-  msg.set_to(m_chatroom.toStdString());
+  msg.set_from(m_user.getNick().toStdString());
+  msg.set_to(m_user.getChatroom().toStdString());
   msg.set_data(text.toStdString());
   time_t seconds = time(NULL);
   msg.set_timestamp(seconds);
@@ -64,11 +64,16 @@ void
 ChatDialog::readSettings()
 {
   QSettings s(ORGANIZATION, APPLICATION);
-  m_nick = s.value("nick", "").toString();
-  m_chatroom = s.value("chatroom", "").toString();
-  m_prefix = s.value("prefix", "").toString();
-  if (m_nick == "" || m_chatroom == "" || m_prefix == "") {
+  QString nick = s.value("nick", "").toString();
+  QString chatroom = s.value("chatroom", "").toString();
+  QString prefix = s.value("prefix", "").toString();
+  if (nick == "" || chatroom == "" || prefix == "") {
     QTimer::singleShot(500, this, SLOT(buttonPressed()));
+  }
+  else {
+    m_user.setNick(nick);
+    m_user.setChatroom(chatroom);
+    m_user.setPrefix(prefix);
   }
 }
 
@@ -76,17 +81,17 @@ void
 ChatDialog::writeSettings()
 {
   QSettings s(ORGANIZATION, APPLICATION);
-  s.setValue("nick", m_nick);
-  s.setValue("chatroom", m_chatroom);
-  s.setValue("prefix", m_prefix);
+  s.setValue("nick", m_user.getNick());
+  s.setValue("chatroom", m_user.getChatroom());
+  s.setValue("prefix", m_user.getPrefix());
 }
 
 void
 ChatDialog::updateLabels()
 {
-  QString settingDisp = QString("<User: %1>, <Chatroom: %2>").arg(m_nick).arg(m_chatroom);
+  QString settingDisp = QString("<User: %1>, <Chatroom: %2>").arg(m_user.getNick()).arg(m_user.getChatroom());
   infoLabel->setText(settingDisp);
-  QString prefixDisp = QString("<Prefix: %1>").arg(m_prefix);
+  QString prefixDisp = QString("<Prefix: %1>").arg(m_user.getPrefix());
   prefixLabel->setText(prefixDisp);
 }
 
@@ -111,7 +116,7 @@ ChatDialog::returnPressed()
 void
 ChatDialog::buttonPressed()
 {
-  SettingDialog dialog(this, m_nick, m_chatroom, m_prefix);
+  SettingDialog dialog(this, m_user.getNick(), m_user.getChatroom(), m_user.getPrefix());
   connect(&dialog, SIGNAL(updated(QString, QString, QString)), this, SLOT(settingUpdated(QString, QString, QString)));
   dialog.exec();
 }
@@ -120,17 +125,17 @@ void
 ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
 {
   bool needWrite = false;
-  if (!nick.isEmpty() && nick != m_nick) {
-    m_nick = nick;
+  if (!nick.isEmpty() && nick != m_user.getNick()) {
+    m_user.setNick(nick);
     needWrite = true;
   }
-  if (!prefix.isEmpty() && prefix != m_prefix) {
-    m_prefix = prefix;
+  if (!prefix.isEmpty() && prefix != m_user.getPrefix()) {
+    m_user.setPrefix(prefix);
     needWrite = true;
     // TODO: set the previous prefix as left?
   }
-  if (!chatroom.isEmpty() && chatroom != m_chatroom) {
-    m_chatroom = chatroom;
+  if (!chatroom.isEmpty() && chatroom != m_user.getChatroom()) {
+    m_user.setChatroom(chatroom);
     needWrite = true;
     // TODO: perhaps need to do a lot. e.g. use a new SyncAppSokcet
   }

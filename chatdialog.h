@@ -33,9 +33,7 @@ private slots:
   void settingUpdated(QString, QString, QString);
 
 private:
-  QString m_nick;
-  QString m_chatroom;
-  QString m_prefix;
+  User m_user; 
   Sync::SyncAppSocket *m_sock;
 };
 #endif
