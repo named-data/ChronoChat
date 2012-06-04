@@ -26,6 +26,9 @@ private:
   void readSettings();
   void writeSettings();
   void updateLabels();
+  void resizeEvent(QResizeEvent *);
+  void showEvent(QShowEvent *);
+  void fitView();
 
 private slots:
   void returnPressed();

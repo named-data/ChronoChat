@@ -10,6 +10,7 @@
 #include <QMap>
 #include <vector>
 #include <tr1/memory>
+#include <QColor>
 
 class QGraphicsTextItem;
 
@@ -24,18 +25,22 @@ typedef std::tr1::shared_ptr<DisplayUser> DisplayUserPtr;
 typedef QMap<QString, DisplayUserPtr> Roster;
 typedef QMap<QString, DisplayUserPtr>::iterator Roster_iterator;
 typedef QMapIterator<QString, DisplayUserPtr> RosterIterator;
+static DisplayUserPtr DisplayUserNullPtr;
 
 public:
   DigestTreeScene(QWidget *parent = 0);
   void processUpdate(std::vector<Sync::MissingDataInfo> &v, QString digest);
   void msgReceived(QString prefix, QString nick);
+private:
   void plot(QString digest);
   void plotEdge(ogdf::GraphAttributes &GA);
   void plotNode(ogdf::GraphAttributes &GA, int rootIndex, QString digest);
+  void reDrawNode(DisplayUserPtr p, QColor rimColor);
 private:
   ogdf::Graph m_graph;
   Roster m_roster;
   QGraphicsTextItem *m_rootDigest; 
+  DisplayUserPtr previouslyUpdatedUser;
 
 };
 
@@ -70,13 +75,19 @@ public:
   QGraphicsTextItem *getSeqTextItem() {return m_seqTextItem;}
   QGraphicsTextItem *getNickTextItem() {return m_nickTextItem;}
   QGraphicsRectItem *getRimRectItem() {return m_rimRectItem;}
+  QGraphicsRectItem *getInnerRectItem() {return m_innerRectItem;}
+  QGraphicsRectItem *getNickRectItem() {return m_nickRectItem;}
   void setSeqTextItem(QGraphicsTextItem *item) { m_seqTextItem = item;}
   void setNickTextItem(QGraphicsTextItem *item) { m_nickTextItem = item;}
   void setRimRectItem(QGraphicsRectItem *item) {m_rimRectItem = item;}
+  void setInnerRectItem(QGraphicsRectItem *item) {m_innerRectItem = item;}
+  void setNickRectItem(QGraphicsRectItem *item) {m_nickRectItem = item;}
 private:
   QGraphicsTextItem *m_seqTextItem;
   QGraphicsTextItem *m_nickTextItem;
   QGraphicsRectItem *m_rimRectItem;
+  QGraphicsRectItem *m_innerRectItem;
+  QGraphicsRectItem *m_nickRectItem;
 };
 
 #endif

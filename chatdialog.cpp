@@ -17,6 +17,8 @@ ChatDialog::ChatDialog(QWidget *parent)
   DigestTreeScene *scene = new DigestTreeScene();
 
   treeViewer->setScene(scene);
+  QRectF rect = scene->itemsBoundingRect();
+  scene->setSceneRect(rect);
   //scene->plot();
 
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
@@ -143,4 +145,22 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
     writeSettings();
     updateLabels();
   }
+}
+
+void 
+ChatDialog::resizeEvent(QResizeEvent *e)
+{
+  fitView();
+}
+
+void 
+ChatDialog::showEvent(QShowEvent *e)
+{
+  fitView();
+}
+
+void
+ChatDialog::fitView()
+{
+  treeViewer->fitInView(treeViewer->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
 }

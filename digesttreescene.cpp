@@ -10,9 +10,33 @@
 
 static const double Pi = 3.14159265358979323846264338327950288419717;
 
+static void 
+testDraw(DigestTreeScene * scene) 
+{
+  std::string prefix[5] = {"/ndn/1", "/ndn/2", "/ndn/3", "/ndn/4", "/ndn/5"};
+  std::string nick[5] = {"tom", "jerry", "jason", "michael", "hurry"};
+  std::vector<Sync::MissingDataInfo> v;
+  for (int i = 0; i < 5; i++)
+  {
+    Sync::MissingDataInfo mdi = {prefix[i], Sync::SeqNo(0), Sync::SeqNo(i * (2 << i) )};
+    v.push_back(mdi);
+  }
+
+  scene->processUpdate(v, "12341234@!#%!@");
+
+  for (int i = 0; i < 5; i++)
+  {
+   scene-> msgReceived(prefix[i].c_str(), nick[i].c_str());
+  }
+}
+
+DigestTreeScene::DisplayUserPtr DigestTreeScene::DisplayUserNullPtr;
+
 DigestTreeScene::DigestTreeScene(QWidget *parent)
   : QGraphicsScene(parent)
 {
+  previouslyUpdatedUser = DisplayUserNullPtr;
+  testDraw(this);
 }
 
 void
@@ -44,12 +68,31 @@ DigestTreeScene::processUpdate(std::vector<Sync::MissingDataInfo> &v, QString di
       if (it != m_roster.end()) {
         DisplayUserPtr p = it.value();
         QGraphicsTextItem *item = p->getSeqTextItem();
+        QGraphicsRectItem *rectItem = p->getInnerRectItem();
         std::string s = boost::lexical_cast<std::string>(p->getSeqNo().getSeq());
         item->setPlainText(s.c_str());
+        QRectF textBR = item->boundingRect();
+        QRectF rectBR = rectItem->boundingRect();
+        item->setPos(rectBR.x() + (rectBR.width() - textBR.width())/2, rectBR.y() + (rectBR.height() - textBR.height())/2);
       }
     }
     m_rootDigest->setPlainText(digest);
   }
+}
+
+void
+DigestTreeScene::reDrawNode(DisplayUserPtr p, QColor rimColor)
+{
+    QGraphicsRectItem *rimItem = p->getRimRectItem();
+    rimItem->setBrush(QBrush(rimColor));
+    QGraphicsRectItem *innerItem = p->getInnerRectItem();
+    innerItem->setBrush(QBrush(Qt::lightGray));
+    QGraphicsTextItem *seqTextItem = p->getSeqTextItem();
+    std::string s = boost::lexical_cast<std::string>(p->getSeqNo().getSeq());
+    seqTextItem->setPlainText(s.c_str());
+    QRectF textBR = seqTextItem->boundingRect();
+    QRectF innerBR = innerItem->boundingRect();
+    seqTextItem->setPos(innerBR.x() + (innerBR.width() - textBR.width())/2, innerBR.y() + (innerBR.height() - textBR.height())/2);
 }
 
 void
@@ -62,10 +105,21 @@ DigestTreeScene::msgReceived(QString prefix, QString nick)
     if (nick != p->getNick()) {
       p->setNick(nick);
       QGraphicsTextItem *nickItem = p->getNickTextItem();
+      QGraphicsRectItem *nickRectItem = p->getNickRectItem();
       nickItem->setPlainText(p->getNick());
+      QRectF rectBR = nickRectItem->boundingRect();
+      QRectF nickBR = nickItem->boundingRect();
+      nickItem->setPos(rectBR.x() + (rectBR.width() - nickBR.width())/2, rectBR.y() + 5);
     }
-    QGraphicsRectItem *rimItem = p->getRimRectItem();
-    rimItem->setBrush(QBrush(Qt::red));
+
+    reDrawNode(p, Qt::red);
+
+    if (previouslyUpdatedUser != DisplayUserNullPtr) 
+    {
+      reDrawNode(previouslyUpdatedUser, Qt::darkBlue);
+    }
+
+    previouslyUpdatedUser = p;
   }
 }
 
@@ -83,7 +137,7 @@ DigestTreeScene::plot(QString digest)
   }
   ogdf::GraphAttributes GA(m_graph);
 
-  int nodeSize = 50;
+  int nodeSize = 40;
   int siblingDistance = 100, levelDistance = 100;
   ogdf::TreeLayout layout;
   layout.siblingDistance(siblingDistance);
@@ -92,12 +146,14 @@ DigestTreeScene::plot(QString digest)
 
   int width = GA.boundingBox().width();
   int height = GA.boundingBox().height();
-  setSceneRect(QRect(- (width + nodeSize) / 2, - 40, width + nodeSize, height + nodeSize));
+  //setSceneRect(QRect(- (width + nodeSize) / 2, - 50, width + nodeSize, height + nodeSize));
   GA.setAllWidth(nodeSize);
   GA.setAllHeight(nodeSize);
 
   plotEdge(GA);
   plotNode(GA, rootIndex, digest);
+
+  previouslyUpdatedUser = DisplayUserNullPtr;
 
 }
 
@@ -141,19 +197,19 @@ DigestTreeScene::plotNode(ogdf::GraphAttributes &GA, int rootIndex, QString dige
     int rim = 3;
     QRectF boundingRect(x, y, w, h);
     QRectF innerBoundingRect(x + rim, y + rim, w - rim * 2, h - rim * 2);
-    addRect(innerBoundingRect, QPen(Qt::black), QBrush(Qt::lightGray));
 
     if (n->index() == rootIndex) 
     {
       addRect(boundingRect, QPen(Qt::black), QBrush(Qt::darkRed));
+      addRect(innerBoundingRect, QPen(Qt::black), QBrush(Qt::lightGray));
 
-      QRectF digestRect(x - w / 2, y - h - 5, 2 * w, 30);
+      QRectF digestRect(x - w, y - h, 3 * w, 30);
       addRect(digestRect, QPen(Qt::darkCyan), QBrush(Qt::darkCyan));
       QGraphicsTextItem *digestItem = addText(digest);
       QRectF digestBoundingRect = digestItem->boundingRect();
       digestItem->setDefaultTextColor(Qt::white);
       digestItem->setFont(QFont("Cursive", 12, QFont::Bold));
-      digestItem->setPos(x + w / 2 - digestBoundingRect.width() / 2, y - h - 15);
+      digestItem->setPos(x - w + (3 * w - digestBoundingRect.width()) / 2, y - h + 5);
       m_rootDigest = digestItem;
     }
     else
@@ -170,6 +226,9 @@ DigestTreeScene::plotNode(ogdf::GraphAttributes &GA, int rootIndex, QString dige
       QGraphicsRectItem *rectItem = addRect(boundingRect, QPen(Qt::black), QBrush(Qt::darkBlue));
       p->setRimRectItem(rectItem);
 
+      QGraphicsRectItem *innerRectItem = addRect(innerBoundingRect, QPen(Qt::black), QBrush(Qt::lightGray));
+      p->setInnerRectItem(innerRectItem);
+
       std::string s = boost::lexical_cast<std::string>(p->getSeqNo().getSeq());
       QGraphicsTextItem *seqItem = addText(s.c_str());
       seqItem->setFont(QFont("Cursive", 12, QFont::Bold));
@@ -177,15 +236,17 @@ DigestTreeScene::plotNode(ogdf::GraphAttributes &GA, int rootIndex, QString dige
       seqItem->setPos(x + w / 2 - seqBoundingRect.width() / 2, y + h / 2 - seqBoundingRect.height() / 2);
       p->setSeqTextItem(seqItem);
 
-      QRectF textRect(x - w / 2, y + h + 10, 2 * w, 30);
-      addRect(textRect, QPen(Qt::darkCyan), QBrush(Qt::darkCyan));
+      QRectF textRect(x - w / 2, y + h, 2 * w, 30);
+      QGraphicsRectItem *nickRectItem = addRect(textRect, QPen(Qt::darkCyan), QBrush(Qt::darkCyan));
+      p->setNickRectItem(nickRectItem);
       QGraphicsTextItem *nickItem = addText(p->getNick());
       QRectF textBoundingRect = nickItem->boundingRect();
       nickItem->setDefaultTextColor(Qt::white);
       nickItem->setFont(QFont("Cursive", 12, QFont::Bold));
-      nickItem->setPos(x + w / 2 - textBoundingRect.width() / 2, y + h + 15);
+      nickItem->setPos(x + w / 2 - textBoundingRect.width() / 2, y + h + 5);
       p->setNickTextItem(nickItem);
     }
+
   }
 }
 
