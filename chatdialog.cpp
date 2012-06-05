@@ -4,6 +4,7 @@
 #include <ctime>
 #include <iostream>
 #include <QTimer>
+#include <QMetaType>
 
 #define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/sync-demo"
 
@@ -32,6 +33,9 @@ ChatDialog::testDraw()
 ChatDialog::ChatDialog(QWidget *parent)
   : QDialog(parent), m_sock(NULL)
 {
+  // have to register this, otherwise
+  // the signal-slot system won't recognize this type
+  qRegisterMetaType<SyncDemo::ChatMessage>("SyncDemo::ChatMessage");
   setupUi(this);
   m_session = time(NULL);
 
@@ -57,7 +61,8 @@ ChatDialog::ChatDialog(QWidget *parent)
 
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
-  testDraw();
+  connect(this, SIGNAL(msgReceived(const SyncDemo::ChatMessage)), this, SLOT(appendMessage(const SyncDemo::ChatMessage)));
+  //testDraw();
 }
 
 ChatDialog::~ChatDialog()
@@ -70,7 +75,7 @@ ChatDialog::~ChatDialog()
 }
 
 void
-ChatDialog::appendMessage(const SyncDemo::ChatMessage &msg) 
+ChatDialog::appendMessage(const SyncDemo::ChatMessage msg) 
 {
 
   if (msg.type() != SyncDemo::ChatMessage::CHAT) {
@@ -85,6 +90,7 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage &msg)
     return;
   }
 
+  std::cout << "<<<< Received Message: " << msg.data() << std::endl;
   QTextCursor cursor(textEdit->textCursor());
   cursor.movePosition(QTextCursor::End);
   QTextTableFormat tableFormat;
@@ -95,6 +101,7 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage &msg)
   table->cellAt(0, 1).firstCursorPosition().insertText(msg.data().c_str());
   QScrollBar *bar = textEdit->verticalScrollBar();
   bar->setValue(bar->maximum());
+  std::cout << "<<<<, Message appended " << std::endl;
 }
 
 void
@@ -147,8 +154,12 @@ ChatDialog::processData(std::string name, const char *buf, size_t len)
     abort();
   }
 
-  // display
-  appendMessage(msg);
+  // display msg received from network
+  // we have to do so; this function is called by ccnd thread
+  // so if we call appendMsg directly
+  // Qt crash as "QObject: Cannot create children for a parent that is in a different thread"
+  // the "cannonical" way to is use signal-slot
+  emit msgReceived(msg);
   
   // update the tree view
   std::string prefix = name.substr(0, name.find_last_of('/'));

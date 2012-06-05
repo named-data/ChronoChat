@@ -19,10 +19,12 @@ class ChatDialog : public QDialog,  private Ui::ChatDialog
 public:
 	ChatDialog(QWidget *parent = 0);
   ~ChatDialog();
-  void appendMessage(const SyncDemo::ChatMessage &msg);
   void processTreeUpdate(const std::vector<Sync::MissingDataInfo> &, Sync::SyncAppSocket *);
   void processData(std::string, const char *buf, size_t len);
   void processRemove(const std::string);
+
+public slots:
+  void appendMessage(const SyncDemo::ChatMessage msg);
 
 private:
   void formChatMessage(const QString &text, SyncDemo::ChatMessage &msg);
@@ -38,6 +40,9 @@ private slots:
   void returnPressed();
   void buttonPressed();
   void settingUpdated(QString, QString, QString);
+
+signals:
+  void msgReceived(const SyncDemo::ChatMessage msg);
 
 private:
   User m_user; 
