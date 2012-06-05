@@ -2,8 +2,6 @@
 #define DIGESTTREESCENE_H
 
 #include <QtGui/QGraphicsScene>
-#include "ogdf/basic/GraphAttributes.h"
-#include "ogdf/basic/Graph.h"
 #include <sync-seq-no.h>
 #include <sync-logic.h>
 #include <ctime>
@@ -11,6 +9,7 @@
 #include <vector>
 #include <tr1/memory>
 #include <QColor>
+#include "treelayout.h"
 
 class QGraphicsTextItem;
 
@@ -34,11 +33,10 @@ public:
   void clearAll();
   void plot(QString digest);
 private:
-  void plotEdge(ogdf::GraphAttributes &GA);
-  void plotNode(ogdf::GraphAttributes &GA, int rootIndex, QString digest);
+  void plotEdge(const std::vector<TreeLayout::Coordinate> &v, int nodeSize);
+  void plotNode(const std::vector<TreeLayout::Coordinate> &v, QString digest, int nodeSize);
   void reDrawNode(DisplayUserPtr p, QColor rimColor);
 private:
-  ogdf::Graph m_graph;
   Roster m_roster;
   QGraphicsTextItem *m_rootDigest; 
   DisplayUserPtr previouslyUpdatedUser;

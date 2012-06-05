@@ -32,6 +32,7 @@ private:
   void resizeEvent(QResizeEvent *);
   void showEvent(QShowEvent *);
   void fitView();
+  void testDraw();
 
 private slots:
   void returnPressed();

@@ -7,6 +7,28 @@
 
 #define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/sync-demo"
 
+void
+ChatDialog::testDraw()
+{
+  std::string prefix[5] = {"/ndn/1", "/ndn/2", "/ndn/3", "/ndn/4", "/ndn/5"};
+  std::string nick[5] = {"tom", "jerry", "jason", "michael", "hurry"};
+  std::vector<Sync::MissingDataInfo> v;
+  for (int i = 0; i < 5; i++)
+  {
+    Sync::MissingDataInfo mdi = {prefix[i], Sync::SeqNo(0), Sync::SeqNo(i * (2 << i) )};
+    v.push_back(mdi);
+  }
+
+  m_scene->processUpdate(v, "12341234@!#%!@");
+
+  for (int i = 0; i < 5; i++)
+  {
+   m_scene-> msgReceived(prefix[i].c_str(), nick[i].c_str());
+  }
+
+  fitView();
+}
+
 ChatDialog::ChatDialog(QWidget *parent)
   : QDialog(parent), m_sock(NULL)
 {
@@ -35,6 +57,7 @@ ChatDialog::ChatDialog(QWidget *parent)
 
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
+  testDraw();
 }
 
 ChatDialog::~ChatDialog()
@@ -273,5 +296,7 @@ ChatDialog::showEvent(QShowEvent *e)
 void
 ChatDialog::fitView()
 {
+  QRectF rect = m_scene->itemsBoundingRect();
+  m_scene->setSceneRect(rect);
   treeViewer->fitInView(m_scene->itemsBoundingRect(), Qt::KeepAspectRatio);
 }

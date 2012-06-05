@@ -26,7 +26,7 @@ class OneLevelTreeLayout: public TreeLayout
 {
 public:
   OneLevelTreeLayout(){}
-  virtual void setOneLevelLayout(std::vector<Coordinate> &v, int childNumber);
+  virtual void setOneLevelLayout(std::vector<Coordinate> &childNodesCo);
   virtual ~OneLevelTreeLayout(){}
 };
 #endif
