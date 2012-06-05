@@ -92,7 +92,6 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg)
     return;
   }
 
-  std::cout << "<<<< Received Message: " << msg.data() << std::endl;
   QTextCursor cursor(textEdit->textCursor());
   cursor.movePosition(QTextCursor::End);
   QTextTableFormat tableFormat;
@@ -103,18 +102,23 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg)
   table->cellAt(0, 1).firstCursorPosition().insertText(msg.data().c_str());
   QScrollBar *bar = textEdit->verticalScrollBar();
   bar->setValue(bar->maximum());
-  std::cout << "<<<<, Message appended " << std::endl;
 }
 
 void
 ChatDialog::processTreeUpdateWrapper(const std::vector<Sync::MissingDataInfo> v, Sync::SyncAppSocket *sock)
 {
   emit treeUpdated(v);
+#ifdef __DEBUG
+  std::cout << "<<< Tree update signal emitted" << std::endl;
+#endif
 }
 
 void
 ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
 {
+#ifdef __DEBUG
+  std::cout << "<<< processing Tree Update" << std::endl;
+#endif
   if (v.empty())
   {
     return;
@@ -136,6 +140,9 @@ ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
       for (Sync::SeqNo seq = v[i].low; seq <= v[i].high; ++seq)
       {
         m_sock->fetchRaw(v[i].prefix, seq, bind(&ChatDialog::processDataWrapper, this, _1, _2, _3), 2);
+#ifdef __DEBUG
+        std::cout << "<<< Fetching " << v[i].prefix << "/" <<seq.getSession() <<"/" << seq.getSeq() << std::endl;
+#endif
       }
     }
   }
@@ -156,6 +163,9 @@ void
 ChatDialog::processDataWrapper(std::string name, const char *buf, size_t len)
 {
   emit dataReceived(name.c_str(), buf, len);
+#ifdef __DEBUG
+  std::cout <<"<<< " << name << " fetched" << std::endl;
+#endif
 }
 
 void
@@ -266,7 +276,7 @@ ChatDialog::returnPressed()
   m_sock->publishRaw(m_user.getPrefix().toStdString(), m_session, buf, size, 60);
 
   int nextSequence = m_sock->getNextSeq(m_user.getPrefix().toStdString(), m_session);
-  Sync::MissingDataInfo mdi = {m_user.getPrefix().toStdString(), Sync::SeqNo(0), Sync::SeqNo(nextSequence)};
+  Sync::MissingDataInfo mdi = {m_user.getPrefix().toStdString(), Sync::SeqNo(0), Sync::SeqNo(nextSequence - 1)};
   std::vector<Sync::MissingDataInfo> v;
   v.push_back(mdi);
   m_scene->processUpdate(v, m_sock->getRootDigest().c_str());

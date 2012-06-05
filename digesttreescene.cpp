@@ -25,12 +25,17 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
   for (int i = 0; i < n; i++) 
   {
     Roster_iterator it = m_roster.find(v[i].prefix.c_str());
-    if (it == m_roster.end()) {
+    if (it == m_roster.end()) 
+    {
       rePlot = true; 
       DisplayUserPtr p(new DisplayUser());
       p->setPrefix(v[i].prefix.c_str());
       p->setSeq(v[i].high);
       m_roster.insert(p->getPrefix(), p);
+    }
+    else 
+    {
+      it.value()->setSeq(v[i].high);
     }
   }
 
@@ -77,7 +82,7 @@ DigestTreeScene::msgReceived(QString prefix, QString nick)
 
     reDrawNode(p, Qt::red);
 
-    if (previouslyUpdatedUser != DisplayUserNullPtr) 
+    if (previouslyUpdatedUser != DisplayUserNullPtr && previouslyUpdatedUser != p) 
     {
       reDrawNode(previouslyUpdatedUser, Qt::darkBlue);
     }
