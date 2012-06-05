@@ -66,6 +66,9 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
 void
 DigestTreeScene::msgReceived(QString prefix, QString nick)
 {
+#ifdef __DEBUG
+  std::cout << "Finding " << prefix.toStdString() << std::endl;
+#endif
   Roster_iterator it = m_roster.find(prefix);
   if (it != m_roster.end()) 
   {
@@ -89,6 +92,18 @@ DigestTreeScene::msgReceived(QString prefix, QString nick)
 
     previouslyUpdatedUser = p;
   }
+#ifdef __DEBUG
+  else 
+  {
+    std::cout << "Couldn't find prefix, let's check"<< std::endl;
+    Roster_iterator ii = m_roster.begin();
+    while (ii != m_roster.end())
+    {
+      std::cout <<"Prefix: " << ii.key().toStdString() << std::endl;
+      ++ii;
+    }
+  }
+#endif
 }
 
 void

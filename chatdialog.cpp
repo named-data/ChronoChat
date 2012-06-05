@@ -186,7 +186,12 @@ ChatDialog::processData(QString name, const char *buf, size_t len)
   appendMessage(msg);
   
   // update the tree view
-  std::string prefix = name.toStdString().substr(0, name.toStdString().find_last_of('/'));
+  std::string stdStrName = name.toStdString();
+  std::string stdStrNameWithoutSeq = stdStrName.substr(0, stdStrName.find_last_of('/'));
+  std::string prefix = stdStrNameWithoutSeq.substr(0, stdStrNameWithoutSeq.find_last_of('/'));
+#ifdef __DEBUG
+  std::cout <<"<<< updating scene for" << prefix << ": " << msg.from()  << std::endl;
+#endif
   m_scene->msgReceived(prefix.c_str(), msg.from().c_str());
   fitView();
 }
