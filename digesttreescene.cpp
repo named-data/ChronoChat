@@ -153,14 +153,14 @@ DigestTreeScene::plotNode(const std::vector<TreeLayout::Coordinate> &childNodesC
   QRectF rootInnerBoundingRect(rim, rim, nodeSize - rim * 2, nodeSize - rim * 2);
   addRect(rootBoundingRect, QPen(Qt::black), QBrush(Qt::darkRed));
   addRect(rootInnerBoundingRect, QPen(Qt::black), QBrush(Qt::lightGray));
-  QRectF digestRect(- 5 * nodeSize , - nodeSize, 11 * nodeSize, 30);
+  QRectF digestRect(- 5.5 * nodeSize , - nodeSize, 12 * nodeSize, 30);
   addRect(digestRect, QPen(Qt::darkCyan), QBrush(Qt::darkCyan));
 
   QGraphicsTextItem *digestItem = addText(digest);
   QRectF digestBoundingRect = digestItem->boundingRect();
   digestItem->setDefaultTextColor(Qt::black);
   digestItem->setFont(QFont("Cursive", 12, QFont::Bold));
-  digestItem->setPos(- 4 * nodeSize + (11 * nodeSize - digestBoundingRect.width()) / 2, - nodeSize + 5);
+  digestItem->setPos(- 4.5 * nodeSize + (12 * nodeSize - digestBoundingRect.width()) / 2, - nodeSize + 5);
   m_rootDigest = digestItem;
 
   // plot child nodes

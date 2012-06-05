@@ -178,6 +178,7 @@ ChatDialog::processData(QString name, const char *buf, size_t len)
   // update the tree view
   std::string prefix = name.toStdString().substr(0, name.toStdString().find_last_of('/'));
   m_scene->msgReceived(prefix.c_str(), msg.from().c_str());
+  fitView();
 }
 
 void
@@ -263,7 +264,14 @@ ChatDialog::returnPressed()
     abort();
   }
   m_sock->publishRaw(m_user.getPrefix().toStdString(), m_session, buf, size, 60);
-  
+
+  int nextSequence = m_sock->getNextSeq(m_user.getPrefix().toStdString(), m_session);
+  Sync::MissingDataInfo mdi = {m_user.getPrefix().toStdString(), Sync::SeqNo(0), Sync::SeqNo(nextSequence)};
+  std::vector<Sync::MissingDataInfo> v;
+  v.push_back(mdi);
+  m_scene->processUpdate(v, m_sock->getRootDigest().c_str());
+  m_scene->msgReceived(m_user.getPrefix(), m_user.getNick());
+  fitView();
 }
 
 void
