@@ -18,12 +18,15 @@ class ChatDialog : public QDialog,  private Ui::ChatDialog
 
 public:
 	ChatDialog(QWidget *parent = 0);
+  ~ChatDialog();
   void appendMessage(const SyncDemo::ChatMessage &msg);
-  void processData(const std::vector<Sync::MissingDataInfo> &, Sync::SyncAppSocket *);
+  void processTreeUpdate(const std::vector<Sync::MissingDataInfo> &, Sync::SyncAppSocket *);
+  void processData(std::string, const char *buf, size_t len);
+  void processRemove(const std::string);
 
 private:
   void formChatMessage(const QString &text, SyncDemo::ChatMessage &msg);
-  void readSettings();
+  bool readSettings();
   void writeSettings();
   void updateLabels();
   void resizeEvent(QResizeEvent *);
@@ -38,5 +41,7 @@ private slots:
 private:
   User m_user; 
   Sync::SyncAppSocket *m_sock;
+  uint32_t m_session;
+  DigestTreeScene *m_scene;
 };
 #endif

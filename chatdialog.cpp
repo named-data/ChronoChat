@@ -5,24 +5,45 @@
 #include <iostream>
 #include <QTimer>
 
+#define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/sync-demo"
+
 ChatDialog::ChatDialog(QWidget *parent)
-  : QDialog(parent)
+  : QDialog(parent), m_sock(NULL)
 {
   setupUi(this);
+  m_session = time(NULL);
 
   readSettings();
+
   updateLabels();
 
   lineEdit->setFocusPolicy(Qt::StrongFocus);
-  DigestTreeScene *scene = new DigestTreeScene();
+  m_scene = new DigestTreeScene(this);
 
-  treeViewer->setScene(scene);
-  QRectF rect = scene->itemsBoundingRect();
-  scene->setSceneRect(rect);
-  //scene->plot();
+  treeViewer->setScene(m_scene);
+  m_scene->plot("Empty");
+  QRectF rect = m_scene->itemsBoundingRect();
+  m_scene->setSceneRect(rect);
+
+  // create sync socket
+  if(!m_user.getChatroom().isEmpty()) {
+    std::string syncPrefix = BROADCAST_PREFIX_FOR_SYNC_DEMO;
+    syncPrefix += "/";
+    syncPrefix += m_user.getChatroom().toStdString();
+    m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdate, this, _1, _2), bind(&ChatDialog::processRemove, this, _1));
+  }
 
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
+}
+
+ChatDialog::~ChatDialog()
+{
+  if (m_sock != NULL) 
+  {
+    delete m_sock;
+    m_sock = NULL;
+  }
 }
 
 void
@@ -54,15 +75,79 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage &msg)
 }
 
 void
+ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> &v, Sync::SyncAppSocket *)
+{
+  if (v.empty())
+  {
+    return;
+  }
+
+  // reflect the changes on digest tree
+  m_scene->processUpdate(v, m_sock->getRootDigest().c_str());
+
+  int n = v.size();
+  int totalMissingPackets = 0;
+  for (int i = 0; i < n; i++) 
+  {
+    totalMissingPackets += v[i].high.getSeq() - v[i].low.getSeq() + 1;
+  }
+  
+  if (totalMissingPackets < 10) {
+    for (int i = 0; i < n; i++) 
+    {
+      for (Sync::SeqNo seq = v[i].low; seq <= v[i].high; ++seq)
+      {
+        m_sock->fetchRaw(v[i].prefix, seq, bind(&ChatDialog::processData, this, _1, _2, _3), 2);
+      }
+    }
+  }
+  else
+  {
+    // too bad; too many missing packets
+    // we may just join a new chatroom
+    // or some network patition just healed
+    // we don't try to fetch any data in this case (for now)
+  }
+
+  // adjust the view
+  fitView();
+
+}
+
+void
+ChatDialog::processData(std::string name, const char *buf, size_t len)
+{
+  SyncDemo::ChatMessage msg;
+  if (!msg.ParseFromArray(buf, len)) 
+  {
+    std::cerr << "Errrrr.. Can not parse msg at "<<__FILE__ <<":"<<__LINE__<<". what is happening?" << std::endl;
+    abort();
+  }
+
+  // display
+  appendMessage(msg);
+  
+  // update the tree view
+  std::string prefix = name.substr(0, name.find_last_of('/'));
+  m_scene->msgReceived(prefix.c_str(), msg.from().c_str());
+}
+
+void
+ChatDialog::processRemove(std::string prefix)
+{
+}
+
+void
 ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
   msg.set_from(m_user.getNick().toStdString());
   msg.set_to(m_user.getChatroom().toStdString());
   msg.set_data(text.toStdString());
   time_t seconds = time(NULL);
   msg.set_timestamp(seconds);
+  msg.set_type(SyncDemo::ChatMessage::CHAT);
 }
 
-void
+bool
 ChatDialog::readSettings()
 {
   QSettings s(ORGANIZATION, APPLICATION);
@@ -71,11 +156,13 @@ ChatDialog::readSettings()
   QString prefix = s.value("prefix", "").toString();
   if (nick == "" || chatroom == "" || prefix == "") {
     QTimer::singleShot(500, this, SLOT(buttonPressed()));
+    return false;
   }
   else {
     m_user.setNick(nick);
     m_user.setChatroom(chatroom);
     m_user.setPrefix(prefix);
+    return true;
   }
 }
 
@@ -109,9 +196,18 @@ ChatDialog::returnPressed()
   SyncDemo::ChatMessage msg;
   formChatMessage(text, msg);
   
-  // TODO:
-  // send message
   appendMessage(msg);
+
+  // send msg
+  size_t size = msg.ByteSize();
+  char *buf = new char[size];
+  msg.SerializeToArray(buf, size);
+  if (!msg.IsInitialized()) 
+  {
+    std::cerr << "Errrrr.. msg was not probally initialized "<<__FILE__ <<":"<<__LINE__<<". what is happening?" << std::endl;
+    abort();
+  }
+  m_sock->publishRaw(m_user.getPrefix().toStdString(), m_session, buf, size, 60);
   
 }
 
@@ -139,7 +235,22 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
   if (!chatroom.isEmpty() && chatroom != m_user.getChatroom()) {
     m_user.setChatroom(chatroom);
     needWrite = true;
+
+    m_scene->clearAll();
+    m_scene->plot("Empty");
     // TODO: perhaps need to do a lot. e.g. use a new SyncAppSokcet
+    if (m_sock != NULL) 
+    {
+      delete m_sock;
+      m_sock = NULL;
+    }
+    std::string syncPrefix = BROADCAST_PREFIX_FOR_SYNC_DEMO;
+    syncPrefix += "/";
+    syncPrefix += m_user.getChatroom().toStdString();
+    m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdate, this, _1, _2), bind(&ChatDialog::processRemove, this, _1));
+
+    fitView();
+    
   }
   if (needWrite) {
     writeSettings();
@@ -162,5 +273,5 @@ ChatDialog::showEvent(QShowEvent *e)
 void
 ChatDialog::fitView()
 {
-  treeViewer->fitInView(treeViewer->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
+  treeViewer->fitInView(m_scene->itemsBoundingRect(), Qt::KeepAspectRatio);
 }

@@ -36,11 +36,11 @@ DigestTreeScene::DigestTreeScene(QWidget *parent)
   : QGraphicsScene(parent)
 {
   previouslyUpdatedUser = DisplayUserNullPtr;
-  testDraw(this);
+//  testDraw(this);
 }
 
 void
-DigestTreeScene::processUpdate(std::vector<Sync::MissingDataInfo> &v, QString digest)
+DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QString digest)
 {
   int n = v.size();
   bool rePlot = false; 
@@ -81,21 +81,6 @@ DigestTreeScene::processUpdate(std::vector<Sync::MissingDataInfo> &v, QString di
 }
 
 void
-DigestTreeScene::reDrawNode(DisplayUserPtr p, QColor rimColor)
-{
-    QGraphicsRectItem *rimItem = p->getRimRectItem();
-    rimItem->setBrush(QBrush(rimColor));
-    QGraphicsRectItem *innerItem = p->getInnerRectItem();
-    innerItem->setBrush(QBrush(Qt::lightGray));
-    QGraphicsTextItem *seqTextItem = p->getSeqTextItem();
-    std::string s = boost::lexical_cast<std::string>(p->getSeqNo().getSeq());
-    seqTextItem->setPlainText(s.c_str());
-    QRectF textBR = seqTextItem->boundingRect();
-    QRectF innerBR = innerItem->boundingRect();
-    seqTextItem->setPos(innerBR.x() + (innerBR.width() - textBR.width())/2, innerBR.y() + (innerBR.height() - textBR.height())/2);
-}
-
-void
 DigestTreeScene::msgReceived(QString prefix, QString nick)
 {
   Roster_iterator it = m_roster.find(prefix);
@@ -121,6 +106,14 @@ DigestTreeScene::msgReceived(QString prefix, QString nick)
 
     previouslyUpdatedUser = p;
   }
+}
+
+void
+DigestTreeScene::clearAll()
+{
+  clear();
+  m_graph.clear();
+  m_roster.clear();
 }
 
 void
@@ -248,5 +241,20 @@ DigestTreeScene::plotNode(ogdf::GraphAttributes &GA, int rootIndex, QString dige
     }
 
   }
+}
+
+void
+DigestTreeScene::reDrawNode(DisplayUserPtr p, QColor rimColor)
+{
+    QGraphicsRectItem *rimItem = p->getRimRectItem();
+    rimItem->setBrush(QBrush(rimColor));
+    QGraphicsRectItem *innerItem = p->getInnerRectItem();
+    innerItem->setBrush(QBrush(Qt::lightGray));
+    QGraphicsTextItem *seqTextItem = p->getSeqTextItem();
+    std::string s = boost::lexical_cast<std::string>(p->getSeqNo().getSeq());
+    seqTextItem->setPlainText(s.c_str());
+    QRectF textBR = seqTextItem->boundingRect();
+    QRectF innerBR = innerItem->boundingRect();
+    seqTextItem->setPos(innerBR.x() + (innerBR.width() - textBR.width())/2, innerBR.y() + (innerBR.height() - textBR.height())/2);
 }
 

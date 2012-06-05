@@ -29,10 +29,11 @@ static DisplayUserPtr DisplayUserNullPtr;
 
 public:
   DigestTreeScene(QWidget *parent = 0);
-  void processUpdate(std::vector<Sync::MissingDataInfo> &v, QString digest);
+  void processUpdate(const std::vector<Sync::MissingDataInfo> &v, QString digest);
   void msgReceived(QString prefix, QString nick);
-private:
+  void clearAll();
   void plot(QString digest);
+private:
   void plotEdge(ogdf::GraphAttributes &GA);
   void plotNode(ogdf::GraphAttributes &GA, int rootIndex, QString digest);
   void reDrawNode(DisplayUserPtr p, QColor rimColor);
