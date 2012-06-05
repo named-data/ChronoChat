@@ -19,12 +19,14 @@ class ChatDialog : public QDialog,  private Ui::ChatDialog
 public:
 	ChatDialog(QWidget *parent = 0);
   ~ChatDialog();
-  void processTreeUpdate(const std::vector<Sync::MissingDataInfo> &, Sync::SyncAppSocket *);
-  void processData(std::string, const char *buf, size_t len);
   void processRemove(const std::string);
+  void appendMessage(const SyncDemo::ChatMessage msg);
+  void processTreeUpdateWrapper(const std::vector<Sync::MissingDataInfo>, Sync::SyncAppSocket *);
+  void processDataWrapper(std::string, const char *buf, size_t len);
 
 public slots:
-  void appendMessage(const SyncDemo::ChatMessage msg);
+  void processTreeUpdate(const std::vector<Sync::MissingDataInfo>);
+  void processData(QString name, const char *buf, size_t len);
 
 private:
   void formChatMessage(const QString &text, SyncDemo::ChatMessage &msg);
@@ -42,7 +44,8 @@ private slots:
   void settingUpdated(QString, QString, QString);
 
 signals:
-  void msgReceived(const SyncDemo::ChatMessage msg);
+  void dataReceived(QString name, const char *buf, size_t len);
+  void treeUpdated(const std::vector<Sync::MissingDataInfo>);
 
 private:
   User m_user; 

@@ -1,5 +1,6 @@
 TEMPLATE = app
 TARGET = sync-demo
+DEFINES += __DEBUG
 HEADERS = chatdialog.h \
           digesttreescene.h \
           settingdialog.h \

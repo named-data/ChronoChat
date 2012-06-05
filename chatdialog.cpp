@@ -35,7 +35,8 @@ ChatDialog::ChatDialog(QWidget *parent)
 {
   // have to register this, otherwise
   // the signal-slot system won't recognize this type
-  qRegisterMetaType<SyncDemo::ChatMessage>("SyncDemo::ChatMessage");
+  qRegisterMetaType<std::vector<Sync::MissingDataInfo> >("std::vector<Sync::MissingDataInfo>");
+  qRegisterMetaType<size_t>("size_t");
   setupUi(this);
   m_session = time(NULL);
 
@@ -56,12 +57,13 @@ ChatDialog::ChatDialog(QWidget *parent)
     std::string syncPrefix = BROADCAST_PREFIX_FOR_SYNC_DEMO;
     syncPrefix += "/";
     syncPrefix += m_user.getChatroom().toStdString();
-    m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdate, this, _1, _2), bind(&ChatDialog::processRemove, this, _1));
+    m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemove, this, _1));
   }
 
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
-  connect(this, SIGNAL(msgReceived(const SyncDemo::ChatMessage)), this, SLOT(appendMessage(const SyncDemo::ChatMessage)));
+  connect(this, SIGNAL(dataReceived(QString, const char *, size_t)), this, SLOT(processData(QString, const char *, size_t)));
+  connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
   //testDraw();
 }
 
@@ -105,7 +107,13 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg)
 }
 
 void
-ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> &v, Sync::SyncAppSocket *)
+ChatDialog::processTreeUpdateWrapper(const std::vector<Sync::MissingDataInfo> v, Sync::SyncAppSocket *sock)
+{
+  emit treeUpdated(v);
+}
+
+void
+ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
 {
   if (v.empty())
   {
@@ -127,7 +135,7 @@ ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> &v, Sync:
     {
       for (Sync::SeqNo seq = v[i].low; seq <= v[i].high; ++seq)
       {
-        m_sock->fetchRaw(v[i].prefix, seq, bind(&ChatDialog::processData, this, _1, _2, _3), 2);
+        m_sock->fetchRaw(v[i].prefix, seq, bind(&ChatDialog::processDataWrapper, this, _1, _2, _3), 2);
       }
     }
   }
@@ -145,7 +153,13 @@ ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> &v, Sync:
 }
 
 void
-ChatDialog::processData(std::string name, const char *buf, size_t len)
+ChatDialog::processDataWrapper(std::string name, const char *buf, size_t len)
+{
+  emit dataReceived(name.c_str(), buf, len);
+}
+
+void
+ChatDialog::processData(QString name, const char *buf, size_t len)
 {
   SyncDemo::ChatMessage msg;
   if (!msg.ParseFromArray(buf, len)) 
@@ -159,10 +173,10 @@ ChatDialog::processData(std::string name, const char *buf, size_t len)
   // so if we call appendMsg directly
   // Qt crash as "QObject: Cannot create children for a parent that is in a different thread"
   // the "cannonical" way to is use signal-slot
-  emit msgReceived(msg);
+  appendMessage(msg);
   
   // update the tree view
-  std::string prefix = name.substr(0, name.find_last_of('/'));
+  std::string prefix = name.toStdString().substr(0, name.toStdString().find_last_of('/'));
   m_scene->msgReceived(prefix.c_str(), msg.from().c_str());
 }
 
@@ -184,6 +198,7 @@ ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
 bool
 ChatDialog::readSettings()
 {
+#ifndef __DEBUG
   QSettings s(ORGANIZATION, APPLICATION);
   QString nick = s.value("nick", "").toString();
   QString chatroom = s.value("chatroom", "").toString();
@@ -198,15 +213,21 @@ ChatDialog::readSettings()
     m_user.setPrefix(prefix);
     return true;
   }
+#else
+  QTimer::singleShot(500, this, SLOT(buttonPressed()));
+  return false;
+#endif
 }
 
 void 
 ChatDialog::writeSettings()
 {
+#ifndef __DEBUG
   QSettings s(ORGANIZATION, APPLICATION);
   s.setValue("nick", m_user.getNick());
   s.setValue("chatroom", m_user.getChatroom());
   s.setValue("prefix", m_user.getPrefix());
+#endif
 }
 
 void
@@ -281,7 +302,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
     std::string syncPrefix = BROADCAST_PREFIX_FOR_SYNC_DEMO;
     syncPrefix += "/";
     syncPrefix += m_user.getChatroom().toStdString();
-    m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdate, this, _1, _2), bind(&ChatDialog::processRemove, this, _1));
+    m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemove, this, _1));
 
     fitView();
     
