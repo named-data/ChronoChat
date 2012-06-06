@@ -1,6 +1,7 @@
 #ifndef CHATDIALOG_H
 #define CHATDIALOG_H
 #include <boost/function.hpp>
+#include <boost/thread/mutex.hpp>
 #include <vector>
 #include "digesttreescene.h"
 #include "ui_chatdialog.h"
@@ -53,5 +54,7 @@ private:
   Sync::SyncAppSocket *m_sock;
   uint32_t m_session;
   DigestTreeScene *m_scene;
+  boost::mutex m_msgMutex;
+  boost::mutex m_sceneMutex;
 };
 #endif

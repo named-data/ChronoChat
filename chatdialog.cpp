@@ -87,6 +87,7 @@ ChatDialog::~ChatDialog()
 void
 ChatDialog::appendMessage(const SyncDemo::ChatMessage msg) 
 {
+  boost::mutex::scoped_lock lock(m_msgMutex);
 
   if (msg.type() != SyncDemo::ChatMessage::CHAT) {
     return;
@@ -133,7 +134,10 @@ ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
   }
 
   // reflect the changes on digest tree
-  m_scene->processUpdate(v, m_sock->getRootDigest().c_str());
+  {
+    boost::mutex::scoped_lock lock(m_sceneMutex);
+    m_scene->processUpdate(v, m_sock->getRootDigest().c_str());
+  }
 
   int n = v.size();
   int totalMissingPackets = 0;
@@ -200,7 +204,10 @@ ChatDialog::processData(QString name, const char *buf, size_t len)
 #ifdef __DEBUG
   std::cout <<"<<< updating scene for" << prefix << ": " << msg.from()  << std::endl;
 #endif
-  m_scene->msgReceived(prefix.c_str(), msg.from().c_str());
+  {
+    boost::mutex::scoped_lock lock(m_sceneMutex);
+    m_scene->msgReceived(prefix.c_str(), msg.from().c_str());
+  }
   fitView();
 }
 
@@ -292,8 +299,11 @@ ChatDialog::returnPressed()
   Sync::MissingDataInfo mdi = {m_user.getPrefix().toStdString(), Sync::SeqNo(0), Sync::SeqNo(nextSequence - 1)};
   std::vector<Sync::MissingDataInfo> v;
   v.push_back(mdi);
-  m_scene->processUpdate(v, m_sock->getRootDigest().c_str());
-  m_scene->msgReceived(m_user.getPrefix(), m_user.getNick());
+  {
+    boost::mutex::scoped_lock lock(m_sceneMutex);
+    m_scene->processUpdate(v, m_sock->getRootDigest().c_str());
+    m_scene->msgReceived(m_user.getPrefix(), m_user.getNick());
+  }
   fitView();
 }
 
@@ -332,8 +342,11 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
     m_user.setChatroom(chatroom);
     needWrite = true;
 
-    m_scene->clearAll();
-    m_scene->plot("Empty");
+    {
+      boost::mutex::scoped_lock lock(m_sceneMutex);
+      m_scene->clearAll();
+      m_scene->plot("Empty");
+    }
     // TODO: perhaps need to do a lot. e.g. use a new SyncAppSokcet
     if (m_sock != NULL) 
     {
@@ -377,6 +390,7 @@ ChatDialog::showEvent(QShowEvent *e)
 void
 ChatDialog::fitView()
 {
+  boost::mutex::scoped_lock lock(m_sceneMutex);
   QRectF rect = m_scene->itemsBoundingRect();
   m_scene->setSceneRect(rect);
   treeViewer->fitInView(m_scene->itemsBoundingRect(), Qt::KeepAspectRatio);
