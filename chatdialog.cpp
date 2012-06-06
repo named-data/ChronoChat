@@ -57,7 +57,15 @@ ChatDialog::ChatDialog(QWidget *parent)
     std::string syncPrefix = BROADCAST_PREFIX_FOR_SYNC_DEMO;
     syncPrefix += "/";
     syncPrefix += m_user.getChatroom().toStdString();
-    m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemove, this, _1));
+    try 
+    {
+      m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemove, this, _1));
+    }
+    catch (Sync::CcnxOperationException ex)
+    {
+      QMessageBox::critical(this, tr("Sync-Demo"), tr("Canno connect to ccnd.\n Have you started your ccnd?"), QMessageBox::Ok);
+      std::exit(1);
+    }
   }
 
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
@@ -325,7 +333,15 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
     std::string syncPrefix = BROADCAST_PREFIX_FOR_SYNC_DEMO;
     syncPrefix += "/";
     syncPrefix += m_user.getChatroom().toStdString();
-    m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemove, this, _1));
+    try
+    {
+      m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemove, this, _1));
+    }
+    catch (Sync::CcnxOperationException ex)
+    {
+      QMessageBox::critical(this, tr("Sync-Demo"), tr("Canno connect to ccnd.\n Have you started your ccnd?"), QMessageBox::Ok);
+      std::exit(1);
+    }
 
     fitView();
     
