@@ -15,7 +15,7 @@ SettingDialog::SettingDialog(QWidget *parent, QString nick, QString chatroom, QS
   QValidator *validator = new QRegExpValidator(rx, this);
   prefixEdit->setValidator(validator);
 
-  cancelButton->setDefault(true);
+  okButton->setDefault(true);
 
   connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
   connect(okButton, SIGNAL(clicked()), this, SLOT(update()));
