@@ -6,8 +6,13 @@ SettingDialog::SettingDialog(QWidget *parent, QString nick, QString chatroom, QS
   : QDialog(parent)
 {
   setupUi(this);
+
+  QRegExp noWhiteSpace("^\\S+.*$");
+  QValidator *nwsValidator = new QRegExpValidator(noWhiteSpace, this);
   nickEdit->setPlaceholderText(nick);
+  nickEdit->setValidator(nwsValidator);
   roomEdit->setPlaceholderText(chatroom);
+  roomEdit->setValidator(nwsValidator);
   prefixEdit->setPlaceholderText(prefix);
 
   // simple validator for ccnx prefix
