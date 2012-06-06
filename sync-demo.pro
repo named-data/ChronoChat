@@ -18,8 +18,8 @@ FORMS = chatdialog.ui \
 QMAKE_CXXFLAGS *= -g 
 QMAKE_CFLAGS *= -g 
 
-QMAKE_LIBDIR *= /opt/local/lib /usr/local/lib /usr/lib ../build
-INCLUDEPATH *= /opt/local/include /usr/local/include ../include
+QMAKE_LIBDIR *= /opt/local/lib /usr/local/lib /usr/lib sync/build
+INCLUDEPATH *= /opt/local/include /usr/local/include sync/include
 LIBS *= -lccn -lssl -lcrypto -lpthread -lprotobuf -lsync
 CONFIG += console 
 
