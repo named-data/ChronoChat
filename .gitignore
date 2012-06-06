@@ -1,0 +1,7 @@
+.DS_Store
+*.app
+Makefile
+*.o
+ui_*
+moc_*
+*.pb.*
