@@ -303,6 +303,16 @@ ChatDialog::buttonPressed()
   SettingDialog dialog(this, m_user.getNick(), m_user.getChatroom(), m_user.getPrefix());
   connect(&dialog, SIGNAL(updated(QString, QString, QString)), this, SLOT(settingUpdated(QString, QString, QString)));
   dialog.exec();
+  QTimer::singleShot(100, this, SLOT(checkSetting()));
+}
+
+void
+ChatDialog::checkSetting()
+{
+  if (m_user.getPrefix().isEmpty() || m_user.getNick().isEmpty() || m_user.getChatroom().isEmpty())
+  {
+    buttonPressed();
+  }
 }
 
 void

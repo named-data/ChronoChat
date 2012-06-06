@@ -41,6 +41,7 @@ private:
 private slots:
   void returnPressed();
   void buttonPressed();
+  void checkSetting();
   void settingUpdated(QString, QString, QString);
 
 signals:
