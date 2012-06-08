@@ -18,10 +18,11 @@ FORMS = chatdialog.ui \
 QMAKE_CXXFLAGS *= -g 
 QMAKE_CFLAGS *= -g 
 
-QMAKE_LIBDIR *= /opt/local/lib /usr/local/lib /usr/lib sync/build
-INCLUDEPATH *= /opt/local/include /usr/local/include sync/include
-LIBS *= -lccn -lssl -lcrypto -lpthread -lprotobuf -lsync
 CONFIG += console 
 
 PROTOS = chatbuf.proto
 include (sync-demo.pri)
+
+CONFIG += link_pkgconfig 
+PKGCONFIG += libsync
+PKGCONFIG += protobuf
