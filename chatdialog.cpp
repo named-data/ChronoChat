@@ -5,6 +5,7 @@
 #include <iostream>
 #include <QTimer>
 #include <QMetaType>
+#include <QMessageBox>
 
 #define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/sync-demo"
 
@@ -67,12 +68,17 @@ ChatDialog::ChatDialog(QWidget *parent)
       std::exit(1);
     }
   }
-
+  
+  createActions();
+  createTrayIcon();
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
   connect(this, SIGNAL(dataReceived(QString, const char *, size_t)), this, SLOT(processData(QString, const char *, size_t)));
   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
-  //testDraw();
+  connect(trayIcon, SIGNAL(messageClicked()), this, SLOT(showNormal()));
+  connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
+
+//testDraw();
 }
 
 ChatDialog::~ChatDialog()
@@ -81,6 +87,46 @@ ChatDialog::~ChatDialog()
   {
     delete m_sock;
     m_sock = NULL;
+  }
+}
+
+void 
+ChatDialog::setVisible(bool visible)
+{
+  minimizeAction->setEnabled(visible);
+  maximizeAction->setEnabled(!isMaximized());
+  restoreAction->setEnabled(isMaximized() || !visible);
+  QDialog::setVisible(visible);
+}
+
+void 
+ChatDialog::closeEvent(QCloseEvent *e)
+{
+  if (trayIcon->isVisible())
+  {
+    QMessageBox::information(this, tr("Sync-Demo"),
+			     tr("The program will keep running in the "
+				"system tray. To terminate the program"
+				"choose <b>Quit</b> in the context memu"
+				"of the system tray entry."));
+    hide();
+    e->ignore();
+  }
+}
+
+void 
+ChatDialog::changeEvent(QEvent *e)
+{
+  switch(e->type()) 
+  {
+  case QEvent::ActivationChange:
+    if (isActiveWindow()) 
+    {
+      trayIcon->setIcon(QIcon(":/images/icon_small.png"));
+    }
+    break;
+  default:
+    break;
   }
 }
 
@@ -111,6 +157,7 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg)
   table->cellAt(0, 1).firstCursorPosition().insertText(msg.data().c_str());
   QScrollBar *bar = textEdit->verticalScrollBar();
   bar->setValue(bar->maximum());
+  showMessage(from, msg.data().c_str());
 }
 
 void
@@ -373,6 +420,74 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
     writeSettings();
     updateLabels();
   }
+}
+
+void
+ChatDialog::iconActivated(QSystemTrayIcon::ActivationReason reason)
+{
+  switch (reason)
+  {
+  case QSystemTrayIcon::Trigger:
+  case QSystemTrayIcon::DoubleClick:
+    break;
+  case QSystemTrayIcon::MiddleClick:
+    // showMessage();
+    break;
+  default:;
+  }
+}
+
+void
+ChatDialog::showMessage(QString from, QString data)
+{
+  //  std::cout <<"Showing Message: " << from.toStdString() << ": " << data.toStdString() << std::endl;
+  if (!isActiveWindow()) 
+  {
+    trayIcon->showMessage(QString("Chatroom %1 has a new message").arg(m_user.getChatroom()), QString("<%1>: %2").arg(from).arg(data), QSystemTrayIcon::Information, 20000);
+    trayIcon->setIcon(QIcon(":/images/note.png"));
+  }
+}
+
+void
+ChatDialog::messageClicked()
+{
+  this->showMaximized();
+}
+
+void
+ChatDialog::createActions()
+{
+  minimizeAction = new QAction(tr("Mi&nimize"), this);
+  connect(minimizeAction, SIGNAL(triggered()), this, SLOT(hide()));
+  
+  maximizeAction = new QAction(tr("Ma&ximize"), this);
+  connect(maximizeAction, SIGNAL(triggered()), this, SLOT(showMaximized()));
+  
+  restoreAction = new QAction(tr("&Restore"), this);
+  connect(restoreAction, SIGNAL(triggered()), this, SLOT(showNormal()));
+  
+  quitAction = new QAction(tr("Quit"), this);
+  connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
+}
+
+void
+ChatDialog::createTrayIcon()
+{
+  trayIconMenu = new QMenu(this);
+  trayIconMenu->addAction(minimizeAction);
+  trayIconMenu->addAction(maximizeAction);
+  trayIconMenu->addAction(restoreAction);
+  trayIconMenu->addSeparator();
+  trayIconMenu->addAction(quitAction);
+
+  trayIcon = new QSystemTrayIcon(this);
+  trayIcon->setContextMenu(trayIconMenu);
+
+  QIcon icon(":/images/icon_small.png");
+  trayIcon->setIcon(icon);
+  setWindowIcon(icon);
+  trayIcon->setToolTip("Sync-Demo System Tray Icon");
+  trayIcon->setVisible(true);
 }
 
 void 

@@ -12,6 +12,9 @@ SOURCES = main.cpp \
           settingdialog.cpp \
           treelayout.cpp 
 
+RESOURCES = demo.qrc
+ICON = demo.icns
+QT += xml svg
 FORMS = chatdialog.ui \
         settingdialog.ui
 
