@@ -6,7 +6,8 @@ message ChatMessage {
   enum ChatMessageType {
     CHAT = 0;
     HELLO = 1;
-    OTHER = 2;
+    LEAVE = 2;
+    OTHER = 3;
   }
   required ChatMessageType type = 3 [default = CHAT];
   optional string data = 4;
