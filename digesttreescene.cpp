@@ -95,7 +95,7 @@ DigestTreeScene::msgReceived(QString prefix, QString nick)
 #ifdef __DEBUG
   else 
   {
-    std::cout << "Couldn't find prefix, let's check"<< std::endl;
+    std::cout << "Couldn't find prefix, " << prefix.toStdString() << ": let's check"<< std::endl;
     Roster_iterator ii = m_roster.begin();
     while (ii != m_roster.end())
     {

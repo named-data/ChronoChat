@@ -39,6 +39,7 @@ public slots:
   void processData(QString name, const char *buf, size_t len);
 
 private:
+  QString getRandomString();
   void formChatMessage(const QString &text, SyncDemo::ChatMessage &msg);
   bool readSettings();
   void writeSettings();

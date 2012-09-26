@@ -6,6 +6,8 @@
 #include <QTimer>
 #include <QMetaType>
 #include <QMessageBox>
+#include <boost/random/random_device.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
 
 #define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/sync-demo"
 
@@ -282,6 +284,21 @@ ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
   msg.set_type(SyncDemo::ChatMessage::CHAT);
 }
 
+static std::string chars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789");
+
+QString
+ChatDialog::getRandomString()
+{
+  std::string randStr;
+  boost::random::random_device rng;
+  boost::random::uniform_int_distribution<> index_dist(0, chars.size() - 1);
+  for (int i = 0; i < 10; i ++)
+  {
+    randStr += chars[index_dist(rng)];
+  }
+  return randStr.c_str();
+}
+
 bool
 ChatDialog::readSettings()
 {
@@ -390,7 +407,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
     needWrite = true;
   }
   if (!prefix.isEmpty() && prefix != m_user.getPrefix()) {
-    m_user.setPrefix(prefix);
+    m_user.setPrefix(prefix + "/" + getRandomString());
     needWrite = true;
     // TODO: set the previous prefix as left?
   }
