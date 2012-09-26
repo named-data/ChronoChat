@@ -32,6 +32,7 @@ public:
   void msgReceived(QString prefix, QString nick);
   void clearAll();
   void plot(QString digest);
+  bool removeNode(const QString prefix);
 private:
   void plotEdge(const std::vector<TreeLayout::Coordinate> &v, int nodeSize);
   void plotNode(const std::vector<TreeLayout::Coordinate> &v, QString digest, int nodeSize);

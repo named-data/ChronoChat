@@ -113,6 +113,13 @@ DigestTreeScene::clearAll()
   m_roster.clear();
 }
 
+bool
+DigestTreeScene::removeNode(const QString prefix)
+{
+  int removedCount = m_roster.remove(prefix);
+  return (removedCount > 0);
+}
+
 void
 DigestTreeScene::plot(QString digest)
 {

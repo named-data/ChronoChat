@@ -6,3 +6,4 @@ ui_*
 moc_*
 *.pb.*
 qrc*
+gdb-target

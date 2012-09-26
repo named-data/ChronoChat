@@ -85,6 +85,7 @@ ChatDialog::~ChatDialog()
 {
   if (m_sock != NULL) 
   {
+    m_sock->remove(m_user.getPrefix().toStdString());
     delete m_sock;
     m_sock = NULL;
   }
@@ -261,6 +262,14 @@ ChatDialog::processData(QString name, const char *buf, size_t len)
 void
 ChatDialog::processRemove(std::string prefix)
 {
+#ifdef __DEBUG
+  std::cout << "<<< remove node for prefix" << prefix << std::endl;
+#endif
+  bool removed = m_scene->removeNode(QString(prefix.c_str()));
+  if (removed)
+  {
+    m_scene->plot(m_sock->getRootDigest().c_str());
+  }
 }
 
 void
