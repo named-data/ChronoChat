@@ -11,30 +11,7 @@
 
 #define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/sync-demo"
 
-static const int FRESHNESS = 120;  // seconds
 static const int HELLO_INTERVAL = 90;  // seconds
-
-void
-ChatDialog::testDraw()
-{
-  std::string prefix[5] = {"/ndn/1", "/ndn/2", "/ndn/3", "/ndn/4", "/ndn/5"};
-  std::string nick[5] = {"tom", "jerry", "jason", "michael", "hurry"};
-  std::vector<Sync::MissingDataInfo> v;
-  for (int i = 0; i < 5; i++)
-  {
-    Sync::MissingDataInfo mdi = {prefix[i], Sync::SeqNo(0), Sync::SeqNo(i * (2 << i) )};
-    v.push_back(mdi);
-  }
-
-  m_scene->processUpdate(v, "12341234@!#%!@");
-
-  for (int i = 0; i < 5; i++)
-  {
-   m_scene-> msgReceived(prefix[i].c_str(), nick[i].c_str());
-  }
-
-  fitView();
-}
 
 ChatDialog::ChatDialog(QWidget *parent)
   : QDialog(parent), m_sock(NULL), m_lastMsgTime(0)
@@ -61,6 +38,19 @@ ChatDialog::ChatDialog(QWidget *parent)
   QRectF rect = m_scene->itemsBoundingRect();
   m_scene->setSceneRect(rect);
 
+  createActions();
+  createTrayIcon();
+  m_timer = new QTimer(this);
+  connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
+  connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
+  connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool)), this, SLOT(processData(QString, const char *, size_t, bool)));
+  connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
+  connect(this, SIGNAL(removeReceived(QString)), this, SLOT(processRemove(QString)));
+  connect(m_timer, SIGNAL(timeout()), this, SLOT(replot()));
+  connect(m_scene, SIGNAL(replot()), this, SLOT(replot()));
+  connect(trayIcon, SIGNAL(messageClicked()), this, SLOT(showNormal()));
+  connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
+
   // create sync socket
   if(!m_user.getChatroom().isEmpty()) {
     std::string syncPrefix = BROADCAST_PREFIX_FOR_SYNC_DEMO;
@@ -70,6 +60,7 @@ ChatDialog::ChatDialog(QWidget *parent)
     {
       m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
       sendHello();
+      m_timer->start(FRESHNESS * 2000);
     }
     catch (Sync::CcnxOperationException ex)
     {
@@ -78,16 +69,6 @@ ChatDialog::ChatDialog(QWidget *parent)
     }
   }
   
-  createActions();
-  createTrayIcon();
-  connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
-  connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
-  connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool)), this, SLOT(processData(QString, const char *, size_t, bool)));
-  connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
-  connect(this, SIGNAL(removeReceived(QString)), this, SLOT(processRemove(QString)));
-  connect(trayIcon, SIGNAL(messageClicked()), this, SLOT(showNormal()));
-  connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
-
 //testDraw();
 }
 
@@ -99,6 +80,13 @@ ChatDialog::~ChatDialog()
     delete m_sock;
     m_sock = NULL;
   }
+}
+
+void
+ChatDialog::replot()
+{
+  boost::mutex::scoped_lock lock(m_sceneMutex);
+  m_scene->plot(m_sock->getRootDigest().c_str());
 }
 
 void 
@@ -334,6 +322,7 @@ ChatDialog::processRemove(QString prefix)
   bool removed = m_scene->removeNode(prefix);
   if (removed)
   {
+    boost::mutex::scoped_lock lock(m_sceneMutex);
     m_scene->plot(m_sock->getRootDigest().c_str());
   }
 }
@@ -536,6 +525,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
     {
       m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
       sendHello();
+      m_timer->start(FRESHNESS * 2000);
     }
     catch (Sync::CcnxOperationException ex)
     {

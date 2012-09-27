@@ -61,6 +61,7 @@ private slots:
   void checkSetting();
   void settingUpdated(QString, QString, QString);
   void sendHello();
+  void replot();
 
   // icon related
   void iconActivated(QSystemTrayIcon::ActivationReason reason);
@@ -81,6 +82,7 @@ private:
   boost::mutex m_sceneMutex;
   time_t m_lastMsgTime;
   int m_randomizedInterval;
+  QTimer *m_timer;
 
   // icon related
   QAction *minimizeAction;

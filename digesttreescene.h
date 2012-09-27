@@ -11,6 +11,8 @@
 #include <QColor>
 #include "treelayout.h"
 
+const int FRESHNESS = 120;
+
 class QGraphicsTextItem;
 
 class User;
@@ -31,8 +33,15 @@ public:
   void processUpdate(const std::vector<Sync::MissingDataInfo> &v, QString digest);
   void msgReceived(QString prefix, QString nick);
   void clearAll();
-  void plot(QString digest);
   bool removeNode(const QString prefix);
+  void plot(QString digest);
+
+signals:
+  void replot();
+
+private slots:
+  void emitReplot();
+
 private:
   void plotEdge(const std::vector<TreeLayout::Coordinate> &v, int nodeSize);
   void plotNode(const std::vector<TreeLayout::Coordinate> &v, QString digest, int nodeSize);
@@ -53,7 +62,7 @@ public:
   void setPrefix(QString prefix) {m_prefix = prefix;}
   void setChatroom(QString chatroom) {m_chatroom = chatroom;}
   void setSeq(Sync::SeqNo seq) {m_seq = seq;}
-  void setReceived() {m_received = time(NULL);}
+  void setReceived(time_t t) {m_received = t;}
   QString getNick() { return m_nick;}
   QString getPrefix() { return m_prefix;}
   QString getChatroom() { return m_chatroom;}

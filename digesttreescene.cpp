@@ -8,7 +8,6 @@
 
 static const double Pi = 3.14159265358979323846264338327950288419717;
 
-
 DigestTreeScene::DisplayUserPtr DigestTreeScene::DisplayUserNullPtr;
 
 DigestTreeScene::DigestTreeScene(QWidget *parent)
@@ -29,6 +28,8 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
     {
       rePlot = true; 
       DisplayUserPtr p(new DisplayUser());
+      time_t tempTime = time(NULL) - 2 * FRESHNESS + 1;
+      p->setReceived(tempTime);
       p->setPrefix(v[i].prefix.c_str());
       p->setSeq(v[i].high);
       m_roster.insert(p->getPrefix(), p);
@@ -42,6 +43,7 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
   if (rePlot) 
   {
     plot(digest);
+    QTimer::singleShot(2100, this, SLOT(emitReplot()));
   }
   else 
   {
@@ -64,6 +66,12 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
 }
 
 void
+DigestTreeScene::emitReplot()
+{
+  emit replot();
+}
+
+void
 DigestTreeScene::msgReceived(QString prefix, QString nick)
 {
 #ifdef __DEBUG
@@ -73,6 +81,7 @@ DigestTreeScene::msgReceived(QString prefix, QString nick)
   if (it != m_roster.end()) 
   {
     DisplayUserPtr p = it.value();
+    p->setReceived(time(NULL));
     if (nick != p->getNick()) {
       p->setNick(nick);
       QGraphicsTextItem *nickItem = p->getNickTextItem();
@@ -123,6 +132,9 @@ DigestTreeScene::removeNode(const QString prefix)
 void
 DigestTreeScene::plot(QString digest)
 {
+#ifdef __DEBUG
+  std::cout << "Plotting at time: " << time(NULL) << std::endl;
+#endif
   clear();
 
   int nodeSize = 40;
@@ -131,6 +143,34 @@ DigestTreeScene::plot(QString digest)
   std::auto_ptr<TreeLayout> layout(new OneLevelTreeLayout());
   layout->setSiblingDistance(siblingDistance);
   layout->setLevelDistance(levelDistance);
+
+  // do some cleaning, get rid of stale member info
+  Roster_iterator it = m_roster.begin();
+  while (it != m_roster.end())
+  {
+    DisplayUserPtr p = it.value();
+    if (p != DisplayUserNullPtr)
+    {
+      time_t now = time(NULL);
+      if (now - p->getReceived() >= FRESHNESS * 2)
+      {
+#ifdef __DEBUG
+        std::cout << "Removing user: " << p->getNick().toStdString() << std::endl;
+        std::cout << "now - last = " << now - p->getReceived() << std::endl;
+#endif
+        p = DisplayUserNullPtr;
+        it = m_roster.erase(it);
+      }
+      else
+      {
+        ++it;
+      }
+    }
+    else
+    {
+      it = m_roster.erase(it);
+    }
+  }
 
   int n = m_roster.size();
   std::vector<TreeLayout::Coordinate> childNodesCo(n);
