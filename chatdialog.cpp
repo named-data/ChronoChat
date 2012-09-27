@@ -155,14 +155,58 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg)
     return;
   }
 
+  if (!msg.has_timestamp())
+  {
+    return;
+  }
+
+  QTextCharFormat nickFormat;
+  nickFormat.setForeground(Qt::darkGreen);
+  nickFormat.setFontWeight(QFont::Bold);
+  nickFormat.setFontUnderline(true);
+  nickFormat.setUnderlineColor(Qt::gray);
+  QTextCharFormat timeFormat;
+  timeFormat.setForeground(Qt::gray);
+  timeFormat.setFontUnderline(true);
+  timeFormat.setUnderlineColor(Qt::gray);
+
   QTextCursor cursor(textEdit->textCursor());
   cursor.movePosition(QTextCursor::End);
   QTextTableFormat tableFormat;
   tableFormat.setBorder(0);
   QTextTable *table = cursor.insertTable(1, 2, tableFormat);
-  QString from = QString("<%1>: ").arg(msg.from().c_str());
-  table->cellAt(0, 0).firstCursorPosition().insertText(from);
-  table->cellAt(0, 1).firstCursorPosition().insertText(msg.data().c_str());
+  QString from = QString("%1 ").arg(msg.from().c_str());
+  QTextTableCell fromCell = table->cellAt(0, 0);
+  fromCell.setFormat(nickFormat);
+  fromCell.firstCursorPosition().insertText(from);
+  QTextTableCell timeCell = table->cellAt(0, 1);
+  timeCell.setFormat(timeFormat);
+  time_t timestamp = msg.timestamp();
+  struct tm *tm_time = localtime(&timestamp);
+  int hour = tm_time->tm_hour;
+  QString amOrPM;
+  if (hour > 12)
+  {
+    hour -= 12;
+    amOrPM = "PM";
+  }
+  else
+  {
+    amOrPM = "AM";
+    if (hour == 0)
+    {
+      hour = 12;
+    }
+  }
+
+  char textTime[12];
+  sprintf(textTime, "%d:%02d:%02d %s", hour, tm_time->tm_min, tm_time->tm_sec, amOrPM.toStdString().c_str());
+  timeCell.firstCursorPosition().insertText(textTime);
+
+  
+  QTextCursor nextCursor(textEdit->textCursor());
+  table = nextCursor.insertTable(1, 1, tableFormat);
+  table->cellAt(0, 0).firstCursorPosition().insertText(msg.data().c_str());
   QScrollBar *bar = textEdit->verticalScrollBar();
   bar->setValue(bar->maximum());
   showMessage(from, msg.data().c_str());
