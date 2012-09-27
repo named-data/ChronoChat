@@ -11,6 +11,9 @@
 
 #define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/sync-demo"
 
+static const int FRESHNESS = 60;
+static const int HELLO_INTERVAL = 59;
+
 void
 ChatDialog::testDraw()
 {
@@ -34,7 +37,7 @@ ChatDialog::testDraw()
 }
 
 ChatDialog::ChatDialog(QWidget *parent)
-  : QDialog(parent), m_sock(NULL)
+  : QDialog(parent), m_sock(NULL), m_lastMsgTime(0)
 {
   // have to register this, otherwise
   // the signal-slot system won't recognize this type
@@ -392,9 +395,11 @@ ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
     std::cerr << "Errrrr.. msg was not probally initialized "<<__FILE__ <<":"<<__LINE__<<". what is happening?" << std::endl;
     abort();
   }
-  m_sock->publishRaw(m_user.getPrefix().toStdString(), m_session, buf, size, 60);
+  m_sock->publishRaw(m_user.getPrefix().toStdString(), m_session, buf, size, FRESHNESS);
 
   delete buf;
+
+  m_lastMsgTime = time(NULL);
 
   int nextSequence = m_sock->getNextSeq(m_user.getPrefix().toStdString(), m_session);
   Sync::MissingDataInfo mdi = {m_user.getPrefix().toStdString(), Sync::SeqNo(0), Sync::SeqNo(nextSequence - 1)};
@@ -410,9 +415,19 @@ ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
 void 
 ChatDialog::sendHello()
 {
-  SyncDemo::ChatMessage msg;
-  formHelloMessage(msg);
-  sendMsg(msg);
+  time_t now = time(NULL);
+  int elapsed = now - m_lastMsgTime;
+  if (elapsed >= HELLO_INTERVAL)
+  {
+    SyncDemo::ChatMessage msg;
+    formHelloMessage(msg);
+    sendMsg(msg);
+    QTimer::singleShot(HELLO_INTERVAL * 1000, this, SLOT(sendHello()));
+  }
+  else
+  {
+    QTimer::singleShot((HELLO_INTERVAL - elapsed) * 1000, this, SLOT(sendHello()));
+  }
 }
 
 void

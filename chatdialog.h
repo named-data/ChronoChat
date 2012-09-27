@@ -44,7 +44,6 @@ private:
   void formChatMessage(const QString &text, SyncDemo::ChatMessage &msg);
   void formHelloMessage(SyncDemo::ChatMessage &msg);
   void sendMsg(SyncDemo::ChatMessage &msg);
-  void sendHello();
   bool readSettings();
   void writeSettings();
   void updateLabels();
@@ -60,6 +59,7 @@ private slots:
   void buttonPressed();
   void checkSetting();
   void settingUpdated(QString, QString, QString);
+  void sendHello();
 
   // icon related
   void iconActivated(QSystemTrayIcon::ActivationReason reason);
@@ -78,6 +78,7 @@ private:
   DigestTreeScene *m_scene;
   boost::mutex m_msgMutex;
   boost::mutex m_sceneMutex;
+  time_t m_lastMsgTime;
 
   // icon related
   QAction *minimizeAction;
