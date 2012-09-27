@@ -11,8 +11,8 @@
 
 #define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/sync-demo"
 
-static const int FRESHNESS = 60;
-static const int HELLO_INTERVAL = 59;
+static const int FRESHNESS = 120;  // seconds
+static const int HELLO_INTERVAL = 90;  // seconds
 
 void
 ChatDialog::testDraw()
@@ -45,6 +45,9 @@ ChatDialog::ChatDialog(QWidget *parent)
   qRegisterMetaType<size_t>("size_t");
   setupUi(this);
   m_session = time(NULL);
+  boost::random::random_device rng;
+  boost::random::uniform_int_distribution<> uniform(1, 29000);
+  m_randomizedInterval = HELLO_INTERVAL * 1000 + uniform(rng);
 
   readSettings();
 
@@ -467,16 +470,16 @@ ChatDialog::sendHello()
 {
   time_t now = time(NULL);
   int elapsed = now - m_lastMsgTime;
-  if (elapsed >= HELLO_INTERVAL)
+  if (elapsed >= m_randomizedInterval / 1000)
   {
     SyncDemo::ChatMessage msg;
     formHelloMessage(msg);
     sendMsg(msg);
-    QTimer::singleShot(HELLO_INTERVAL * 1000, this, SLOT(sendHello()));
+    QTimer::singleShot(m_randomizedInterval, this, SLOT(sendHello()));
   }
   else
   {
-    QTimer::singleShot((HELLO_INTERVAL - elapsed) * 1000, this, SLOT(sendHello()));
+    QTimer::singleShot((m_randomizedInterval - elapsed * 1000), this, SLOT(sendHello()));
   }
 }
 

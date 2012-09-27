@@ -80,6 +80,7 @@ private:
   boost::mutex m_msgMutex;
   boost::mutex m_sceneMutex;
   time_t m_lastMsgTime;
+  int m_randomizedInterval;
 
   // icon related
   QAction *minimizeAction;
