@@ -62,7 +62,8 @@ ChatDialog::ChatDialog(QWidget *parent)
     syncPrefix += m_user.getChatroom().toStdString();
     try 
     {
-      m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemove, this, _1));
+      m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
+      sendHello();
     }
     catch (Sync::CcnxOperationException ex)
     {
@@ -77,6 +78,7 @@ ChatDialog::ChatDialog(QWidget *parent)
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
   connect(this, SIGNAL(dataReceived(QString, const char *, size_t)), this, SLOT(processData(QString, const char *, size_t)));
   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
+  connect(this, SIGNAL(removeReceived(QString)), this, SLOT(processRemove(QString)));
   connect(trayIcon, SIGNAL(messageClicked()), this, SLOT(showNormal()));
   connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
 
@@ -262,12 +264,18 @@ ChatDialog::processData(QString name, const char *buf, size_t len)
 }
 
 void
-ChatDialog::processRemove(std::string prefix)
+ChatDialog::processRemoveWrapper(std::string prefix)
+{
+  emit removeReceived(prefix.c_str());
+}
+
+void
+ChatDialog::processRemove(QString prefix)
 {
 #ifdef __DEBUG
-  std::cout << "<<< remove node for prefix" << prefix << std::endl;
+  std::cout << "<<< remove node for prefix" << prefix.toStdString() << std::endl;
 #endif
-  bool removed = m_scene->removeNode(QString(prefix.c_str()));
+  bool removed = m_scene->removeNode(prefix);
   if (removed)
   {
     m_scene->plot(m_sock->getRootDigest().c_str());
@@ -282,6 +290,16 @@ ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
   time_t seconds = time(NULL);
   msg.set_timestamp(seconds);
   msg.set_type(SyncDemo::ChatMessage::CHAT);
+}
+
+void 
+ChatDialog::formHelloMessage(SyncDemo::ChatMessage &msg)
+{
+  msg.set_from(m_user.getNick().toStdString());
+  msg.set_to(m_user.getChatroom().toStdString());
+  time_t seconds = time(NULL);
+  msg.set_timestamp(seconds);
+  msg.set_type(SyncDemo::ChatMessage::HELLO);
 }
 
 static std::string chars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789");
@@ -357,6 +375,14 @@ ChatDialog::returnPressed()
   
   appendMessage(msg);
 
+  sendMsg(msg);
+
+  fitView();
+}
+
+void 
+ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
+{
   // send msg
   size_t size = msg.ByteSize();
   char *buf = new char[size];
@@ -368,6 +394,8 @@ ChatDialog::returnPressed()
   }
   m_sock->publishRaw(m_user.getPrefix().toStdString(), m_session, buf, size, 60);
 
+  delete buf;
+
   int nextSequence = m_sock->getNextSeq(m_user.getPrefix().toStdString(), m_session);
   Sync::MissingDataInfo mdi = {m_user.getPrefix().toStdString(), Sync::SeqNo(0), Sync::SeqNo(nextSequence - 1)};
   std::vector<Sync::MissingDataInfo> v;
@@ -377,7 +405,14 @@ ChatDialog::returnPressed()
     m_scene->processUpdate(v, m_sock->getRootDigest().c_str());
     m_scene->msgReceived(m_user.getPrefix(), m_user.getNick());
   }
-  fitView();
+}
+
+void 
+ChatDialog::sendHello()
+{
+  SyncDemo::ChatMessage msg;
+  formHelloMessage(msg);
+  sendMsg(msg);
 }
 
 void
@@ -431,7 +466,8 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
     syncPrefix += m_user.getChatroom().toStdString();
     try
     {
-      m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemove, this, _1));
+      m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
+      sendHello();
     }
     catch (Sync::CcnxOperationException ex)
     {

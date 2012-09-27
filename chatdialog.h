@@ -25,10 +25,10 @@ public:
   ChatDialog(QWidget *parent = 0);
   ~ChatDialog();
   void setVisible(bool visible);
-  void processRemove(const std::string);
   void appendMessage(const SyncDemo::ChatMessage msg);
   void processTreeUpdateWrapper(const std::vector<Sync::MissingDataInfo>, Sync::SyncAppSocket *);
   void processDataWrapper(std::string, const char *buf, size_t len);
+  void processRemoveWrapper(std::string);
 
 protected:
   void closeEvent(QCloseEvent *e);
@@ -37,10 +37,14 @@ protected:
 public slots:
   void processTreeUpdate(const std::vector<Sync::MissingDataInfo>);
   void processData(QString name, const char *buf, size_t len);
+  void processRemove(QString);
 
 private:
   QString getRandomString();
   void formChatMessage(const QString &text, SyncDemo::ChatMessage &msg);
+  void formHelloMessage(SyncDemo::ChatMessage &msg);
+  void sendMsg(SyncDemo::ChatMessage &msg);
+  void sendHello();
   bool readSettings();
   void writeSettings();
   void updateLabels();
@@ -65,6 +69,7 @@ private slots:
 signals:
   void dataReceived(QString name, const char *buf, size_t len);
   void treeUpdated(const std::vector<Sync::MissingDataInfo>);
+  void removeReceived(QString prefix);
 
 private:
   User m_user; 
