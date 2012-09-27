@@ -79,7 +79,7 @@ ChatDialog::ChatDialog(QWidget *parent)
   createTrayIcon();
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
-  connect(this, SIGNAL(dataReceived(QString, const char *, size_t)), this, SLOT(processData(QString, const char *, size_t)));
+  connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool)), this, SLOT(processData(QString, const char *, size_t, bool)));
   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
   connect(this, SIGNAL(removeReceived(QString)), this, SLOT(processRemove(QString)));
   connect(trayIcon, SIGNAL(messageClicked()), this, SLOT(showNormal()));
@@ -201,8 +201,9 @@ ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
     totalMissingPackets += v[i].high.getSeq() - v[i].low.getSeq() + 1;
   }
   
-  if (totalMissingPackets < 10) {
-    for (int i = 0; i < n; i++) 
+  for (int i = 0; i < n; i++) 
+  {
+    if (totalMissingPackets < 4)
     {
       for (Sync::SeqNo seq = v[i].low; seq <= v[i].high; ++seq)
       {
@@ -212,13 +213,10 @@ ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
 #endif
       }
     }
-  }
-  else
-  {
-    // too bad; too many missing packets
-    // we may just join a new chatroom
-    // or some network patition just healed
-    // we don't try to fetch any data in this case (for now)
+    else
+    {
+        m_sock->fetchRaw(v[i].prefix, v[i].high, bind(&ChatDialog::processDataNoShowWrapper, this, _1, _2, _3), 2);
+    }
   }
 
   // adjust the view
@@ -229,20 +227,25 @@ ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
 void
 ChatDialog::processDataWrapper(std::string name, const char *buf, size_t len)
 {
-  emit dataReceived(name.c_str(), buf, len);
+  emit dataReceived(name.c_str(), buf, len, true);
 #ifdef __DEBUG
   std::cout <<"<<< " << name << " fetched" << std::endl;
 #endif
 }
 
 void
-ChatDialog::processData(QString name, const char *buf, size_t len)
+ChatDialog::processDataNoShowWrapper(std::string name, const char *buf, size_t len)
+{
+  emit dataReceived(name.c_str(), buf, len, false);
+}
+
+void
+ChatDialog::processData(QString name, const char *buf, size_t len, bool show)
 {
   SyncDemo::ChatMessage msg;
   if (!msg.ParseFromArray(buf, len)) 
   {
-    std::cerr << "Errrrr.. Can not parse msg at "<<__FILE__ <<":"<<__LINE__<<". what is happening?" << std::endl;
-    abort();
+    std::cerr << "Errrrr.. Can not parse msg with name: " << name.toStdString() << ". what is happening?" << std::endl;
   }
 
   // display msg received from network
@@ -250,7 +253,10 @@ ChatDialog::processData(QString name, const char *buf, size_t len)
   // so if we call appendMsg directly
   // Qt crash as "QObject: Cannot create children for a parent that is in a different thread"
   // the "cannonical" way to is use signal-slot
-  appendMessage(msg);
+  if (show)
+  {
+    appendMessage(msg);
+  }
   
   // update the tree view
   std::string stdStrName = name.toStdString();

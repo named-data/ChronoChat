@@ -28,6 +28,7 @@ public:
   void appendMessage(const SyncDemo::ChatMessage msg);
   void processTreeUpdateWrapper(const std::vector<Sync::MissingDataInfo>, Sync::SyncAppSocket *);
   void processDataWrapper(std::string, const char *buf, size_t len);
+  void processDataNoShowWrapper(std::string, const char *buf, size_t len);
   void processRemoveWrapper(std::string);
 
 protected:
@@ -36,7 +37,7 @@ protected:
 
 public slots:
   void processTreeUpdate(const std::vector<Sync::MissingDataInfo>);
-  void processData(QString name, const char *buf, size_t len);
+  void processData(QString name, const char *buf, size_t len, bool show);
   void processRemove(QString);
 
 private:
@@ -67,7 +68,7 @@ private slots:
   void messageClicked();
 
 signals:
-  void dataReceived(QString name, const char *buf, size_t len);
+  void dataReceived(QString name, const char *buf, size_t len, bool show);
   void treeUpdated(const std::vector<Sync::MissingDataInfo>);
   void removeReceived(QString prefix);
 
