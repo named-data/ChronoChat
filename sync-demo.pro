@@ -1,5 +1,5 @@
 TEMPLATE = app
-TARGET = sync-demo
+TARGET = Chronos
 DEFINES += __DEBUG
 HEADERS = chatdialog.h \
           digesttreescene.h \

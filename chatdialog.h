@@ -12,7 +12,7 @@
 #include <QSystemTrayIcon>
 
 #define ORGANIZATION "IRL@UCLA"
-#define APPLICATION "SYNC-DEMO"
+#define APPLICATION "CHRONOS"
 
 class QAction;
 class QMenu;

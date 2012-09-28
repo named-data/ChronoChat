@@ -9,7 +9,7 @@
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 
-#define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/sync-demo"
+#define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/chronos"
 
 static const int HELLO_INTERVAL = 90;  // seconds
 
@@ -69,7 +69,7 @@ ChatDialog::ChatDialog(QWidget *parent)
     }
     catch (Sync::CcnxOperationException ex)
     {
-      QMessageBox::critical(this, tr("Sync-Demo"), tr("Canno connect to ccnd.\n Have you started your ccnd?"), QMessageBox::Ok);
+      QMessageBox::critical(this, tr("Chronos"), tr("Canno connect to ccnd.\n Have you started your ccnd?"), QMessageBox::Ok);
       std::exit(1);
     }
   }
@@ -116,7 +116,7 @@ ChatDialog::closeEvent(QCloseEvent *e)
 {
   if (trayIcon->isVisible())
   {
-    QMessageBox::information(this, tr("Sync-Demo"),
+    QMessageBox::information(this, tr("Chronos"),
 			     tr("The program will keep running in the "
 				"system tray. To terminate the program"
 				"choose <b>Quit</b> in the context memu"
@@ -558,7 +558,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
     }
     catch (Sync::CcnxOperationException ex)
     {
-      QMessageBox::critical(this, tr("Sync-Demo"), tr("Canno connect to ccnd.\n Have you started your ccnd?"), QMessageBox::Ok);
+      QMessageBox::critical(this, tr("Chronos"), tr("Canno connect to ccnd.\n Have you started your ccnd?"), QMessageBox::Ok);
       std::exit(1);
     }
 
@@ -636,7 +636,7 @@ ChatDialog::createTrayIcon()
   QIcon icon(":/images/icon_small.png");
   trayIcon->setIcon(icon);
   setWindowIcon(icon);
-  trayIcon->setToolTip("Sync-Demo System Tray Icon");
+  trayIcon->setToolTip("Chronos System Tray Icon");
   trayIcon->setVisible(true);
 }
 
