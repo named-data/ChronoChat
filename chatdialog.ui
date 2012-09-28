@@ -12,20 +12,22 @@
     <property name="windowTitle">
       <string>Sync Demo</string>
     </property>
+    <!-- start of root layout -->
     <layout class="QVBoxLayout">
       <property name="spacing">
         <number>6</number>
       </property>
-      <item>
-        <layout class="QVBoxLayout">
+      <!-- start of head bar item -->
+      <item >
+        <layout class="QHBoxLayout">
           <property name="margin">
-           <number>0</number>
+            <number>0</number>
           </property>
           <property name="spacing">
             <number>6</number>
           </property>
-          <item >
-            <layout class="QHBoxLayout">
+          <item>
+            <layout class = "QVBoxLayout" >
               <property name="margin">
                 <number>0</number>
               </property>
@@ -33,66 +35,87 @@
                 <number>6</number>
               </property>
               <item>
-                <layout class = "QVBoxLayout" >
-                  <property name="margin">
-                    <number>0</number>
-                  </property>
-                  <property name="spacing">
-                    <number>6</number>
-                  </property>
-                  <item>
-                    <widget class="QLabel" name="infoLabel">
-                    <property name="focusPolicy">
-                      <enum>Qt::NoFocus</enum>
-                    </property>
-                    </widget>
-                  </item>
-                  <item>
-                    <widget class="QLabel" name="prefixLabel">
-                    <property name="focusPolicy">
-                      <enum>Qt::NoFocus</enum>
-                    </property>
-                    </widget>
-                  </item>
-                </layout>
-              </item>
-              <item>
-                <widget class="QPushButton" name="setButton">
+                <widget class="QLabel" name="infoLabel">
                 <property name="focusPolicy">
                   <enum>Qt::NoFocus</enum>
                 </property>
-                <property name="text">
-                  <string>Settings</string> 
-                </property>
-                <property name="minimumWidth">
-                  <number>150</number>
-                </property>
-                <property name="maximumWidth">
-                  <number>150</number>
+                </widget>
+              </item>
+              <item>
+                <widget class="QLabel" name="prefixLabel">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
                 </property>
                 </widget>
               </item>
             </layout>
           </item>
           <item>
-            <widget class="QGraphicsView" name="treeViewer">
+            <widget class="QPushButton" name="setButton">
             <property name="focusPolicy">
               <enum>Qt::NoFocus</enum>
             </property>
-            </widget>
-          </item>
-          <item>
-            <widget class="QTextEdit" name="textEdit">
-              <property name="focusPolicy">
-                <enum>Qt::NoFocus</enum>
-              </property>
-              <property name="readOnly">
-                <bool>true</bool>
-              </property>
+            <property name="text">
+              <string>Settings</string> 
+            </property>
+            <property name="minimumWidth">
+              <number>150</number>
+            </property>
+            <property name="maximumWidth">
+              <number>150</number>
+            </property>
             </widget>
           </item>
         </layout>
       </item>
+      <!-- end of head bar item -->
+      <!-- start of display area -->
+      <item>
+        <layout class = "QHBoxLayout">
+          <property name="margin">
+           <number>0</number>
+          </property>
+          <property name="spacing">
+            <number>6</number>
+          </property>
+          <item>
+            <widget class = "QListView" name="listView">
+              <property name="focusPolicy">
+                <enum>Qt::NoFocus</enum>
+              </property>
+            </widget>
+          </item>
+          <item>
+            <layout class="QVBoxLayout">
+              <property name="margin">
+               <number>0</number>
+              </property>
+              <property name="spacing">
+                <number>6</number>
+              </property>
+              <item>
+                <widget class="QGraphicsView" name="treeViewer">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                </widget>
+              </item>
+              <item>
+                <widget class="QTextEdit" name="textEdit">
+                  <property name="focusPolicy">
+                    <enum>Qt::NoFocus</enum>
+                  </property>
+                  <property name="readOnly">
+                    <bool>true</bool>
+                  </property>
+                </widget>
+              </item>
+            </layout>
+          </item>
+        </layout>
+      </item>
+      <!-- end of display area -->
+      <!-- start of input line widget -->
       <item>
         <layout class="QHBoxLayout">
           <property name="margin">
@@ -113,6 +136,7 @@
           </item>
         </layout>
       </item>
+      <!-- end of input line widget -->
     </layout>
   </widget>
   <resources/>
