@@ -413,10 +413,11 @@ ChatDialog::writeSettings()
 void
 ChatDialog::updateLabels()
 {
-  QString settingDisp = QString("<User: %1>, <Chatroom: %2>").arg(m_user.getNick()).arg(m_user.getChatroom());
+  QString settingDisp = QString("Chatroom: %1").arg(m_user.getChatroom());
+  infoLabel->setStyleSheet("QLabel {color: #630; font-size: 16px; font: bold \"Verdana\";}");
   infoLabel->setText(settingDisp);
-  QString prefixDisp = QString("<Prefix: %1>").arg(m_user.getPrefix());
-  prefixLabel->setText(prefixDisp);
+  //QString prefixDisp = QString("<Prefix: %1>").arg(m_user.getPrefix());
+  //prefixLabel->setText(prefixDisp);
 }
 
 void 

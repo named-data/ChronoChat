@@ -41,6 +41,7 @@
                 </property>
                 </widget>
               </item>
+              <!--
               <item>
                 <widget class="QLabel" name="prefixLabel">
                 <property name="focusPolicy">
@@ -48,6 +49,7 @@
                 </property>
                 </widget>
               </item>
+              -->
             </layout>
           </item>
           <item>
