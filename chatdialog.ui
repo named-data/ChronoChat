@@ -10,7 +10,7 @@
       </rect>
     </property>
     <property name="windowTitle">
-      <string>Chronos -- Powered By UCLA Sync</string>
+      <string>Retreat Chat -- Powered By Chronos</string>
     </property>
     <!-- start of root layout -->
     <layout class="QVBoxLayout">

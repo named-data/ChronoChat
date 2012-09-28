@@ -39,6 +39,9 @@ ChatDialog::ChatDialog(QWidget *parent)
   m_scene->setSceneRect(rect);
 
   listView->setStyleSheet("QListView { alternate-background-color: white; background: #F0F0F0; color: darkGreen; font: bold large; }");
+  listView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  listView->setDragDropMode(QAbstractItemView::NoDragDrop);
+  listView->setSelectionMode(QAbstractItemView::NoSelection);
   m_rosterModel = new QStringListModel(this);
   listView->setModel(m_rosterModel);
 
@@ -163,6 +166,9 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg)
   {
     return;
   }
+#ifdef __DEBUG
+  std::cout << "Displaying msg from: " << msg.from() << ", data is: " << msg.data() << std::endl;
+#endif
 
   QTextCharFormat nickFormat;
   nickFormat.setForeground(Qt::darkGreen);
@@ -209,6 +215,7 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg)
 
   
   QTextCursor nextCursor(textEdit->textCursor());
+  nextCursor.movePosition(QTextCursor::End);
   table = nextCursor.insertTable(1, 1, tableFormat);
   table->cellAt(0, 0).firstCursorPosition().insertText(msg.data().c_str());
   QScrollBar *bar = textEdit->verticalScrollBar();
