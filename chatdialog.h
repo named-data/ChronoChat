@@ -17,6 +17,7 @@
 class QAction;
 class QMenu;
 class QStringListModel;
+class QTextTable;
 
 class ChatDialog : public QDialog,  private Ui::ChatDialog 
 {
@@ -55,6 +56,8 @@ private:
   void testDraw();
   void createTrayIcon();
   void createActions();
+  QString formatTime(time_t);
+  void printTimeInCell(QTextTable *, time_t);
 
 private slots:
   void returnPressed();
