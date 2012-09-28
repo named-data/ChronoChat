@@ -71,9 +71,21 @@ DigestTreeScene::emitReplot()
   emit replot();
 }
 
-void
+QStringList
 DigestTreeScene::getRosterList()
 {
+  QStringList rosterList;
+  RosterIterator it(m_roster);
+  while(it.hasNext())
+  {
+    it.next();
+    DisplayUserPtr p = it.value();
+    if (p != DisplayUserNullPtr)
+    {
+      rosterList << "- " + p->getNick();
+    }
+  }
+  return rosterList;
 }
 
 void
@@ -95,6 +107,7 @@ DigestTreeScene::msgReceived(QString prefix, QString nick)
       QRectF rectBR = nickRectItem->boundingRect();
       QRectF nickBR = nickItem->boundingRect();
       nickItem->setPos(rectBR.x() + (rectBR.width() - nickBR.width())/2, rectBR.y() + 5);
+      emit rosterChanged();
     }
 
     reDrawNode(p, Qt::red);

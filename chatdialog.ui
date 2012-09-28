@@ -5,7 +5,7 @@
       <rect>
       <x>0</x>
       <y>0</y>
-      <width>600</width>
+      <width>800</width>
       <height>600</height>
       </rect>
     </property>
@@ -105,38 +105,41 @@
                   <property name="focusPolicy">
                     <enum>Qt::NoFocus</enum>
                   </property>
+                  <property name="minimumWidth">
+                    <number>600</number>
+                  </property>
                   <property name="readOnly">
                     <bool>true</bool>
                   </property>
                 </widget>
               </item>
+              <!-- start of input line widget -->
+              <item>
+                <layout class="QHBoxLayout">
+                  <property name="margin">
+                    <number>0</number>
+                  </property>
+                  <property name="spacing">
+                    <number>6</number>
+                  </property>
+                  <item>
+                    <widget class="QLabel" name="label">
+                      <property name="text">
+                        <string>Message:</string>
+                      </property>
+                    </widget>
+                  </item>
+                  <item>
+                    <widget class="QLineEdit" name="lineEdit" />
+                  </item>
+                </layout>
+              </item>
+              <!-- end of input line widget -->
             </layout>
           </item>
         </layout>
       </item>
       <!-- end of display area -->
-      <!-- start of input line widget -->
-      <item>
-        <layout class="QHBoxLayout">
-          <property name="margin">
-            <number>0</number>
-          </property>
-          <property name="spacing">
-            <number>6</number>
-          </property>
-          <item>
-            <widget class="QLabel" name="label">
-              <property name="text">
-                <string>Message:</string>
-              </property>
-            </widget>
-          </item>
-          <item>
-            <widget class="QLineEdit" name="lineEdit" />
-          </item>
-        </layout>
-      </item>
-      <!-- end of input line widget -->
     </layout>
   </widget>
   <resources/>

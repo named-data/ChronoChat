@@ -38,6 +38,7 @@ ChatDialog::ChatDialog(QWidget *parent)
   QRectF rect = m_scene->itemsBoundingRect();
   m_scene->setSceneRect(rect);
 
+  listView->setStyleSheet("QListView { alternate-background-color: white; background: #F0F0F0; color: darkGreen; font: bold large; }");
   m_rosterModel = new QStringListModel(this);
   listView->setModel(m_rosterModel);
 
@@ -89,14 +90,14 @@ ChatDialog::~ChatDialog()
 void
 ChatDialog::replot()
 {
-  boost::mutex::scoped_lock lock(m_sceneMutex);
+  boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
   m_scene->plot(m_sock->getRootDigest().c_str());
 }
 
 void
 ChatDialog::updateRosterList()
 {
-  boost::mutex::scoped_lock lock(m_sceneMutex);
+  boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
   QStringList rosterList = m_scene->getRosterList();
   m_rosterModel->setStringList(rosterList);
 }
@@ -144,7 +145,7 @@ ChatDialog::changeEvent(QEvent *e)
 void
 ChatDialog::appendMessage(const SyncDemo::ChatMessage msg) 
 {
-  boost::mutex::scoped_lock lock(m_msgMutex);
+  boost::recursive_mutex::scoped_lock lock(m_msgMutex);
 
   if (msg.type() != SyncDemo::ChatMessage::CHAT) {
     return;
@@ -237,7 +238,7 @@ ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
 
   // reflect the changes on digest tree
   {
-    boost::mutex::scoped_lock lock(m_sceneMutex);
+    boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
     m_scene->processUpdate(v, m_sock->getRootDigest().c_str());
   }
 
@@ -313,7 +314,7 @@ ChatDialog::processData(QString name, const char *buf, size_t len, bool show)
   std::cout <<"<<< updating scene for" << prefix << ": " << msg.from()  << std::endl;
 #endif
   {
-    boost::mutex::scoped_lock lock(m_sceneMutex);
+    boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
     m_scene->msgReceived(prefix.c_str(), msg.from().c_str());
   }
   fitView();
@@ -334,7 +335,7 @@ ChatDialog::processRemove(QString prefix)
   bool removed = m_scene->removeNode(prefix);
   if (removed)
   {
-    boost::mutex::scoped_lock lock(m_sceneMutex);
+    boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
     m_scene->plot(m_sock->getRootDigest().c_str());
   }
 }
@@ -460,7 +461,7 @@ ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
   std::vector<Sync::MissingDataInfo> v;
   v.push_back(mdi);
   {
-    boost::mutex::scoped_lock lock(m_sceneMutex);
+    boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
     m_scene->processUpdate(v, m_sock->getRootDigest().c_str());
     m_scene->msgReceived(m_user.getPrefix(), m_user.getNick());
   }
@@ -520,7 +521,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
     needWrite = true;
 
     {
-      boost::mutex::scoped_lock lock(m_sceneMutex);
+      boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
       m_scene->clearAll();
       m_scene->plot("Empty");
     }
@@ -637,7 +638,7 @@ ChatDialog::showEvent(QShowEvent *e)
 void
 ChatDialog::fitView()
 {
-  boost::mutex::scoped_lock lock(m_sceneMutex);
+  boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
   QRectF rect = m_scene->itemsBoundingRect();
   m_scene->setSceneRect(rect);
   treeViewer->fitInView(m_scene->itemsBoundingRect(), Qt::KeepAspectRatio);

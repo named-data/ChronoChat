@@ -20,7 +20,7 @@ FORMS = chatdialog.ui \
 
 QMAKE_CXXFLAGS *= -g 
 QMAKE_CFLAGS *= -g 
-LIBS += -lboost_system-mt -lboost_random
+LIBS += -lboost_system-mt -lboost_random-mt
 
 CONFIG += console 
 
