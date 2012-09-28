@@ -86,9 +86,9 @@ ChatDialog::~ChatDialog()
     SyncDemo::ChatMessage msg;
     formControlMessage(msg, SyncDemo::ChatMessage::LEAVE);
     sendMsg(msg);
-    sleep(1);
+    usleep(500000);
     m_sock->remove(m_user.getPrefix().toStdString());
-    sleep(1);
+    usleep(5000);
 #ifdef __DEBUG
     std::cout << "Sync REMOVE signal sent" << std::endl;
 #endif
@@ -133,7 +133,7 @@ ChatDialog::setVisible(bool visible)
 void 
 ChatDialog::closeEvent(QCloseEvent *e)
 {
-  if (trayIcon->isVisible())
+  if (trayIcon->isVisible() && !m_minimaniho)
   {
     QMessageBox::information(this, tr("Chronos"),
 			     tr("The program will keep running in the "
@@ -142,6 +142,8 @@ ChatDialog::closeEvent(QCloseEvent *e)
 				"of the system tray entry."));
     hide();
     e->ignore();
+    m_minimaniho = true;
+    writeSettings();
   }
 }
 
@@ -453,12 +455,12 @@ ChatDialog::getRandomString()
 bool
 ChatDialog::readSettings()
 {
-#ifndef __DEBUG
   QSettings s(ORGANIZATION, APPLICATION);
   QString nick = s.value("nick", "").toString();
   QString chatroom = s.value("chatroom", "").toString();
   QString originPrefix = s.value("originPrefix", "").toString();
-  if (nick == "" || chatroom == "" || prefix == "") {
+  m_minimaniho = s.value("minimaniho", false).toBool();
+  if (nick == "" || chatroom == "" || originPrefix == "") {
     QTimer::singleShot(500, this, SLOT(buttonPressed()));
     return false;
   }
@@ -466,24 +468,22 @@ ChatDialog::readSettings()
     m_user.setNick(nick);
     m_user.setChatroom(chatroom);
     m_user.setOriginPrefix(originPrefix);
-    m_user.setPrefix(origin_prefix + "/" + chatroom + "/" + getRandomString());
+    m_user.setPrefix(originPrefix + "/" + chatroom + "/" + getRandomString());
     return true;
   }
-#else
-  QTimer::singleShot(500, this, SLOT(buttonPressed()));
-  return false;
-#endif
+
+//  QTimer::singleShot(500, this, SLOT(buttonPressed()));
+ // return false;
 }
 
 void 
 ChatDialog::writeSettings()
 {
-#ifndef __DEBUG
   QSettings s(ORGANIZATION, APPLICATION);
   s.setValue("nick", m_user.getNick());
   s.setValue("chatroom", m_user.getChatroom());
   s.setValue("originPrefix", m_user.getOriginPrefix());
-#endif
+  s.setValue("minimaniho", m_minimaniho);
 }
 
 void
