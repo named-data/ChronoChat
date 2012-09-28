@@ -50,6 +50,7 @@ ChatDialog::ChatDialog(QWidget *parent)
   m_timer = new QTimer(this);
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
+  connect(treeButton, SIGNAL(pressed()), this, SLOT(treeButtonPressed()));
   connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool)), this, SLOT(processData(QString, const char *, size_t, bool)));
   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
   connect(this, SIGNAL(removeReceived(QString)), this, SLOT(processRemove(QString)));
@@ -424,8 +425,8 @@ ChatDialog::updateLabels()
   QString settingDisp = QString("Chatroom: %1").arg(m_user.getChatroom());
   infoLabel->setStyleSheet("QLabel {color: #630; font-size: 16px; font: bold \"Verdana\";}");
   infoLabel->setText(settingDisp);
-  QString prefixDisp = QString("<Prefix: %1>").arg(m_user.getPrefix());
-  prefixLabel->setText(prefixDisp);
+  //QString prefixDisp = QString("<Prefix: %1>").arg(m_user.getPrefix());
+  //prefixLabel->setText(prefixDisp);
 }
 
 void 
@@ -502,6 +503,20 @@ ChatDialog::buttonPressed()
   connect(&dialog, SIGNAL(updated(QString, QString, QString)), this, SLOT(settingUpdated(QString, QString, QString)));
   dialog.exec();
   QTimer::singleShot(100, this, SLOT(checkSetting()));
+}
+
+void ChatDialog::treeButtonPressed()
+{
+  if (treeViewer->isVisible())
+  {
+    treeViewer->hide();
+    treeButton->setText("Show Sync Tree");
+  }
+  else
+  {
+    treeViewer->show();
+    treeButton->setText("Hide Sync Tree");
+  }
 }
 
 void

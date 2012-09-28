@@ -59,6 +59,7 @@ private:
 private slots:
   void returnPressed();
   void buttonPressed();
+  void treeButtonPressed();
   void checkSetting();
   void settingUpdated(QString, QString, QString);
   void sendHello();

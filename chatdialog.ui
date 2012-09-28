@@ -27,6 +27,13 @@
             <number>6</number>
           </property>
           <item>
+            <widget class="QLabel" name="infoLabel">
+            <property name="focusPolicy">
+              <enum>Qt::NoFocus</enum>
+            </property>
+            </widget>
+          </item>
+          <item>
             <layout class = "QVBoxLayout" >
               <property name="margin">
                 <number>0</number>
@@ -34,13 +41,7 @@
               <property name="spacing">
                 <number>6</number>
               </property>
-              <item>
-                <widget class="QLabel" name="infoLabel">
-                <property name="focusPolicy">
-                  <enum>Qt::NoFocus</enum>
-                </property>
-                </widget>
-              </item>
+              <!--
               <item>
                 <widget class="QLabel" name="prefixLabel">
                 <property name="focusPolicy">
@@ -48,23 +49,40 @@
                 </property>
                 </widget>
               </item>
+              -->
+              <item>
+                <widget class="QPushButton" name="setButton">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="text">
+                  <string>Settings</string> 
+                </property>
+                <property name="minimumWidth">
+                  <number>150</number>
+                </property>
+                <property name="maximumWidth">
+                  <number>150</number>
+                </property>
+                </widget>
+              </item>
+              <item>
+                <widget class="QPushButton" name="treeButton">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="text">
+                  <string>Hide Sync Tree</string> 
+                </property>
+                <property name="minimumWidth">
+                  <number>150</number>
+                </property>
+                <property name="maximumWidth">
+                  <number>150</number>
+                </property>
+                </widget>
+              </item>
             </layout>
-          </item>
-          <item>
-            <widget class="QPushButton" name="setButton">
-            <property name="focusPolicy">
-              <enum>Qt::NoFocus</enum>
-            </property>
-            <property name="text">
-              <string>Settings</string> 
-            </property>
-            <property name="minimumWidth">
-              <number>150</number>
-            </property>
-            <property name="maximumWidth">
-              <number>150</number>
-            </property>
-            </widget>
           </item>
         </layout>
       </item>
@@ -82,6 +100,9 @@
             <widget class = "QListView" name="listView">
               <property name="focusPolicy">
                 <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="maximumWidth">
+                <number>200</number>
               </property>
             </widget>
           </item>
