@@ -53,7 +53,6 @@ ChatDialog::ChatDialog(QWidget *parent)
   connect(treeButton, SIGNAL(pressed()), this, SLOT(treeButtonPressed()));
   connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool)), this, SLOT(processData(QString, const char *, size_t, bool)));
   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
-  //connect(this, SIGNAL(removeReceived(QString)), this, SLOT(processRemove(QString)));
   connect(m_timer, SIGNAL(timeout()), this, SLOT(replot()));
   connect(m_scene, SIGNAL(replot()), this, SLOT(replot()));
   connect(trayIcon, SIGNAL(messageClicked()), this, SLOT(showNormal()));
@@ -78,7 +77,6 @@ ChatDialog::ChatDialog(QWidget *parent)
     }
   }
   
-//testDraw();
 }
 
 ChatDialog::~ChatDialog()
@@ -86,8 +84,7 @@ ChatDialog::~ChatDialog()
   if (m_sock != NULL) 
   {
     SyncDemo::ChatMessage msg;
-    formHelloMessage(msg);
-    msg.set_type(SyncDemo::ChatMessage::LEAVE);
+    formControlMessage(msg, SyncDemo::ChatMessage::LEAVE);
     sendMsg(msg);
     sleep(1);
     m_sock->remove(m_user.getPrefix().toStdString());
@@ -118,8 +115,7 @@ ChatDialog::updateRosterList(QStringList staleUserList)
   while(it.hasNext())
   {
     SyncDemo::ChatMessage msg;
-    formHelloMessage(msg);
-    msg.set_type(SyncDemo::ChatMessage::LEAVE);
+    formControlMessage(msg, SyncDemo::ChatMessage::LEAVE);
     msg.set_from(it.next().toStdString());
     appendMessage(msg);
   }
@@ -442,13 +438,13 @@ ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
 }
 
 void 
-ChatDialog::formHelloMessage(SyncDemo::ChatMessage &msg)
+ChatDialog::formControlMessage(SyncDemo::ChatMessage &msg, SyncDemo::ChatMessage::ChatMessageType type)
 {
   msg.set_from(m_user.getNick().toStdString());
   msg.set_to(m_user.getChatroom().toStdString());
   time_t seconds = time(NULL);
   msg.set_timestamp(seconds);
-  msg.set_type(SyncDemo::ChatMessage::HELLO);
+  msg.set_type(type);
 }
 
 static std::string chars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789");
@@ -564,8 +560,7 @@ void
 ChatDialog::sendJoin()
 {
   SyncDemo::ChatMessage msg;
-  formHelloMessage(msg);
-  msg.set_type(SyncDemo::ChatMessage::JOIN);
+  formControlMessage(msg, SyncDemo::ChatMessage::JOIN);
   sendMsg(msg);
   QTimer::singleShot(m_randomizedInterval, this, SLOT(sendHello()));
 }
@@ -578,7 +573,7 @@ ChatDialog::sendHello()
   if (elapsed >= m_randomizedInterval / 1000)
   {
     SyncDemo::ChatMessage msg;
-    formHelloMessage(msg);
+    formControlMessage(msg, SyncDemo::ChatMessage::HELLO);
     sendMsg(msg);
     QTimer::singleShot(m_randomizedInterval, this, SLOT(sendHello()));
   }

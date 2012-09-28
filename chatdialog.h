@@ -44,7 +44,7 @@ public slots:
 private:
   QString getRandomString();
   void formChatMessage(const QString &text, SyncDemo::ChatMessage &msg);
-  void formHelloMessage(SyncDemo::ChatMessage &msg);
+  void formControlMessage(SyncDemo::ChatMessage &msg, SyncDemo::ChatMessage::ChatMessageType type);
   void sendMsg(SyncDemo::ChatMessage &msg);
   bool readSettings();
   void writeSettings();
