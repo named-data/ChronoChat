@@ -72,6 +72,11 @@ DigestTreeScene::emitReplot()
 }
 
 void
+DigestTreeScene::getRosterList()
+{
+}
+
+void
 DigestTreeScene::msgReceived(QString prefix, QString nick)
 {
 #ifdef __DEBUG
@@ -171,6 +176,9 @@ DigestTreeScene::plot(QString digest)
       it = m_roster.erase(it);
     }
   }
+
+  // for simpicity here, whenever we replot, we also redo the roster list
+  emit rosterChanged();
 
   int n = m_roster.size();
   std::vector<TreeLayout::Coordinate> childNodesCo(n);

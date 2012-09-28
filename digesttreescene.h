@@ -35,9 +35,11 @@ public:
   void clearAll();
   bool removeNode(const QString prefix);
   void plot(QString digest);
+  QStringList getRosterList();
 
 signals:
   void replot();
+  void rosterChanged();
 
 private slots:
   void emitReplot();

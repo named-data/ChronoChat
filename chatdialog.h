@@ -16,6 +16,7 @@
 
 class QAction;
 class QMenu;
+class QStringListModel;
 
 class ChatDialog : public QDialog,  private Ui::ChatDialog 
 {
@@ -62,6 +63,7 @@ private slots:
   void settingUpdated(QString, QString, QString);
   void sendHello();
   void replot();
+  void updateRosterList();
 
   // icon related
   void iconActivated(QSystemTrayIcon::ActivationReason reason);
@@ -83,6 +85,7 @@ private:
   time_t m_lastMsgTime;
   int m_randomizedInterval;
   QTimer *m_timer;
+  QStringListModel *m_rosterModel;
 
   // icon related
   QAction *minimizeAction;

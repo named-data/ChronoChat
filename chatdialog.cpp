@@ -38,6 +38,9 @@ ChatDialog::ChatDialog(QWidget *parent)
   QRectF rect = m_scene->itemsBoundingRect();
   m_scene->setSceneRect(rect);
 
+  m_rosterModel = new QStringListModel(this);
+  listView->setModel(m_rosterModel);
+
   createActions();
   createTrayIcon();
   m_timer = new QTimer(this);
@@ -50,6 +53,7 @@ ChatDialog::ChatDialog(QWidget *parent)
   connect(m_scene, SIGNAL(replot()), this, SLOT(replot()));
   connect(trayIcon, SIGNAL(messageClicked()), this, SLOT(showNormal()));
   connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
+  connect(m_scene, SIGNAL(rosterChanged()), this, SLOT(updateRosterList()));
 
   // create sync socket
   if(!m_user.getChatroom().isEmpty()) {
@@ -87,6 +91,14 @@ ChatDialog::replot()
 {
   boost::mutex::scoped_lock lock(m_sceneMutex);
   m_scene->plot(m_sock->getRootDigest().c_str());
+}
+
+void
+ChatDialog::updateRosterList()
+{
+  boost::mutex::scoped_lock lock(m_sceneMutex);
+  QStringList rosterList = m_scene->getRosterList();
+  m_rosterModel->setStringList(rosterList);
 }
 
 void 
