@@ -382,7 +382,7 @@ ChatDialog::readSettings()
   QSettings s(ORGANIZATION, APPLICATION);
   QString nick = s.value("nick", "").toString();
   QString chatroom = s.value("chatroom", "").toString();
-  QString prefix = s.value("prefix", "").toString();
+  QString originPrefix = s.value("originPrefix", "").toString();
   if (nick == "" || chatroom == "" || prefix == "") {
     QTimer::singleShot(500, this, SLOT(buttonPressed()));
     return false;
@@ -390,7 +390,8 @@ ChatDialog::readSettings()
   else {
     m_user.setNick(nick);
     m_user.setChatroom(chatroom);
-    m_user.setPrefix(prefix);
+    m_user.setOriginPrefix(originPrefix);
+    m_user.setPrefix(origin_prefix + "/" + chatroom + "/" + getRandomString());
     return true;
   }
 #else
@@ -406,7 +407,7 @@ ChatDialog::writeSettings()
   QSettings s(ORGANIZATION, APPLICATION);
   s.setValue("nick", m_user.getNick());
   s.setValue("chatroom", m_user.getChatroom());
-  s.setValue("prefix", m_user.getPrefix());
+  s.setValue("originPrefix", m_user.getOriginPrefix());
 #endif
 }
 
@@ -416,8 +417,8 @@ ChatDialog::updateLabels()
   QString settingDisp = QString("Chatroom: %1").arg(m_user.getChatroom());
   infoLabel->setStyleSheet("QLabel {color: #630; font-size: 16px; font: bold \"Verdana\";}");
   infoLabel->setText(settingDisp);
-  //QString prefixDisp = QString("<Prefix: %1>").arg(m_user.getPrefix());
-  //prefixLabel->setText(prefixDisp);
+  QString prefixDisp = QString("<Prefix: %1>").arg(m_user.getPrefix());
+  prefixLabel->setText(prefixDisp);
 }
 
 void 
@@ -490,7 +491,7 @@ ChatDialog::sendHello()
 void
 ChatDialog::buttonPressed()
 {
-  SettingDialog dialog(this, m_user.getNick(), m_user.getChatroom(), m_user.getPrefix());
+  SettingDialog dialog(this, m_user.getNick(), m_user.getChatroom(), m_user.getOriginPrefix());
   connect(&dialog, SIGNAL(updated(QString, QString, QString)), this, SLOT(settingUpdated(QString, QString, QString)));
   dialog.exec();
   QTimer::singleShot(100, this, SLOT(checkSetting()));
@@ -499,28 +500,37 @@ ChatDialog::buttonPressed()
 void
 ChatDialog::checkSetting()
 {
-  if (m_user.getPrefix().isEmpty() || m_user.getNick().isEmpty() || m_user.getChatroom().isEmpty())
+  if (m_user.getOriginPrefix().isEmpty() || m_user.getNick().isEmpty() || m_user.getChatroom().isEmpty())
   {
     buttonPressed();
   }
 }
 
 void
-ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
+ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
 {
+  QString randString = getRandomString();
   bool needWrite = false;
+  bool needFresh = false;
   if (!nick.isEmpty() && nick != m_user.getNick()) {
     m_user.setNick(nick);
     needWrite = true;
   }
-  if (!prefix.isEmpty() && prefix != m_user.getPrefix()) {
-    m_user.setPrefix(prefix + "/" + getRandomString());
+  if (!originPrefix.isEmpty() && originPrefix != m_user.getOriginPrefix()) {
+    m_user.setOriginPrefix(originPrefix);
+    m_user.setPrefix(originPrefix + "/" + m_user.getChatroom() + "/" + randString);
     needWrite = true;
-    // TODO: set the previous prefix as left?
+    needFresh = true;
   }
   if (!chatroom.isEmpty() && chatroom != m_user.getChatroom()) {
     m_user.setChatroom(chatroom);
+    m_user.setPrefix(m_user.getOriginPrefix() + "/" + chatroom + "/" + randString);
     needWrite = true;
+    needFresh = true;
+  }
+
+  if (needFresh)
+  {
 
     {
       boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
@@ -555,6 +565,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
     fitView();
     
   }
+
   if (needWrite) {
     writeSettings();
     updateLabels();

@@ -65,15 +65,18 @@ public:
   void setChatroom(QString chatroom) {m_chatroom = chatroom;}
   void setSeq(Sync::SeqNo seq) {m_seq = seq;}
   void setReceived(time_t t) {m_received = t;}
+  void setOriginPrefix(QString originPrefix) { m_originPrefix = originPrefix;}
   QString getNick() { return m_nick;}
   QString getPrefix() { return m_prefix;}
   QString getChatroom() { return m_chatroom;}
+  QString getOriginPrefix() { return m_originPrefix;}
   Sync::SeqNo getSeqNo() { return m_seq;}
   time_t getReceived() { return m_received;}
 private:
   QString m_nick;
   QString m_prefix;
   QString m_chatroom;
+  QString m_originPrefix;
   Sync::SeqNo m_seq;
   time_t m_received;
 };
