@@ -86,6 +86,7 @@ private:
   int m_randomizedInterval;
   QTimer *m_timer;
   QStringListModel *m_rosterModel;
+  bool m_sendJoin;
 
   // icon related
   QAction *minimizeAction;

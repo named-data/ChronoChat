@@ -14,7 +14,7 @@
 static const int HELLO_INTERVAL = 90;  // seconds
 
 ChatDialog::ChatDialog(QWidget *parent)
-  : QDialog(parent), m_sock(NULL), m_lastMsgTime(0)
+  : QDialog(parent), m_sock(NULL), m_lastMsgTime(0), m_sendJoin(true)
 {
   // have to register this, otherwise
   // the signal-slot system won't recognize this type
@@ -473,11 +473,12 @@ ChatDialog::sendHello()
 {
   time_t now = time(NULL);
   int elapsed = now - m_lastMsgTime;
-  if (elapsed >= m_randomizedInterval / 1000)
+  if (elapsed >= m_randomizedInterval / 1000 || m_sendJoin)
   {
     SyncDemo::ChatMessage msg;
     formHelloMessage(msg);
     sendMsg(msg);
+    m_sendJoin = false;
     QTimer::singleShot(m_randomizedInterval, this, SLOT(sendHello()));
   }
   else
@@ -526,6 +527,9 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
       m_scene->clearAll();
       m_scene->plot("Empty");
     }
+
+    textEdit->clear();
+
     // TODO: perhaps need to do a lot. e.g. use a new SyncAppSokcet
     if (m_sock != NULL) 
     {
@@ -538,6 +542,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString prefix)
     try
     {
       m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
+      m_sendJoin = true;
       sendHello();
       m_timer->start(FRESHNESS * 2000);
     }
