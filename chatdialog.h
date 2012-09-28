@@ -63,8 +63,9 @@ private slots:
   void checkSetting();
   void settingUpdated(QString, QString, QString);
   void sendHello();
+  void sendJoin();
   void replot();
-  void updateRosterList();
+  void updateRosterList(QStringList);
 
   // icon related
   void iconActivated(QSystemTrayIcon::ActivationReason reason);
@@ -87,7 +88,6 @@ private:
   int m_randomizedInterval;
   QTimer *m_timer;
   QStringListModel *m_rosterModel;
-  bool m_sendJoin;
 
   // icon related
   QAction *minimizeAction;

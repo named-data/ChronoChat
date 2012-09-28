@@ -14,7 +14,7 @@
 static const int HELLO_INTERVAL = 90;  // seconds
 
 ChatDialog::ChatDialog(QWidget *parent)
-  : QDialog(parent), m_sock(NULL), m_lastMsgTime(0), m_sendJoin(true)
+  : QDialog(parent), m_sock(NULL), m_lastMsgTime(0)
 {
   // have to register this, otherwise
   // the signal-slot system won't recognize this type
@@ -53,12 +53,12 @@ ChatDialog::ChatDialog(QWidget *parent)
   connect(treeButton, SIGNAL(pressed()), this, SLOT(treeButtonPressed()));
   connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool)), this, SLOT(processData(QString, const char *, size_t, bool)));
   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
-  connect(this, SIGNAL(removeReceived(QString)), this, SLOT(processRemove(QString)));
+  //connect(this, SIGNAL(removeReceived(QString)), this, SLOT(processRemove(QString)));
   connect(m_timer, SIGNAL(timeout()), this, SLOT(replot()));
   connect(m_scene, SIGNAL(replot()), this, SLOT(replot()));
   connect(trayIcon, SIGNAL(messageClicked()), this, SLOT(showNormal()));
   connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
-  connect(m_scene, SIGNAL(rosterChanged()), this, SLOT(updateRosterList()));
+  connect(m_scene, SIGNAL(rosterChanged(QStringList)), this, SLOT(updateRosterList(QStringList)));
 
   // create sync socket
   if(!m_user.getChatroom().isEmpty()) {
@@ -68,7 +68,7 @@ ChatDialog::ChatDialog(QWidget *parent)
     try 
     {
       m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
-      sendHello();
+      sendJoin();
       m_timer->start(FRESHNESS * 2000);
     }
     catch (Sync::CcnxOperationException ex)
@@ -85,7 +85,16 @@ ChatDialog::~ChatDialog()
 {
   if (m_sock != NULL) 
   {
+    SyncDemo::ChatMessage msg;
+    formHelloMessage(msg);
+    msg.set_type(SyncDemo::ChatMessage::LEAVE);
+    sendMsg(msg);
+    usleep(100000);
     m_sock->remove(m_user.getPrefix().toStdString());
+    usleep(100000);
+#ifdef __DEBUG
+    std::cout << "Sync REMOVE signal sent" << std::endl;
+#endif
     delete m_sock;
     m_sock = NULL;
   }
@@ -99,11 +108,21 @@ ChatDialog::replot()
 }
 
 void
-ChatDialog::updateRosterList()
+ChatDialog::updateRosterList(QStringList staleUserList)
 {
   boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
   QStringList rosterList = m_scene->getRosterList();
   m_rosterModel->setStringList(rosterList);
+  QString user;
+  QStringListIterator it(staleUserList);
+  while(it.hasNext())
+  {
+    SyncDemo::ChatMessage msg;
+    formHelloMessage(msg);
+    msg.set_type(SyncDemo::ChatMessage::LEAVE);
+    msg.set_from(it.next().toStdString());
+    appendMessage(msg);
+  }
 }
 
 void 
@@ -151,77 +170,133 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg)
 {
   boost::recursive_mutex::scoped_lock lock(m_msgMutex);
 
-  if (msg.type() != SyncDemo::ChatMessage::CHAT) {
-    return;
-  }
-
-  if (!msg.has_data()) {
-    return;
-  }
-
-  if (msg.from().empty() || msg.data().empty()) {
-    return;
-  }
-
-  if (!msg.has_timestamp())
+  if (msg.type() == SyncDemo::ChatMessage::CHAT) 
   {
-    return;
-  }
-#ifdef __DEBUG
-  std::cout << "Displaying msg from: " << msg.from() << ", data is: " << msg.data() << std::endl;
-#endif
 
-  QTextCharFormat nickFormat;
-  nickFormat.setForeground(Qt::darkGreen);
-  nickFormat.setFontWeight(QFont::Bold);
-  nickFormat.setFontUnderline(true);
-  nickFormat.setUnderlineColor(Qt::gray);
-  QTextCharFormat timeFormat;
-  timeFormat.setForeground(Qt::gray);
-  timeFormat.setFontUnderline(true);
-  timeFormat.setUnderlineColor(Qt::gray);
-
-  QTextCursor cursor(textEdit->textCursor());
-  cursor.movePosition(QTextCursor::End);
-  QTextTableFormat tableFormat;
-  tableFormat.setBorder(0);
-  QTextTable *table = cursor.insertTable(1, 2, tableFormat);
-  QString from = QString("%1 ").arg(msg.from().c_str());
-  QTextTableCell fromCell = table->cellAt(0, 0);
-  fromCell.setFormat(nickFormat);
-  fromCell.firstCursorPosition().insertText(from);
-  QTextTableCell timeCell = table->cellAt(0, 1);
-  timeCell.setFormat(timeFormat);
-  time_t timestamp = msg.timestamp();
-  struct tm *tm_time = localtime(&timestamp);
-  int hour = tm_time->tm_hour;
-  QString amOrPM;
-  if (hour > 12)
-  {
-    hour -= 12;
-    amOrPM = "PM";
-  }
-  else
-  {
-    amOrPM = "AM";
-    if (hour == 0)
+    if (!msg.has_data())
     {
-      hour = 12;
+      return;
     }
+
+    if (msg.from().empty() || msg.data().empty())
+    {
+      return;
+    }
+
+    if (!msg.has_timestamp())
+    {
+      return;
+    }
+
+    QTextCharFormat nickFormat;
+    nickFormat.setForeground(Qt::darkGreen);
+    nickFormat.setFontWeight(QFont::Bold);
+    nickFormat.setFontUnderline(true);
+    nickFormat.setUnderlineColor(Qt::gray);
+    QTextCharFormat timeFormat;
+    timeFormat.setForeground(Qt::gray);
+    timeFormat.setFontUnderline(true);
+    timeFormat.setUnderlineColor(Qt::gray);
+
+    QTextCursor cursor(textEdit->textCursor());
+    cursor.movePosition(QTextCursor::End);
+    QTextTableFormat tableFormat;
+    tableFormat.setBorder(0);
+    QTextTable *table = cursor.insertTable(1, 2, tableFormat);
+    QString from = QString("%1 ").arg(msg.from().c_str());
+    QTextTableCell fromCell = table->cellAt(0, 0);
+    fromCell.setFormat(nickFormat);
+    fromCell.firstCursorPosition().insertText(from);
+    QTextTableCell timeCell = table->cellAt(0, 1);
+    timeCell.setFormat(timeFormat);
+    time_t timestamp = msg.timestamp();
+    struct tm *tm_time = localtime(&timestamp);
+    int hour = tm_time->tm_hour;
+    QString amOrPM;
+    if (hour > 12)
+    {
+      hour -= 12;
+      amOrPM = "PM";
+    }
+    else
+    {
+      amOrPM = "AM";
+      if (hour == 0)
+      {
+        hour = 12;
+      }
+    }
+
+    char textTime[12];
+    sprintf(textTime, "%d:%02d:%02d %s", hour, tm_time->tm_min, tm_time->tm_sec, amOrPM.toStdString().c_str());
+    timeCell.firstCursorPosition().insertText(textTime);
+
+    
+    QTextCursor nextCursor(textEdit->textCursor());
+    nextCursor.movePosition(QTextCursor::End);
+    table = nextCursor.insertTable(1, 1, tableFormat);
+    table->cellAt(0, 0).firstCursorPosition().insertText(msg.data().c_str());
+    showMessage(from, msg.data().c_str());
   }
 
-  char textTime[12];
-  sprintf(textTime, "%d:%02d:%02d %s", hour, tm_time->tm_min, tm_time->tm_sec, amOrPM.toStdString().c_str());
-  timeCell.firstCursorPosition().insertText(textTime);
+  if (msg.type() == SyncDemo::ChatMessage::JOIN || msg.type() == SyncDemo::ChatMessage::LEAVE)
+  {
+    QTextCharFormat nickFormat;
+    nickFormat.setForeground(Qt::gray);
+    nickFormat.setFontWeight(QFont::Bold);
+    nickFormat.setFontUnderline(true);
+    nickFormat.setUnderlineColor(Qt::gray);
+    QTextCharFormat timeFormat;
+    timeFormat.setForeground(Qt::gray);
+    timeFormat.setFontUnderline(true);
+    timeFormat.setUnderlineColor(Qt::gray);
 
-  
-  QTextCursor nextCursor(textEdit->textCursor());
-  nextCursor.movePosition(QTextCursor::End);
-  table = nextCursor.insertTable(1, 1, tableFormat);
-  table->cellAt(0, 0).firstCursorPosition().insertText(msg.data().c_str());
+    QTextCursor cursor(textEdit->textCursor());
+    cursor.movePosition(QTextCursor::End);
+    QTextTableFormat tableFormat;
+    tableFormat.setBorder(0);
+    QTextTable *table = cursor.insertTable(1, 2, tableFormat);
+    QString action;
+    if (msg.type() == SyncDemo::ChatMessage::JOIN)
+    {
+      action = "enters room";
+    }
+    else
+    {
+      action = "leaves room";
+    }
+
+    QString from = QString("%1 %2  ").arg(msg.from().c_str()).arg(action);
+    QTextTableCell fromCell = table->cellAt(0, 0);
+    fromCell.setFormat(nickFormat);
+    fromCell.firstCursorPosition().insertText(from);
+    QTextTableCell timeCell = table->cellAt(0, 1);
+    timeCell.setFormat(timeFormat);
+    time_t timestamp = msg.timestamp();
+    struct tm *tm_time = localtime(&timestamp);
+    int hour = tm_time->tm_hour;
+    QString amOrPM;
+    if (hour > 12)
+    {
+      hour -= 12;
+      amOrPM = "PM";
+    }
+    else
+    {
+      amOrPM = "AM";
+      if (hour == 0)
+      {
+        hour = 12;
+      }
+    }
+
+    char textTime[12];
+    sprintf(textTime, "%d:%02d:%02d %s", hour, tm_time->tm_min, tm_time->tm_sec, amOrPM.toStdString().c_str());
+    timeCell.firstCursorPosition().insertText(textTime);
+  }
+
   QScrollBar *bar = textEdit->verticalScrollBar();
   bar->setValue(bar->maximum());
-  showMessage(from, msg.data().c_str());
 }
 
 void
@@ -321,6 +396,11 @@ ChatDialog::processData(QString name, const char *buf, size_t len, bool show)
 #ifdef __DEBUG
   std::cout <<"<<< updating scene for" << prefix << ": " << msg.from()  << std::endl;
 #endif
+  if (msg.type() == SyncDemo::ChatMessage::LEAVE)
+  {
+    processRemove(prefix.c_str());
+  }
+  else
   {
     boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
     m_scene->msgReceived(prefix.c_str(), msg.from().c_str());
@@ -331,7 +411,10 @@ ChatDialog::processData(QString name, const char *buf, size_t len, bool show)
 void
 ChatDialog::processRemoveWrapper(std::string prefix)
 {
-  emit removeReceived(prefix.c_str());
+#ifdef __DEBUG
+  std::cout << "Sync REMOVE signal received for prefix: " << prefix << std::endl;
+#endif
+  //emit removeReceived(prefix.c_str());
 }
 
 void
@@ -478,16 +561,25 @@ ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
 }
 
 void 
+ChatDialog::sendJoin()
+{
+  SyncDemo::ChatMessage msg;
+  formHelloMessage(msg);
+  msg.set_type(SyncDemo::ChatMessage::JOIN);
+  sendMsg(msg);
+  QTimer::singleShot(m_randomizedInterval, this, SLOT(sendHello()));
+}
+
+void 
 ChatDialog::sendHello()
 {
   time_t now = time(NULL);
   int elapsed = now - m_lastMsgTime;
-  if (elapsed >= m_randomizedInterval / 1000 || m_sendJoin)
+  if (elapsed >= m_randomizedInterval / 1000)
   {
     SyncDemo::ChatMessage msg;
     formHelloMessage(msg);
     sendMsg(msg);
-    m_sendJoin = false;
     QTimer::singleShot(m_randomizedInterval, this, SLOT(sendHello()));
   }
   else
@@ -517,6 +609,8 @@ void ChatDialog::treeButtonPressed()
     treeViewer->show();
     treeButton->setText("Hide Sync Tree");
   }
+
+  fitView();
 }
 
 void
@@ -574,8 +668,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
     try
     {
       m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
-      m_sendJoin = true;
-      sendHello();
+      sendJoin();
       m_timer->start(FRESHNESS * 2000);
     }
     catch (Sync::CcnxOperationException ex)

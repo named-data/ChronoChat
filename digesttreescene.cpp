@@ -91,9 +91,6 @@ DigestTreeScene::getRosterList()
 void
 DigestTreeScene::msgReceived(QString prefix, QString nick)
 {
-#ifdef __DEBUG
-  std::cout << "Finding " << prefix.toStdString() << std::endl;
-#endif
   Roster_iterator it = m_roster.find(prefix);
   if (it != m_roster.end()) 
   {
@@ -107,7 +104,7 @@ DigestTreeScene::msgReceived(QString prefix, QString nick)
       QRectF rectBR = nickRectItem->boundingRect();
       QRectF nickBR = nickItem->boundingRect();
       nickItem->setPos(rectBR.x() + (rectBR.width() - nickBR.width())/2, rectBR.y() + 5);
-      emit rosterChanged();
+      emit rosterChanged(QStringList());
     }
 
     reDrawNode(p, Qt::red);
@@ -119,18 +116,6 @@ DigestTreeScene::msgReceived(QString prefix, QString nick)
 
     previouslyUpdatedUser = p;
   }
-#ifdef __DEBUG
-  else 
-  {
-    std::cout << "Couldn't find prefix, " << prefix.toStdString() << ": let's check"<< std::endl;
-    Roster_iterator ii = m_roster.begin();
-    while (ii != m_roster.end())
-    {
-      std::cout <<"Prefix: " << ii.key().toStdString() << std::endl;
-      ++ii;
-    }
-  }
-#endif
 }
 
 void
@@ -164,6 +149,7 @@ DigestTreeScene::plot(QString digest)
 
   // do some cleaning, get rid of stale member info
   Roster_iterator it = m_roster.begin();
+  QStringList staleUserList;
   while (it != m_roster.end())
   {
     DisplayUserPtr p = it.value();
@@ -176,6 +162,7 @@ DigestTreeScene::plot(QString digest)
         std::cout << "Removing user: " << p->getNick().toStdString() << std::endl;
         std::cout << "now - last = " << now - p->getReceived() << std::endl;
 #endif
+        staleUserList << p->getNick();
         p = DisplayUserNullPtr;
         it = m_roster.erase(it);
       }
@@ -191,7 +178,7 @@ DigestTreeScene::plot(QString digest)
   }
 
   // for simpicity here, whenever we replot, we also redo the roster list
-  emit rosterChanged();
+  emit rosterChanged(staleUserList);
 
   int n = m_roster.size();
   std::vector<TreeLayout::Coordinate> childNodesCo(n);

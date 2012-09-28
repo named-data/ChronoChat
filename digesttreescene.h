@@ -39,7 +39,7 @@ public:
 
 signals:
   void replot();
-  void rosterChanged();
+  void rosterChanged(QStringList);
 
 private slots:
   void emitReplot();
