@@ -89,9 +89,9 @@ ChatDialog::~ChatDialog()
     formHelloMessage(msg);
     msg.set_type(SyncDemo::ChatMessage::LEAVE);
     sendMsg(msg);
-    usleep(100000);
+    sleep(1);
     m_sock->remove(m_user.getPrefix().toStdString());
-    usleep(100000);
+    sleep(1);
 #ifdef __DEBUG
     std::cout << "Sync REMOVE signal sent" << std::endl;
 #endif
