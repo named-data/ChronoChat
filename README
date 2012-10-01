@@ -9,8 +9,7 @@ The following command should do it:
 $ sudo port install pkg-config protobuf-cpp boost qt4-mac 
 
 To compile this app:
-1. in the top directory, check out the "retreat" branch and also the "sync" submodule
-$ git checkout -b retreat origin/retreat
+1. in the top directory, check out the "sync" submodule
 $ git submodule update --init
 
 2. go to sync directory, do:
