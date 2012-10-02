@@ -373,7 +373,7 @@ if __name__ == '__main__':
   a.handle_libs()
   a.copy_resources(['demo.icns', 'qt.conf'])
   a.update_plist()
-  a.set_min_macosx_version('10.8.0')
+  a.set_min_macosx_version('10.7.0')
   a.done()
 
   # Sign our binaries, etc.
