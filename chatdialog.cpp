@@ -102,6 +102,7 @@ ChatDialog::replot()
 {
   boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
   m_scene->plot(m_sock->getRootDigest().c_str());
+  fitView();
 }
 
 void
