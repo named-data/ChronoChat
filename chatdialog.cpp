@@ -114,9 +114,13 @@ ChatDialog::updateRosterList(QStringList staleUserList)
   QStringListIterator it(staleUserList);
   while(it.hasNext())
   {
+    std::string nick = it.next().toStdString();
+    if (nick.empty())
+      continue;
+
     SyncDemo::ChatMessage msg;
     formControlMessage(msg, SyncDemo::ChatMessage::LEAVE);
-    msg.set_from(it.next().toStdString());
+    msg.set_from(nick);
     appendMessage(msg);
   }
 }
