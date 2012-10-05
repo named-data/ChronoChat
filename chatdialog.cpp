@@ -367,9 +367,14 @@ void
 ChatDialog::processData(QString name, const char *buf, size_t len, bool show)
 {
   SyncDemo::ChatMessage msg;
+  bool corrupted = false;
   if (!msg.ParseFromArray(buf, len)) 
   {
     std::cerr << "Errrrr.. Can not parse msg with name: " << name.toStdString() << ". what is happening?" << std::endl;
+    // nasty stuff: as a remedy, we'll form some standard msg for inparsable msgs
+    msg.set_from("inconnu");
+    msg.set_type(SyncDemo::ChatMessage::OTHER);
+    corrupted = true;
   }
 
   // display msg received from network
@@ -377,7 +382,7 @@ ChatDialog::processData(QString name, const char *buf, size_t len, bool show)
   // so if we call appendMsg directly
   // Qt crash as "QObject: Cannot create children for a parent that is in a different thread"
   // the "cannonical" way to is use signal-slot
-  if (show)
+  if (show && !corrupted)
   {
     appendMessage(msg);
   }
