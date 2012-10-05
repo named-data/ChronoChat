@@ -69,7 +69,7 @@ ChatDialog::ChatDialog(QWidget *parent)
       m_sock = new Sync::SyncAppSocket(syncPrefix,
                                        bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
                                        bind(&ChatDialog::processRemoveWrapper, this, _1));
-      QTimer::singleShot(1000, this, SLOT(sendJoin()));
+      QTimer::singleShot(600, this, SLOT(sendJoin()));
       m_timer->start(FRESHNESS * 2000);
     }
     catch (Sync::CcnxOperationException ex)
@@ -85,18 +85,24 @@ ChatDialog::~ChatDialog()
 {
   if (m_sock != NULL) 
   {
-    SyncDemo::ChatMessage msg;
-    formControlMessage(msg, SyncDemo::ChatMessage::LEAVE);
-    sendMsg(msg);
-    usleep(500000);
-    m_sock->remove(m_user.getPrefix().toStdString());
-    usleep(5000);
-#ifdef __DEBUG
-    std::cout << "Sync REMOVE signal sent" << std::endl;
-#endif
+    sendLeave();
     delete m_sock;
     m_sock = NULL;
   }
+}
+
+void
+ChatDialog::sendLeave()
+{
+  SyncDemo::ChatMessage msg;
+  formControlMessage(msg, SyncDemo::ChatMessage::LEAVE);
+  sendMsg(msg);
+  usleep(500000);
+  m_sock->remove(m_user.getPrefix().toStdString());
+  usleep(5000);
+#ifdef __DEBUG
+  std::cout << "Sync REMOVE signal sent" << std::endl;
+#endif
 }
 
 void
@@ -654,6 +660,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
     // TODO: perhaps need to do a lot. e.g. use a new SyncAppSokcet
     if (m_sock != NULL) 
     {
+      sendLeave();
       delete m_sock;
       m_sock = NULL;
     }

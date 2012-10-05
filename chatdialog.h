@@ -67,6 +67,7 @@ private slots:
   void settingUpdated(QString, QString, QString);
   void sendHello();
   void sendJoin();
+  void sendLeave();
   void replot();
   void updateRosterList(QStringList);
 
