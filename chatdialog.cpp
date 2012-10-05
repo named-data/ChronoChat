@@ -66,8 +66,10 @@ ChatDialog::ChatDialog(QWidget *parent)
     syncPrefix += m_user.getChatroom().toStdString();
     try 
     {
-      m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
-      sendJoin();
+      m_sock = new Sync::SyncAppSocket(syncPrefix,
+                                       bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
+                                       bind(&ChatDialog::processRemoveWrapper, this, _1));
+      QTimer::singleShot(1000, this, SLOT(sendJoin()));
       m_timer->start(FRESHNESS * 2000);
     }
     catch (Sync::CcnxOperationException ex)
@@ -656,7 +658,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
     try
     {
       m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
-      sendJoin();
+      QTimer::singleShot(1000, this, SLOT(sendJoin()));
       m_timer->start(FRESHNESS * 2000);
     }
     catch (Sync::CcnxOperationException ex)
