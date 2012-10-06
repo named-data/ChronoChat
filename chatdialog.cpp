@@ -71,6 +71,8 @@ ChatDialog::ChatDialog(QWidget *parent)
                                        bind(&ChatDialog::processRemoveWrapper, this, _1));
       QTimer::singleShot(600, this, SLOT(sendJoin()));
       m_timer->start(FRESHNESS * 2000);
+      disableTreeDisplay();
+      QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
     }
     catch (Sync::CcnxOperationException ex)
     {
@@ -621,6 +623,20 @@ void ChatDialog::treeButtonPressed()
   fitView();
 }
 
+void ChatDialog::enableTreeDisplay()
+{
+  treeButton->setEnabled(true);
+  treeViewer->show();
+  fitView();
+}
+
+void ChatDialog::disableTreeDisplay()
+{
+  treeButton->setEnabled(false);
+  treeViewer->hide();
+  fitView();
+}
+
 void
 ChatDialog::checkSetting()
 {
@@ -679,6 +695,8 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
       QTimer::singleShot(1000, this, SLOT(sendJoin()));
       m_timer->start(FRESHNESS * 2000);
+      disableTreeDisplay();
+      QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
     }
     catch (Sync::CcnxOperationException ex)
     {

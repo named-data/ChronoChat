@@ -58,6 +58,7 @@ private:
   void createActions();
   QString formatTime(time_t);
   void printTimeInCell(QTextTable *, time_t);
+  void disableTreeDisplay();
 
 private slots:
   void returnPressed();
@@ -70,6 +71,7 @@ private slots:
   void sendLeave();
   void replot();
   void updateRosterList(QStringList);
+  void enableTreeDisplay();
 
   // icon related
   void iconActivated(QSystemTrayIcon::ActivationReason reason);
