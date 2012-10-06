@@ -357,7 +357,9 @@ ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
 void
 ChatDialog::processDataWrapper(std::string name, const char *buf, size_t len)
 {
-  emit dataReceived(name.c_str(), buf, len, true);
+  char *tempBuf = new char[len];
+  memcpy(tempBuf, buf, len);
+  emit dataReceived(name.c_str(), tempBuf, len, true);
 #ifdef __DEBUG
   std::cout <<"<<< " << name << " fetched" << std::endl;
 #endif
@@ -366,7 +368,9 @@ ChatDialog::processDataWrapper(std::string name, const char *buf, size_t len)
 void
 ChatDialog::processDataNoShowWrapper(std::string name, const char *buf, size_t len)
 {
-  emit dataReceived(name.c_str(), buf, len, false);
+  char *tempBuf = new char[len];
+  memcpy(tempBuf, buf, len);
+  emit dataReceived(name.c_str(), tempBuf, len, false);
 }
 
 void
@@ -382,6 +386,9 @@ ChatDialog::processData(QString name, const char *buf, size_t len, bool show)
     msg.set_type(SyncDemo::ChatMessage::OTHER);
     corrupted = true;
   }
+
+  delete [] buf;
+  buf = NULL;
 
   // display msg received from network
   // we have to do so; this function is called by ccnd thread
