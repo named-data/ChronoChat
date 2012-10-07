@@ -8,8 +8,12 @@
 #include <QMessageBox>
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
+#include <stdio.h>
 
 #define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/chronos"
+#define LOCAL_PREFIX_QUERY "/local/ndn/prefix" 
+#define DEFAULT_LOCAL_PREFIX "/private/local"
+#define CCN_EXEC  "ccncat"
 
 static const int HELLO_INTERVAL = 90;  // seconds
 
@@ -479,13 +483,44 @@ ChatDialog::getRandomString()
   return randStr.c_str();
 }
 
+QString
+ChatDialog::getLocalPrefix()
+{
+  std::string cmd = CCN_EXEC;
+  cmd += " ";
+  cmd += LOCAL_PREFIX_QUERY;
+  QString localPrefix;
+#define MAX_PREFIX_LEN 100
+  FILE *fp = popen(cmd.c_str(), "r");
+  if (fp != NULL)
+  {
+    char prefix[MAX_PREFIX_LEN];
+    if (fgets(prefix, MAX_PREFIX_LEN, fp) != NULL)
+    {
+      localPrefix = prefix;
+      localPrefix.remove('\n');
+    }
+    else
+    {
+      localPrefix = DEFAULT_LOCAL_PREFIX;
+    }
+    pclose(fp);
+  }
+  else
+  {
+    localPrefix = DEFAULT_LOCAL_PREFIX;
+  }
+  return localPrefix;
+}
+
 bool
 ChatDialog::readSettings()
 {
   QSettings s(ORGANIZATION, APPLICATION);
   QString nick = s.value("nick", "").toString();
   QString chatroom = s.value("chatroom", "").toString();
-  QString originPrefix = s.value("originPrefix", "").toString();
+  //QString originPrefix = s.value("originPrefix", "").toString();
+  QString originPrefix = getLocalPrefix();
   m_minimaniho = s.value("minimaniho", false).toBool();
   if (nick == "" || chatroom == "" || originPrefix == "") {
     QTimer::singleShot(500, this, SLOT(buttonPressed()));
@@ -509,7 +544,7 @@ ChatDialog::writeSettings()
   QSettings s(ORGANIZATION, APPLICATION);
   s.setValue("nick", m_user.getNick());
   s.setValue("chatroom", m_user.getChatroom());
-  s.setValue("originPrefix", m_user.getOriginPrefix());
+  //s.setValue("originPrefix", m_user.getOriginPrefix());
   s.setValue("minimaniho", m_minimaniho);
 }
 
@@ -519,8 +554,18 @@ ChatDialog::updateLabels()
   QString settingDisp = QString("Chatroom: %1").arg(m_user.getChatroom());
   infoLabel->setStyleSheet("QLabel {color: #630; font-size: 16px; font: bold \"Verdana\";}");
   infoLabel->setText(settingDisp);
-  //QString prefixDisp = QString("<Prefix: %1>").arg(m_user.getPrefix());
-  //prefixLabel->setText(prefixDisp);
+  QString prefixDisp; 
+  if (m_user.getPrefix().startsWith(DEFAULT_LOCAL_PREFIX))
+  {
+    prefixDisp = QString("<Warning: Auto config prefix failed.>\n <Prefix = %1>").arg(m_user.getPrefix());
+    prefixLabel->setStyleSheet("QLabel {color: red; font-size: 12px; font: bold \"Verdana\";}");
+  }
+  else
+  {
+    prefixDisp = QString("<Prefix = %1>").arg(m_user.getPrefix());
+    prefixLabel->setStyleSheet("QLabel {color: Green; font-size: 12px; font: bold \"Verdana\";}");
+  }
+  prefixLabel->setText(prefixDisp);
 }
 
 void 
