@@ -13,7 +13,7 @@
 #define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/chronos"
 #define LOCAL_PREFIX_QUERY "/local/ndn/prefix" 
 #define DEFAULT_LOCAL_PREFIX "/private/local"
-#define CCN_EXEC  "ccncat"
+#define CCN_EXEC  "/usr/local/bin/ccnpeek"
 
 static const int HELLO_INTERVAL = 90;  // seconds
 
@@ -486,8 +486,14 @@ ChatDialog::getRandomString()
 QString
 ChatDialog::getLocalPrefix()
 {
+  /* 
+   * this method tries to use ccncat 
+   * however, it does not work in Mac OS X app bundle
+   * it works well in command line though
+   */
+
   std::string cmd = CCN_EXEC;
-  cmd += " ";
+  cmd += " -c -v ";
   cmd += LOCAL_PREFIX_QUERY;
   QString localPrefix;
 #define MAX_PREFIX_LEN 100
