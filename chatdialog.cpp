@@ -47,12 +47,15 @@ ChatDialog::ChatDialog(QWidget *parent)
   m_rosterModel = new QStringListModel(this);
   listView->setModel(m_rosterModel);
 
+  refreshButton->setIcon(QIcon(QPixmap(":images/refresh.png")));
+
   createActions();
   createTrayIcon();
   m_timer = new QTimer(this);
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
   connect(treeButton, SIGNAL(pressed()), this, SLOT(treeButtonPressed()));
+  connect(refreshButton, SIGNAL(pressed()), this, SLOT(getLocalPrefix()));
   connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool, bool)), this, SLOT(processData(QString, const char *, size_t, bool, bool)));
   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
   connect(m_timer, SIGNAL(timeout()), this, SLOT(replot()));

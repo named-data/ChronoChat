@@ -42,11 +42,37 @@
                 </widget>
               </item>
               <item>
-                <widget class="QLabel" name="prefixLabel">
-                <property name="focusPolicy">
-                  <enum>Qt::NoFocus</enum>
-                </property>
-                </widget>
+                <layout class = "QHBoxLayout" >
+                  <property name="margin">
+                    <number>0</number>
+                  </property>
+                  <property name="spacing">
+                    <number>6</number>
+                  </property>
+                  <item>
+                    <widget class="QLabel" name="prefixLabel">
+                    <property name="focusPolicy">
+                      <enum>Qt::NoFocus</enum>
+                    </property>
+                    </widget>
+                  </item>
+                  <item>
+                    <widget class="QPushButton" name="refreshButton">
+                    <property name="focusPolicy">
+                      <enum>Qt::NoFocus</enum>
+                    </property>
+                    <property name="minimumWidth">
+                      <number>150</number>
+                    </property>
+                    <property name="maximumWidth">
+                      <number>150</number>
+                    </property>
+                    <property name="text">
+                      <string>Update Prefix</string> 
+                    </property>
+                    </widget>
+                  </item>
+                </layout>
               </item>
             </layout>
           </item>
