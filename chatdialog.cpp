@@ -239,10 +239,10 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg, bool isHistory)
     QTextCursor nextCursor(textEdit->textCursor());
     nextCursor.movePosition(QTextCursor::End);
     table = nextCursor.insertTable(1, 1, tableFormat);
-    table->cellAt(0, 0).firstCursorPosition().insertText(msg.data().c_str());
+    table->cellAt(0, 0).firstCursorPosition().insertText(QString::fromUtf8(msg.data().c_str()));
     if (!isHistory)
     {
-      showMessage(from, msg.data().c_str());
+      showMessage(from, QString::fromUtf8(msg.data().c_str()));
     }
   }
 
@@ -516,7 +516,7 @@ void
 ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
   msg.set_from(m_user.getNick().toStdString());
   msg.set_to(m_user.getChatroom().toStdString());
-  msg.set_data(text.toStdString());
+  msg.set_data(text.toUtf8().constData());
   time_t seconds = time(NULL);
   msg.set_timestamp(seconds);
   msg.set_type(SyncDemo::ChatMessage::CHAT);
