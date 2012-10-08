@@ -64,7 +64,7 @@ private:
   QString formatTime(time_t);
   void printTimeInCell(QTextTable *, time_t);
   void disableTreeDisplay();
-  QString getLocalPrefix();
+  void getLocalPrefix();
 
 private slots:
   void returnPressed();

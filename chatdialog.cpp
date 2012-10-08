@@ -545,40 +545,55 @@ ChatDialog::getRandomString()
   return randStr.c_str();
 }
 
-QString
+void
 ChatDialog::getLocalPrefix()
 {
-  /* 
-   * this method tries to use ccncat 
-   * however, it does not work in Mac OS X app bundle
-   * it works well in command line though
-   */
+//   /* 
+//    * this method tries to use ccncat 
+//    * however, it does not work in Mac OS X app bundle
+//    * it works well in command line though
+//    */
 
-  std::string cmd = CCN_EXEC;
-  cmd += " -c -v ";
-  cmd += LOCAL_PREFIX_QUERY;
-  QString localPrefix;
-#define MAX_PREFIX_LEN 100
-  FILE *fp = popen(cmd.c_str(), "r");
-  if (fp != NULL)
-  {
-    char prefix[MAX_PREFIX_LEN];
-    if (fgets(prefix, MAX_PREFIX_LEN, fp) != NULL)
+//   std::string cmd = CCN_EXEC;
+//   cmd += " -c -v ";
+//   cmd += LOCAL_PREFIX_QUERY;
+//   QString localPrefix;
+// #define MAX_PREFIX_LEN 100
+//   FILE *fp = popen(cmd.c_str(), "r");
+//   if (fp != NULL)
+//   {
+//     char prefix[MAX_PREFIX_LEN];
+//     if (fgets(prefix, MAX_PREFIX_LEN, fp) != NULL)
+//     {
+//       localPrefix = prefix;
+//       localPrefix.remove('\n');
+//     }
+//     else
+//     {
+//       localPrefix = DEFAULT_LOCAL_PREFIX;
+//     }
+//     pclose(fp);
+//   }
+//   else
+//   {
+//     localPrefix = DEFAULT_LOCAL_PREFIX;
+//   }
+//   return localPrefix;
+
+  if (m_sock != NULL)
     {
-      localPrefix = prefix;
-      localPrefix.remove('\n');
+      QString originPrefix = QString::fromStdString (m_sock->getLocalPrefix());
+      if (originPrefix != "" && m_user.getOriginPrefix () != originPrefix)
+        {
+          m_user.setOriginPrefix(originPrefix);
+          emit settingUpdated(m_user.getNick (), m_user.getChatroom (), m_user.getOriginPrefix ());
+          // connect(&dialog, SIGNAL(updated(QString, QString, QString)), this, SLOT());
+        }
     }
-    else
-    {
-      localPrefix = DEFAULT_LOCAL_PREFIX;
-    }
-    pclose(fp);
-  }
   else
-  {
-    localPrefix = DEFAULT_LOCAL_PREFIX;
-  }
-  return localPrefix;
+    {
+      // QTimer::singleShot(1000, this, SLOT(getLocalPrefix())); // try again
+    }
 }
 
 bool
@@ -587,8 +602,15 @@ ChatDialog::readSettings()
   QSettings s(ORGANIZATION, APPLICATION);
   QString nick = s.value("nick", "").toString();
   QString chatroom = s.value("chatroom", "").toString();
-  //QString originPrefix = s.value("originPrefix", "").toString();
-  QString originPrefix = getLocalPrefix();
+  QString originPrefix = s.value("originPrefix", "").toString();
+
+  // Sync::CcnxWrapperPtr wrapper = Sync::CcnxWrapper::Create ();
+  // QString originPrefix = QString::fromStdString (wrapper->getLocalPrefix());
+  // Sync::CcnxWrapper::Destroy ();
+  // QString originPrefix = DEFAULT_LOCAL_PREFIX;
+  
+  QTimer::singleShot(500, this, SLOT(getLocalPrefix()));
+  
   m_minimaniho = s.value("minimaniho", false).toBool();
   if (nick == "" || chatroom == "" || originPrefix == "") {
     QTimer::singleShot(500, this, SLOT(buttonPressed()));
@@ -714,6 +736,9 @@ ChatDialog::sendHello()
 void
 ChatDialog::buttonPressed()
 {
+  Sync::SyncLogic &logic = m_sock->getLogic ();
+  logic.printState ();
+  
   SettingDialog dialog(this, m_user.getNick(), m_user.getChatroom(), m_user.getOriginPrefix());
   connect(&dialog, SIGNAL(updated(QString, QString, QString)), this, SLOT(settingUpdated(QString, QString, QString)));
   dialog.exec();
