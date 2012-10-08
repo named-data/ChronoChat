@@ -29,10 +29,11 @@ public:
   ChatDialog(QWidget *parent = 0);
   ~ChatDialog();
   void setVisible(bool visible);
-  void appendMessage(const SyncDemo::ChatMessage msg);
+  void appendMessage(const SyncDemo::ChatMessage msg, bool isHistory = false);
   void processTreeUpdateWrapper(const std::vector<Sync::MissingDataInfo>, Sync::SyncAppSocket *);
   void processDataWrapper(std::string, const char *buf, size_t len);
   void processDataNoShowWrapper(std::string, const char *buf, size_t len);
+  void processDataHistoryWrapper(std::string, const char *buf, size_t len);
   void processRemoveWrapper(std::string);
   void respondHistoryRequest(std::string interest);
 
@@ -42,7 +43,7 @@ protected:
 
 public slots:
   void processTreeUpdate(const std::vector<Sync::MissingDataInfo>);
-  void processData(QString name, const char *buf, size_t len, bool show);
+  void processData(QString name, const char *buf, size_t len, bool show, bool isHistory);
   void processRemove(QString);
 
 private:
@@ -84,7 +85,7 @@ private slots:
   void messageClicked();
 
 signals:
-  void dataReceived(QString name, const char *buf, size_t len, bool show);
+  void dataReceived(QString name, const char *buf, size_t len, bool show, bool isHistory);
   void treeUpdated(const std::vector<Sync::MissingDataInfo>);
   void removeReceived(QString prefix);
 

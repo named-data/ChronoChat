@@ -56,7 +56,7 @@ ChatDialog::ChatDialog(QWidget *parent)
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
   connect(treeButton, SIGNAL(pressed()), this, SLOT(treeButtonPressed()));
-  connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool)), this, SLOT(processData(QString, const char *, size_t, bool)));
+  connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool, bool)), this, SLOT(processData(QString, const char *, size_t, bool, bool)));
   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
   connect(m_timer, SIGNAL(timeout()), this, SLOT(replot()));
   connect(m_scene, SIGNAL(replot()), this, SLOT(replot()));
@@ -186,7 +186,7 @@ ChatDialog::changeEvent(QEvent *e)
 }
 
 void
-ChatDialog::appendMessage(const SyncDemo::ChatMessage msg) 
+ChatDialog::appendMessage(const SyncDemo::ChatMessage msg, bool isHistory)
 {
   boost::recursive_mutex::scoped_lock lock(m_msgMutex);
 
@@ -238,7 +238,10 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg)
     nextCursor.movePosition(QTextCursor::End);
     table = nextCursor.insertTable(1, 1, tableFormat);
     table->cellAt(0, 0).firstCursorPosition().insertText(msg.data().c_str());
-    showMessage(from, msg.data().c_str());
+    if (!isHistory)
+    {
+      showMessage(from, msg.data().c_str());
+    }
   }
 
   if (msg.type() == SyncDemo::ChatMessage::JOIN || msg.type() == SyncDemo::ChatMessage::LEAVE)
@@ -375,7 +378,7 @@ ChatDialog::processDataWrapper(std::string name, const char *buf, size_t len)
 {
   char *tempBuf = new char[len];
   memcpy(tempBuf, buf, len);
-  emit dataReceived(name.c_str(), tempBuf, len, true);
+  emit dataReceived(name.c_str(), tempBuf, len, true, false);
 #ifdef __DEBUG
   std::cout <<"<<< " << name << " fetched" << std::endl;
 #endif
@@ -386,13 +389,21 @@ ChatDialog::processDataNoShowWrapper(std::string name, const char *buf, size_t l
 {
   char *tempBuf = new char[len];
   memcpy(tempBuf, buf, len);
-  emit dataReceived(name.c_str(), tempBuf, len, false);
+  emit dataReceived(name.c_str(), tempBuf, len, false, false);
   
   if (!m_historyInitialized)
   {
     fetchHistory(name);
     m_historyInitialized = true;
   }
+}
+
+void
+ChatDialog::processDataHistoryWrapper(std::string name, const char *buf, size_t len)
+{
+  char *tempBuf = new char[len];
+  memcpy(tempBuf, buf, len);
+  emit dataReceived(name.c_str(), tempBuf, len, true, true);
 }
 
 void 
@@ -406,7 +417,7 @@ ChatDialog::fetchHistory(std::string name)
   for (int i = 0; i < MAX_HISTORY_ENTRY; i++)
   {
     QString interest = QString("%1/%2/%3").arg(prefix.c_str()).arg(randomString).arg(i);
-    handle->sendInterest(interest.toStdString(), bind(&ChatDialog::processDataWrapper, this, _1, _2, _3));
+    handle->sendInterest(interest.toStdString(), bind(&ChatDialog::processDataHistoryWrapper, this, _1, _2, _3));
   }
 }
 
@@ -428,7 +439,7 @@ ChatDialog::respondHistoryRequest(std::string interest)
 }
 
 void
-ChatDialog::processData(QString name, const char *buf, size_t len, bool show)
+ChatDialog::processData(QString name, const char *buf, size_t len, bool show, bool isHistory)
 {
   SyncDemo::ChatMessage msg;
   bool corrupted = false;
@@ -451,24 +462,27 @@ ChatDialog::processData(QString name, const char *buf, size_t len, bool show)
   // the "cannonical" way to is use signal-slot
   if (show && !corrupted)
   {
-    appendMessage(msg);
+    appendMessage(msg, isHistory);
   }
   
-  // update the tree view
-  std::string stdStrName = name.toStdString();
-  std::string stdStrNameWithoutSeq = stdStrName.substr(0, stdStrName.find_last_of('/'));
-  std::string prefix = stdStrNameWithoutSeq.substr(0, stdStrNameWithoutSeq.find_last_of('/'));
+  if (!isHistory)
+  {
+    // update the tree view
+    std::string stdStrName = name.toStdString();
+    std::string stdStrNameWithoutSeq = stdStrName.substr(0, stdStrName.find_last_of('/'));
+    std::string prefix = stdStrNameWithoutSeq.substr(0, stdStrNameWithoutSeq.find_last_of('/'));
 #ifdef __DEBUG
-  std::cout <<"<<< updating scene for" << prefix << ": " << msg.from()  << std::endl;
+    std::cout <<"<<< updating scene for" << prefix << ": " << msg.from()  << std::endl;
 #endif
-  if (msg.type() == SyncDemo::ChatMessage::LEAVE)
-  {
-    processRemove(prefix.c_str());
-  }
-  else
-  {
-    boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
-    m_scene->msgReceived(prefix.c_str(), msg.from().c_str());
+    if (msg.type() == SyncDemo::ChatMessage::LEAVE)
+    {
+      processRemove(prefix.c_str());
+    }
+    else
+    {
+      boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
+      m_scene->msgReceived(prefix.c_str(), msg.from().c_str());
+    }
   }
   fitView();
 }
