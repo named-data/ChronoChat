@@ -47,6 +47,7 @@ public slots:
   void processRemove(QString);
 
 private:
+  QString getLocalPrefix();
   void fetchHistory(std::string name);
   QString getRandomString();
   void formChatMessage(const QString &text, SyncDemo::ChatMessage &msg);
@@ -77,8 +78,7 @@ private slots:
   void replot();
   void updateRosterList(QStringList);
   void enableTreeDisplay();
-  void getLocalPrefix();
-
+  void updateLocalPrefix();
   // icon related
   void iconActivated(QSystemTrayIcon::ActivationReason reason);
   void showMessage(QString, QString);

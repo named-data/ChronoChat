@@ -33,6 +33,9 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
       p->setPrefix(v[i].prefix.c_str());
       p->setSeq(v[i].high);
       m_roster.insert(p->getPrefix(), p);
+#ifdef __DEBUG
+      std::cout << "<<<<<<< Adding user. Prefix = " << p->getPrefix().toStdString() << std::endl;
+#endif
     }
     else 
     {
@@ -91,6 +94,9 @@ DigestTreeScene::getRosterList()
 void
 DigestTreeScene::msgReceived(QString prefix, QString nick)
 {
+#ifdef __DEBUG
+  std::cout << "<<<<<<< MsgReceived. Prefix = " << prefix.toStdString() << ". Nick = " << nick.toStdString() << std::endl;
+#endif
   Roster_iterator it = m_roster.find(prefix);
   if (it != m_roster.end()) 
   {
