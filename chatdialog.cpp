@@ -834,7 +834,13 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
     // TODO: perhaps need to do a lot. e.g. use a new SyncAppSokcet
     if (m_sock != NULL) 
     {
+      // keep the new prefix
+      QString newPrefix = m_user.getPrefix();
+      // send leave for the old
+      m_user.setPrefix(oldPrefix);
       sendLeave();
+      // resume new prefix
+      m_user.setPrefix(newPrefix);
       Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
       handle->clearInterestFilter(oldPrefix.toStdString());
       m_history.clear();
