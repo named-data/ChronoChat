@@ -8,6 +8,7 @@
 #include <QMessageBox>
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
+#include <boost/lexical_cast.hpp>
 #include <stdio.h>
 
 #define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/chronos"
@@ -18,7 +19,7 @@
 static const int HELLO_INTERVAL = 90;  // seconds
 
 ChatDialog::ChatDialog(QWidget *parent)
-  : QDialog(parent), m_sock(NULL), m_lastMsgTime(0)
+  : QDialog(parent), m_sock(NULL), m_lastMsgTime(0), m_historyInitialized(false)
 {
   // have to register this, otherwise
   // the signal-slot system won't recognize this type
@@ -73,6 +74,8 @@ ChatDialog::ChatDialog(QWidget *parent)
       m_sock = new Sync::SyncAppSocket(syncPrefix,
                                        bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
                                        bind(&ChatDialog::processRemoveWrapper, this, _1));
+      Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
+      handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
       QTimer::singleShot(600, this, SLOT(sendJoin()));
       m_timer->start(FRESHNESS * 2000);
       disableTreeDisplay();
@@ -204,6 +207,13 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg)
     {
       return;
     }
+
+    if (m_history.size() == MAX_HISTORY_ENTRY)
+    {
+      m_history.dequeue();
+    }
+
+    m_history.enqueue(msg);
 
     QTextCharFormat nickFormat;
     nickFormat.setForeground(Qt::darkGreen);
@@ -377,6 +387,44 @@ ChatDialog::processDataNoShowWrapper(std::string name, const char *buf, size_t l
   char *tempBuf = new char[len];
   memcpy(tempBuf, buf, len);
   emit dataReceived(name.c_str(), tempBuf, len, false);
+  
+  if (!m_historyInitialized)
+  {
+    fetchHistory(name);
+    m_historyInitialized = true;
+  }
+}
+
+void 
+ChatDialog::fetchHistory(std::string name)
+{
+  std::string nameWithoutSeq = name.substr(0, name.find_last_of('/'));
+  std::string prefix = nameWithoutSeq.substr(0, nameWithoutSeq.find_last_of('/'));
+  prefix += "/history";
+  Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create(); 
+  QString randomString = getRandomString();
+  for (int i = 0; i < MAX_HISTORY_ENTRY; i++)
+  {
+    QString interest = QString("%1/%2/%3").arg(prefix.c_str()).arg(randomString).arg(i);
+    handle->sendInterest(interest.toStdString(), bind(&ChatDialog::processDataWrapper, this, _1, _2, _3));
+  }
+}
+
+void
+ChatDialog::respondHistoryRequest(std::string interest)
+{
+  std::string seqStr = interest.substr(interest.find_last_of('/') + 1); 
+  int seq = boost::lexical_cast<int>(seqStr);
+  if (seq >= 0 && seq < m_history.size())
+  {
+    Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
+    SyncDemo::ChatMessage msg = m_history.at(seq);
+    size_t size = msg.ByteSize();
+    char *buf = new char[size];
+    msg.SerializeToArray(buf, size);
+    handle->publishRawData(interest, buf, size, 1);
+    delete buf;
+  }
 }
 
 void
@@ -707,6 +755,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
     m_user.setNick(nick);
     needWrite = true;
   }
+  QString oldPrefix = m_user.getPrefix();
   if (!originPrefix.isEmpty() && originPrefix != m_user.getOriginPrefix()) {
     m_user.setOriginPrefix(originPrefix);
     m_user.setPrefix(originPrefix + "/" + m_user.getChatroom() + "/" + randString);
@@ -735,6 +784,10 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
     if (m_sock != NULL) 
     {
       sendLeave();
+      Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
+      handle->clearInterestFilter(oldPrefix.toStdString());
+      m_history.clear();
+      m_historyInitialized = false;
       delete m_sock;
       m_sock = NULL;
     }
@@ -744,6 +797,8 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
     try
     {
       m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
+      Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
+      handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
       QTimer::singleShot(1000, this, SLOT(sendJoin()));
       m_timer->start(FRESHNESS * 2000);
       disableTreeDisplay();

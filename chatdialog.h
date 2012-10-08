@@ -10,9 +10,11 @@
 #include <sync-logic.h>
 #include <sync-seq-no.h>
 #include <QSystemTrayIcon>
+#include <QQueue>
 
 #define ORGANIZATION "IRL@UCLA"
 #define APPLICATION "CHRONOS"
+#define MAX_HISTORY_ENTRY   20
 
 class QAction;
 class QMenu;
@@ -32,6 +34,7 @@ public:
   void processDataWrapper(std::string, const char *buf, size_t len);
   void processDataNoShowWrapper(std::string, const char *buf, size_t len);
   void processRemoveWrapper(std::string);
+  void respondHistoryRequest(std::string interest);
 
 protected:
   void closeEvent(QCloseEvent *e);
@@ -43,6 +46,7 @@ public slots:
   void processRemove(QString);
 
 private:
+  void fetchHistory(std::string name);
   QString getRandomString();
   void formChatMessage(const QString &text, SyncDemo::ChatMessage &msg);
   void formControlMessage(SyncDemo::ChatMessage &msg, SyncDemo::ChatMessage::ChatMessageType type);
@@ -97,6 +101,9 @@ private:
   QStringListModel *m_rosterModel;
   bool m_minimaniho;
 
+  QQueue<SyncDemo::ChatMessage> m_history;
+  bool m_historyInitialized;
+  
   // icon related
   QAction *minimizeAction;
   QAction *maximizeAction;
