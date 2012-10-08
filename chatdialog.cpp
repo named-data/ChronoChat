@@ -76,7 +76,7 @@ ChatDialog::ChatDialog(QWidget *parent)
       QTimer::singleShot(100, this, SLOT(getLocalPrefix()));
 
       QTimer::singleShot(600, this, SLOT(sendJoin()));
-      m_timer->start(FRESHNESS);
+      m_timer->start(FRESHNESS * 1000);
       disableTreeDisplay();
       QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
     }
@@ -848,7 +848,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
       handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
       QTimer::singleShot(1000, this, SLOT(sendJoin()));
-      m_timer->start(FRESHNESS);
+      m_timer->start(FRESHNESS * 1000);
       disableTreeDisplay();
       QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
     }
