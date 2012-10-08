@@ -76,6 +76,8 @@ ChatDialog::ChatDialog(QWidget *parent)
                                        bind(&ChatDialog::processRemoveWrapper, this, _1));
       Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
       handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
+      QTimer::singleShot(100, this, SLOT(getLocalPrefix()));
+
       QTimer::singleShot(600, this, SLOT(sendJoin()));
       m_timer->start(FRESHNESS * 2000);
       disableTreeDisplay();
@@ -579,19 +581,24 @@ ChatDialog::getLocalPrefix()
 //     localPrefix = DEFAULT_LOCAL_PREFIX;
 //   }
 //   return localPrefix;
-
+  std::cerr << "trying to get local prefix" << std::endl;
+  
   if (m_sock != NULL)
     {
-      QString originPrefix = QString::fromStdString (m_sock->getLocalPrefix());
+      std::cerr << "trying to get local prefix2" << std::endl;
+      QString originPrefix = QString::fromStdString (m_sock->getLocalPrefix()).trimmed ();
+      std::cerr << "got: " << originPrefix.toStdString () << std::endl;
+
       if (originPrefix != "" && m_user.getOriginPrefix () != originPrefix)
         {
-          m_user.setOriginPrefix(originPrefix);
-          emit settingUpdated(m_user.getNick (), m_user.getChatroom (), m_user.getOriginPrefix ());
+          // m_user.setOriginPrefix(originPrefix);
+          emit settingUpdated(m_user.getNick (), m_user.getChatroom (), originPrefix);
           // connect(&dialog, SIGNAL(updated(QString, QString, QString)), this, SLOT());
         }
     }
   else
     {
+      std::cerr << "socket is not availble" << std::endl;
       // QTimer::singleShot(1000, this, SLOT(getLocalPrefix())); // try again
     }
 }
@@ -602,14 +609,13 @@ ChatDialog::readSettings()
   QSettings s(ORGANIZATION, APPLICATION);
   QString nick = s.value("nick", "").toString();
   QString chatroom = s.value("chatroom", "").toString();
-  QString originPrefix = s.value("originPrefix", "").toString();
+  // QString originPrefix = s.value("originPrefix", "").toString();
 
   // Sync::CcnxWrapperPtr wrapper = Sync::CcnxWrapper::Create ();
   // QString originPrefix = QString::fromStdString (wrapper->getLocalPrefix());
   // Sync::CcnxWrapper::Destroy ();
-  // QString originPrefix = DEFAULT_LOCAL_PREFIX;
   
-  QTimer::singleShot(500, this, SLOT(getLocalPrefix()));
+  QString originPrefix = DEFAULT_LOCAL_PREFIX;
   
   m_minimaniho = s.value("minimaniho", false).toBool();
   if (nick == "" || chatroom == "" || originPrefix == "") {
