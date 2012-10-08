@@ -16,7 +16,7 @@
 #define DEFAULT_LOCAL_PREFIX "/private/local"
 #define CCN_EXEC  "/usr/local/bin/ccnpeek"
 
-static const int HELLO_INTERVAL = 90;  // seconds
+static const int HELLO_INTERVAL = FRESHNESS * 3 / 4;  // seconds
 
 ChatDialog::ChatDialog(QWidget *parent)
   : QDialog(parent), m_sock(NULL), m_lastMsgTime(0), m_historyInitialized(false)
@@ -27,9 +27,6 @@ ChatDialog::ChatDialog(QWidget *parent)
   qRegisterMetaType<size_t>("size_t");
   setupUi(this);
   m_session = time(NULL);
-  boost::random::random_device rng;
-  boost::random::uniform_int_distribution<> uniform(1, 29000);
-  m_randomizedInterval = HELLO_INTERVAL * 1000 + uniform(rng);
 
   readSettings();
 
@@ -79,7 +76,7 @@ ChatDialog::ChatDialog(QWidget *parent)
       QTimer::singleShot(100, this, SLOT(getLocalPrefix()));
 
       QTimer::singleShot(600, this, SLOT(sendJoin()));
-      m_timer->start(FRESHNESS * 2000);
+      m_timer->start(FRESHNESS);
       disableTreeDisplay();
       QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
     }
@@ -718,6 +715,9 @@ ChatDialog::sendJoin()
   SyncDemo::ChatMessage msg;
   formControlMessage(msg, SyncDemo::ChatMessage::JOIN);
   sendMsg(msg);
+  boost::random::random_device rng;
+  boost::random::uniform_int_distribution<> uniform(1, FRESHNESS / 5 * 1000);
+  m_randomizedInterval = HELLO_INTERVAL * 1000 + uniform(rng);
   QTimer::singleShot(m_randomizedInterval, this, SLOT(sendHello()));
 }
 
@@ -731,6 +731,9 @@ ChatDialog::sendHello()
     SyncDemo::ChatMessage msg;
     formControlMessage(msg, SyncDemo::ChatMessage::HELLO);
     sendMsg(msg);
+    boost::random::random_device rng;
+    boost::random::uniform_int_distribution<> uniform(1, FRESHNESS / 5 * 1000);
+    m_randomizedInterval = HELLO_INTERVAL * 1000 + uniform(rng);
     QTimer::singleShot(m_randomizedInterval, this, SLOT(sendHello()));
   }
   else
@@ -845,7 +848,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
       handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
       QTimer::singleShot(1000, this, SLOT(sendJoin()));
-      m_timer->start(FRESHNESS * 2000);
+      m_timer->start(FRESHNESS);
       disableTreeDisplay();
       QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
     }

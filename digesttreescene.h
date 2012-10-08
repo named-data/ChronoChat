@@ -11,7 +11,7 @@
 #include <QColor>
 #include "treelayout.h"
 
-const int FRESHNESS = 120;
+const int FRESHNESS = 60;
 
 class QGraphicsTextItem;
 

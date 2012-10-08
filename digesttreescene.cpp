@@ -28,7 +28,7 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
     {
       rePlot = true; 
       DisplayUserPtr p(new DisplayUser());
-      time_t tempTime = time(NULL) - 2 * FRESHNESS + 1;
+      time_t tempTime = time(NULL) - FRESHNESS + 1;
       p->setReceived(tempTime);
       p->setPrefix(v[i].prefix.c_str());
       p->setSeq(v[i].high);
@@ -156,7 +156,7 @@ DigestTreeScene::plot(QString digest)
     if (p != DisplayUserNullPtr)
     {
       time_t now = time(NULL);
-      if (now - p->getReceived() >= FRESHNESS * 2)
+      if (now - p->getReceived() >= FRESHNESS)
       {
 #ifdef __DEBUG
         std::cout << "Removing user: " << p->getNick().toStdString() << std::endl;
