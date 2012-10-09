@@ -36,6 +36,7 @@ public:
   bool removeNode(const QString prefix);
   void plot(QString digest);
   QStringList getRosterList();
+  void setCurrentPrefix(QString prefix) {m_currentPrefix = prefix;}
 
 signals:
   void replot();
@@ -52,6 +53,7 @@ private:
   Roster m_roster;
   QGraphicsTextItem *m_rootDigest; 
   DisplayUserPtr previouslyUpdatedUser;
+  QString m_currentPrefix;
 
 };
 

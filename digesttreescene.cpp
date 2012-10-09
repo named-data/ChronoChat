@@ -94,9 +94,11 @@ DigestTreeScene::msgReceived(QString prefix, QString nick)
   Roster_iterator it = m_roster.find(prefix);
   if (it != m_roster.end()) 
   {
+    std::cout << "Updating for prefix = " << prefix.toStdString() << " nick = " << nick.toStdString() << std::endl;
     DisplayUserPtr p = it.value();
     p->setReceived(time(NULL));
     if (nick != p->getNick()) {
+    std::cout << "old nick = " << p->getNick().toStdString() << std::endl;
       p->setNick(nick);
       QGraphicsTextItem *nickItem = p->getNickTextItem();
       QGraphicsRectItem *nickRectItem = p->getNickRectItem();
@@ -150,6 +152,9 @@ DigestTreeScene::plot(QString digest)
   // do some cleaning, get rid of stale member info
   Roster_iterator it = m_roster.begin();
   QStringList staleUserList;
+#ifdef __DEBUG
+  std::cout << "------------------------------------------------------" << std::endl;
+#endif
   while (it != m_roster.end())
   {
     DisplayUserPtr p = it.value();
@@ -168,6 +173,20 @@ DigestTreeScene::plot(QString digest)
       }
       else
       {
+#ifdef __DEBUG
+        std::cout << "having user: " << p->getNick().toStdString() << std::endl;
+        std::cout << "prefix: " << p->getPrefix().toStdString() << std::endl;
+#endif
+        if (!m_currentPrefix.startsWith("/private/local") && p->getPrefix().startsWith("/private/local"))
+        {
+#ifdef __DEBUG
+          std::cout << "erasing: " << p->getPrefix().toStdString() << std::endl;
+#endif
+          staleUserList << p->getNick();
+          p = DisplayUserNullPtr;
+          it = m_roster.erase(it);
+          continue;
+        }
         ++it;
       }
     }
@@ -175,12 +194,16 @@ DigestTreeScene::plot(QString digest)
     {
       it = m_roster.erase(it);
     }
+#ifdef __DEBUG
+  std::cout << "------------------------------------------------------" << std::endl;
+#endif
   }
 
   // for simpicity here, whenever we replot, we also redo the roster list
   emit rosterChanged(staleUserList);
 
   int n = m_roster.size();
+
   std::vector<TreeLayout::Coordinate> childNodesCo(n);
 
   layout->setOneLevelLayout(childNodesCo);

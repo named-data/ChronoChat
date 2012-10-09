@@ -27,13 +27,13 @@ ChatDialog::ChatDialog(QWidget *parent)
   qRegisterMetaType<size_t>("size_t");
   setupUi(this);
   m_session = time(NULL);
+  m_scene = new DigestTreeScene(this);
 
   readSettings();
 
   updateLabels();
 
   lineEdit->setFocusPolicy(Qt::StrongFocus);
-  m_scene = new DigestTreeScene(this);
 
   treeViewer->setScene(m_scene);
   m_scene->plot("Empty");
@@ -627,6 +627,7 @@ ChatDialog::readSettings()
     m_user.setChatroom(chatroom);
     m_user.setOriginPrefix(originPrefix);
     m_user.setPrefix(originPrefix + "/" + chatroom + "/" + getRandomString());
+    m_scene->setCurrentPrefix(originPrefix + "/" + chatroom + "/" + getRandomString());
     return true;
   }
 
@@ -810,12 +811,14 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
   if (!originPrefix.isEmpty() && originPrefix != m_user.getOriginPrefix()) {
     m_user.setOriginPrefix(originPrefix);
     m_user.setPrefix(originPrefix + "/" + m_user.getChatroom() + "/" + randString);
+    m_scene->setCurrentPrefix(originPrefix + "/" + m_user.getChatroom() + "/" + randString);
     needWrite = true;
     needFresh = true;
   }
   if (!chatroom.isEmpty() && chatroom != m_user.getChatroom()) {
     m_user.setChatroom(chatroom);
     m_user.setPrefix(m_user.getOriginPrefix() + "/" + chatroom + "/" + randString);
+    m_scene->setCurrentPrefix(m_user.getOriginPrefix() + "/" + chatroom + "/" + randString);
     needWrite = true;
     needFresh = true;
   }
