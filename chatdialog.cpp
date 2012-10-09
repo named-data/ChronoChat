@@ -77,6 +77,7 @@ ChatDialog::ChatDialog(QWidget *parent)
       Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
       handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
       //QTimer::singleShot(100, this, SLOT(getLocalPrefix()));
+      usleep(100000);
       if (!getLocalPrefix())
       {
         // if getLocalPrefix indicates no prefix change
