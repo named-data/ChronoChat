@@ -19,7 +19,7 @@
 static const int HELLO_INTERVAL = FRESHNESS * 3 / 4;  // seconds
 
 ChatDialog::ChatDialog(QWidget *parent)
-  : QDialog(parent), m_sock(NULL), m_lastMsgTime(0), m_historyInitialized(false)
+  : QDialog(parent), m_sock(NULL), m_lastMsgTime(0), m_historyInitialized(false), m_joined(false)
 {
   // have to register this, otherwise
   // the signal-slot system won't recognize this type
@@ -55,7 +55,7 @@ ChatDialog::ChatDialog(QWidget *parent)
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
   connect(treeButton, SIGNAL(pressed()), this, SLOT(treeButtonPressed()));
-  connect(refreshButton, SIGNAL(pressed()), this, SLOT(getLocalPrefix()));
+  connect(refreshButton, SIGNAL(pressed()), this, SLOT(updateLocalPrefix()));
   connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool, bool)), this, SLOT(processData(QString, const char *, size_t, bool, bool)));
   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
   connect(m_timer, SIGNAL(timeout()), this, SLOT(replot()));
@@ -76,12 +76,24 @@ ChatDialog::ChatDialog(QWidget *parent)
                                        bind(&ChatDialog::processRemoveWrapper, this, _1));
       Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
       handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
-      QTimer::singleShot(100, this, SLOT(getLocalPrefix()));
+      //QTimer::singleShot(100, this, SLOT(getLocalPrefix()));
+      if (!getLocalPrefix())
+      {
+        // if getLocalPrefix indicates no prefix change
+        // this sock is going to be used
+        QTimer::singleShot(600, this, SLOT(sendJoin()));
+        m_timer->start(FRESHNESS * 1000);
+        disableTreeDisplay();
+        QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
+      }
+      else
+      {
+        // this socket is going to be destroyed anyway
+        // why bother doing the following steps
 
-      QTimer::singleShot(600, this, SLOT(sendJoin()));
-      m_timer->start(FRESHNESS * 1000);
-      disableTreeDisplay();
-      QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
+        // the same steps would be performed for another socket 
+        // in settingUpdated
+      }
     }
     catch (Sync::CcnxOperationException ex)
     {
@@ -111,6 +123,7 @@ ChatDialog::sendLeave()
   usleep(500000);
   m_sock->remove(m_user.getPrefix().toStdString());
   usleep(5000);
+  m_joined = false;
 #ifdef __DEBUG
   std::cout << "Sync REMOVE signal sent" << std::endl;
 #endif
@@ -547,7 +560,7 @@ ChatDialog::getRandomString()
   return randStr.c_str();
 }
 
-void
+bool
 ChatDialog::getLocalPrefix()
 {
 //   /* 
@@ -584,23 +597,26 @@ ChatDialog::getLocalPrefix()
   std::cerr << "trying to get local prefix" << std::endl;
   
   if (m_sock != NULL)
-    {
-      std::cerr << "trying to get local prefix2" << std::endl;
-      QString originPrefix = QString::fromStdString (m_sock->getLocalPrefix()).trimmed ();
-      std::cerr << "got: " << originPrefix.toStdString () << std::endl;
+  {
+    QString originPrefix = QString::fromStdString (m_sock->getLocalPrefix()).trimmed ();
+    std::cerr << "got: " << originPrefix.toStdString () << std::endl;
 
-      if (originPrefix != "" && m_user.getOriginPrefix () != originPrefix)
-        {
-          // m_user.setOriginPrefix(originPrefix);
-          emit settingUpdated(m_user.getNick (), m_user.getChatroom (), originPrefix);
-          // connect(&dialog, SIGNAL(updated(QString, QString, QString)), this, SLOT());
-        }
-    }
-  else
+    if (originPrefix != "" && m_user.getOriginPrefix () != originPrefix)
     {
-      std::cerr << "socket is not availble" << std::endl;
-      // QTimer::singleShot(1000, this, SLOT(getLocalPrefix())); // try again
+      emit settingUpdated(m_user.getNick (), m_user.getChatroom (), originPrefix);
+      // prefix updated
+      return true;
     }
+  }
+
+  // prefix not changed
+  return false;
+}
+
+void
+ChatDialog::updateLocalPrefix()
+{
+  getLocalPrefix();
 }
 
 bool
@@ -716,6 +732,7 @@ ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
 void 
 ChatDialog::sendJoin()
 {
+  m_joined = true;
   SyncDemo::ChatMessage msg;
   formControlMessage(msg, SyncDemo::ChatMessage::JOIN);
   sendMsg(msg);
@@ -834,14 +851,17 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
 
     textEdit->clear();
 
-    // TODO: perhaps need to do a lot. e.g. use a new SyncAppSokcet
     if (m_sock != NULL) 
     {
       // keep the new prefix
       QString newPrefix = m_user.getPrefix();
       // send leave for the old
       m_user.setPrefix(oldPrefix);
-      sendLeave();
+      // there is no point to send leave if we haven't joined yet
+      if (m_joined)
+      {
+        sendLeave();
+      }
       // resume new prefix
       m_user.setPrefix(newPrefix);
       Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
@@ -859,7 +879,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
       Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
       handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
-      QTimer::singleShot(1000, this, SLOT(sendJoin()));
+      QTimer::singleShot(600, this, SLOT(sendJoin()));
       m_timer->start(FRESHNESS * 1000);
       disableTreeDisplay();
       QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));

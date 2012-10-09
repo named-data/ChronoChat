@@ -64,6 +64,7 @@ private:
   QString formatTime(time_t);
   void printTimeInCell(QTextTable *, time_t);
   void disableTreeDisplay();
+  bool getLocalPrefix();
 
 private slots:
   void returnPressed();
@@ -77,7 +78,7 @@ private slots:
   void replot();
   void updateRosterList(QStringList);
   void enableTreeDisplay();
-  void getLocalPrefix();
+  void updateLocalPrefix();
 
   // icon related
   void iconActivated(QSystemTrayIcon::ActivationReason reason);
@@ -104,6 +105,7 @@ private:
 
   QQueue<SyncDemo::ChatMessage> m_history;
   bool m_historyInitialized;
+  bool m_joined;
   
   // icon related
   QAction *minimizeAction;
