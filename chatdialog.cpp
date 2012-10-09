@@ -55,6 +55,7 @@ ChatDialog::ChatDialog(QWidget *parent)
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
   connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
   connect(treeButton, SIGNAL(pressed()), this, SLOT(treeButtonPressed()));
+  connect(reapButton, SIGNAL(pressed()), this, SLOT(summonReaper()));
   connect(refreshButton, SIGNAL(pressed()), this, SLOT(updateLocalPrefix()));
   connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool, bool)), this, SLOT(processData(QString, const char *, size_t, bool, bool)));
   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
@@ -135,6 +136,60 @@ ChatDialog::replot()
   boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
   m_scene->plot(m_sock->getRootDigest().c_str());
   fitView();
+}
+
+void
+ChatDialog::summonReaper()
+{
+  Sync::SyncLogic &logic = m_sock->getLogic ();
+  std::map<std::string, bool> branches = logic.getBranchPrefixes();
+  QMap<QString, DisplayUserPtr> roster = m_scene->getRosterFull();
+
+  m_zombieList.clear(); 
+
+  QMapIterator<QString, DisplayUserPtr> it(roster);
+  std::map<std::string, bool>::iterator mapIt;
+  while(it.hasNext())
+  {
+    it.next();
+    DisplayUserPtr p = it.value();
+    if (p != DisplayUserNullPtr)
+    {
+      mapIt = branches.find(p->getPrefix().toStdString());
+      if (mapIt != branches.end())
+      {
+        mapIt->second = true;
+      }
+    }
+  }
+
+  for (mapIt = branches.begin(); mapIt != branches.end(); ++mapIt)
+  {
+    // this is zombie. all active users should have been marked true
+    if (! mapIt->second)
+    {
+      m_zombieList.append(mapIt->first.c_str());
+    }
+  }
+
+  m_zombieIndex = 0;
+
+  // start reaping
+  reap();
+}
+
+void
+ChatDialog::reap()
+{
+  if (m_zombieIndex < m_zombieList.size())
+  {
+    std::string prefix = m_zombieList.at(m_zombieIndex).toStdString();
+    m_sock->remove(prefix);
+    std::cout << "Reaped: prefix = " << prefix << std::endl;
+    m_zombieIndex++;
+    // reap again in 10 seconds
+    QTimer::singleShot(10000, this, SLOT(reap()));
+  }
 }
 
 void

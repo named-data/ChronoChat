@@ -79,6 +79,8 @@ private slots:
   void updateRosterList(QStringList);
   void enableTreeDisplay();
   void updateLocalPrefix();
+  void reap();
+  void summonReaper();
 
   // icon related
   void iconActivated(QSystemTrayIcon::ActivationReason reason);
@@ -106,6 +108,9 @@ private:
   QQueue<SyncDemo::ChatMessage> m_history;
   bool m_historyInitialized;
   bool m_joined;
+
+  QList<QString> m_zombieList;
+  int m_zombieIndex;
   
   // icon related
   QAction *minimizeAction;

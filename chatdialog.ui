@@ -116,6 +116,22 @@
                 </property>
                 </widget>
               </item>
+              <item>
+                <widget class="QPushButton" name="reapButton">
+                <property name="focusPolicy">
+                  <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="text">
+                  <string>Summon Reaper!</string> 
+                </property>
+                <property name="minimumWidth">
+                  <number>150</number>
+                </property>
+                <property name="maximumWidth">
+                  <number>150</number>
+                </property>
+                </widget>
+              </item>
             </layout>
           </item>
         </layout>

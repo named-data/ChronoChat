@@ -17,16 +17,16 @@ class QGraphicsTextItem;
 
 class User;
 class DisplayUser;
+typedef std::tr1::shared_ptr<DisplayUser> DisplayUserPtr;
+static DisplayUserPtr DisplayUserNullPtr;
 
 class DigestTreeScene : public QGraphicsScene
 {
   Q_OBJECT
 
-typedef std::tr1::shared_ptr<DisplayUser> DisplayUserPtr;
 typedef QMap<QString, DisplayUserPtr> Roster;
 typedef QMap<QString, DisplayUserPtr>::iterator Roster_iterator;
 typedef QMapIterator<QString, DisplayUserPtr> RosterIterator;
-static DisplayUserPtr DisplayUserNullPtr;
 
 public:
   DigestTreeScene(QWidget *parent = 0);
@@ -37,6 +37,7 @@ public:
   void plot(QString digest);
   QStringList getRosterList();
   void setCurrentPrefix(QString prefix) {m_currentPrefix = prefix;}
+  QMap<QString, DisplayUserPtr> getRosterFull() { return m_roster;}
 
 signals:
   void replot();
