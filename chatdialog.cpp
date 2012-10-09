@@ -76,8 +76,6 @@ ChatDialog::ChatDialog(QWidget *parent)
       m_sock = new Sync::SyncAppSocket(syncPrefix,
                                        bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
                                        bind(&ChatDialog::processRemoveWrapper, this, _1));
-      Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
-      handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
       //QTimer::singleShot(100, this, SLOT(getLocalPrefix()));
       usleep(100000);
       if (!getLocalPrefix())
@@ -88,6 +86,8 @@ ChatDialog::ChatDialog(QWidget *parent)
         m_timer->start(FRESHNESS * 1000);
         disableTreeDisplay();
         QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
+        Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
+        handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
       }
       else
       {
@@ -936,7 +936,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       // resume new prefix
       m_user.setPrefix(newPrefix);
       Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
-      handle->clearInterestFilter(oldPrefix.toStdString());
+      // handle->clearInterestFilter(oldPrefix.toStdString());
       m_history.clear();
       m_historyInitialized = false;
       delete m_sock;
