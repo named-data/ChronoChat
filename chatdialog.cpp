@@ -48,6 +48,7 @@ ChatDialog::ChatDialog(QWidget *parent)
   listView->setModel(m_rosterModel);
 
   refreshButton->setIcon(QIcon(QPixmap(":images/refresh.png")));
+  reapButton->hide();
 
   createActions();
   createTrayIcon();
@@ -744,6 +745,20 @@ ChatDialog::returnPressed()
     return;
  
   lineEdit->clear();
+
+  if (text.startsWith("boruoboluomi"))
+  {
+    reapButton->show();
+    fitView();
+    return;
+  }
+
+  if (text.startsWith("minimanihong"))
+  {
+    reapButton->hide();
+    fitView();
+    return;
+  }
 
   SyncDemo::ChatMessage msg;
   formChatMessage(text, msg);
