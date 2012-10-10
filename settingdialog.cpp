@@ -20,7 +20,7 @@ SettingDialog::SettingDialog(QWidget *parent, QString nick, QString chatroom, QS
   QValidator *validator = new QRegExpValidator(rx, this);
   prefixEdit->setValidator(validator);
 
-  if (nick.isEmpty() && chatroom.isEmpty())
+  if (nick.isEmpty())
   {
     prefixEdit->hide();
     prefixLabel->hide();

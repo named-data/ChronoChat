@@ -74,7 +74,7 @@ void
 ChatDialog::initializeSync()
 {
   // create sync socket
-  if(!m_user.getChatroom().isEmpty()) {
+  if(!m_user.getChatroom().isEmpty() && !m_user.getNick().isEmpty()) {
     std::string syncPrefix = BROADCAST_PREFIX_FOR_SYNC_DEMO;
     syncPrefix += "/";
     syncPrefix += m_user.getChatroom().toStdString();
@@ -699,6 +699,7 @@ ChatDialog::readSettings()
   m_minimaniho = s.value("minimaniho", false).toBool();
   if (nick == "" || chatroom == "" || originPrefix == "") {
     m_user.setOriginPrefix(DEFAULT_LOCAL_PREFIX);
+    m_user.setChatroom("retreat2012");
     QTimer::singleShot(500, this, SLOT(buttonPressed()));
     return false;
   }
@@ -983,6 +984,10 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
   {
     m_history.clear();
     m_historyInitialized = false;
+    initializeSync();
+  }
+  else if (m_sock == NULL)
+  {
     initializeSync();
   }
   else
