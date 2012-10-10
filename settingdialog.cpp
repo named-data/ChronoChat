@@ -20,6 +20,12 @@ SettingDialog::SettingDialog(QWidget *parent, QString nick, QString chatroom, QS
   QValidator *validator = new QRegExpValidator(rx, this);
   prefixEdit->setValidator(validator);
 
+  if (nick.isEmpty() && chatroom.isEmpty())
+  {
+    prefixEdit->hide();
+    prefixLabel->hide();
+  }
+
   okButton->setDefault(true);
 
   connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));

@@ -65,7 +65,14 @@ ChatDialog::ChatDialog(QWidget *parent)
   connect(trayIcon, SIGNAL(messageClicked()), this, SLOT(showNormal()));
   connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
   connect(m_scene, SIGNAL(rosterChanged(QStringList)), this, SLOT(updateRosterList(QStringList)));
+  
+  initializeSync();
 
+}
+
+void 
+ChatDialog::initializeSync()
+{
   // create sync socket
   if(!m_user.getChatroom().isEmpty()) {
     std::string syncPrefix = BROADCAST_PREFIX_FOR_SYNC_DEMO;
@@ -104,7 +111,6 @@ ChatDialog::ChatDialog(QWidget *parent)
       std::exit(1);
     }
   }
-  
 }
 
 ChatDialog::~ChatDialog()
@@ -692,6 +698,7 @@ ChatDialog::readSettings()
   
   m_minimaniho = s.value("minimaniho", false).toBool();
   if (nick == "" || chatroom == "" || originPrefix == "") {
+    m_user.setOriginPrefix(DEFAULT_LOCAL_PREFIX);
     QTimer::singleShot(500, this, SLOT(buttonPressed()));
     return false;
   }
@@ -727,7 +734,7 @@ ChatDialog::updateLabels()
   QString prefixDisp; 
   if (m_user.getPrefix().startsWith(DEFAULT_LOCAL_PREFIX))
   {
-    prefixDisp = QString("<Warning: Auto config prefix failed.>\n <Prefix = %1>").arg(m_user.getPrefix());
+    prefixDisp = QString("<Warning: no connection to hub or hub does not support prefix autoconfig.>\n <Prefix = %1>").arg(m_user.getPrefix());
     prefixLabel->setStyleSheet("QLabel {color: red; font-size: 12px; font: bold \"Verdana\";}");
   }
   else
@@ -837,8 +844,11 @@ ChatDialog::sendHello()
 void
 ChatDialog::buttonPressed()
 {
-  Sync::SyncLogic &logic = m_sock->getLogic ();
-  logic.printState ();
+  if (m_sock != NULL)
+  {
+    Sync::SyncLogic &logic = m_sock->getLogic ();
+    logic.printState ();
+  }
   
   SettingDialog dialog(this, m_user.getNick(), m_user.getChatroom(), m_user.getOriginPrefix());
   connect(&dialog, SIGNAL(updated(QString, QString, QString)), this, SLOT(settingUpdated(QString, QString, QString)));
@@ -879,10 +889,11 @@ void ChatDialog::disableTreeDisplay()
 void
 ChatDialog::checkSetting()
 {
-  if (m_user.getOriginPrefix().isEmpty() || m_user.getNick().isEmpty() || m_user.getChatroom().isEmpty())
+  if (m_user.getNick().isEmpty() || m_user.getChatroom().isEmpty() || m_user.getOriginPrefix().isEmpty())
   {
     buttonPressed();
   }
+
 }
 
 void
@@ -911,7 +922,12 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
     needFresh = true;
   }
 
-  if (needFresh)
+  if (needWrite) {
+    writeSettings();
+    updateLabels();
+  }
+
+  if (needFresh && m_sock != NULL)
   {
 
     {
@@ -922,32 +938,32 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
 
     textEdit->clear();
 
-    if (m_sock != NULL) 
+    // keep the new prefix
+    QString newPrefix = m_user.getPrefix();
+    // send leave for the old
+    m_user.setPrefix(oldPrefix);
+    // there is no point to send leave if we haven't joined yet
+    if (m_joined)
     {
-      // keep the new prefix
-      QString newPrefix = m_user.getPrefix();
-      // send leave for the old
-      m_user.setPrefix(oldPrefix);
-      // there is no point to send leave if we haven't joined yet
-      if (m_joined)
-      {
-        sendLeave();
-      }
-      // resume new prefix
-      m_user.setPrefix(newPrefix);
-      Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
-      // handle->clearInterestFilter(oldPrefix.toStdString());
-      m_history.clear();
-      m_historyInitialized = false;
-      delete m_sock;
-      m_sock = NULL;
+      sendLeave();
     }
+    // resume new prefix
+    m_user.setPrefix(newPrefix);
+    // Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
+    // handle->clearInterestFilter(oldPrefix.toStdString());
+    m_history.clear();
+    m_historyInitialized = false;
+    delete m_sock;
+    m_sock = NULL;
+
     std::string syncPrefix = BROADCAST_PREFIX_FOR_SYNC_DEMO;
     syncPrefix += "/";
     syncPrefix += m_user.getChatroom().toStdString();
     try
     {
+      usleep(100000);
       m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
+      usleep(100000);
       Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
       handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
       QTimer::singleShot(600, this, SLOT(sendJoin()));
@@ -961,14 +977,14 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       std::exit(1);
     }
 
-    fitView();
     
   }
-
-  if (needWrite) {
-    writeSettings();
-    updateLabels();
+  else
+  {
+    initializeSync();
   }
+
+  fitView();
 }
 
 void

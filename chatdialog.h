@@ -65,6 +65,7 @@ private:
   void printTimeInCell(QTextTable *, time_t);
   void disableTreeDisplay();
   bool getLocalPrefix();
+  void initializeSync();
 
 private slots:
   void returnPressed();
@@ -111,7 +112,7 @@ private:
 
   QList<QString> m_zombieList;
   int m_zombieIndex;
-  
+
   // icon related
   QAction *minimizeAction;
   QAction *maximizeAction;
