@@ -979,9 +979,17 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
 
     
   }
+  else if (needFresh && m_sock == NULL)
+  {
+    m_history.clear();
+    m_historyInitialized = false;
+    initializeSync();
+  }
   else
   {
-    initializeSync();
+#ifdef __DEBUG
+    std::cout << "Just changing nicks, we're good. " << std::endl;
+#endif
   }
 
   fitView();
