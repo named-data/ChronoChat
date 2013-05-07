@@ -1,15 +1,19 @@
 #ifndef DIGESTTREESCENE_H
 #define DIGESTTREESCENE_H
 
+#include "treelayout.h"
+
 #include <QtGui/QGraphicsScene>
+#include <QColor>
+#include <QMap>
+
+#ifndef Q_MOC_RUN
 #include <sync-seq-no.h>
 #include <sync-logic.h>
 #include <ctime>
-#include <QMap>
 #include <vector>
 #include <tr1/memory>
-#include <QColor>
-#include "treelayout.h"
+#endif
 
 const int FRESHNESS = 60;
 

@@ -1,18 +1,26 @@
-#include <QtGui>
 #include "chatdialog.h"
+
 #include "settingdialog.h"
-#include <ctime>
-#include <iostream>
+
+#include <QtGui>
 #include <QTimer>
 #include <QMetaType>
 #include <QMessageBox>
+
+#ifndef Q_MOC_RUN
+#include <ctime>
+#include <iostream>
+
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/make_shared.hpp>
+
 #include <stdio.h>
+#endif
 
 #define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/chronos"
-#define LOCAL_PREFIX_QUERY "/local/ndn/prefix" 
+#define LOCAL_PREFIX_QUERY "/local/ndn/prefix"
 #define DEFAULT_LOCAL_PREFIX "/private/local"
 #define CCN_EXEC  "/usr/local/bin/ccnpeek"
 
@@ -65,12 +73,12 @@ ChatDialog::ChatDialog(QWidget *parent)
   connect(trayIcon, SIGNAL(messageClicked()), this, SLOT(showNormal()));
   connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
   connect(m_scene, SIGNAL(rosterChanged(QStringList)), this, SLOT(updateRosterList(QStringList)));
-  
+
   initializeSync();
 
 }
 
-void 
+void
 ChatDialog::initializeSync()
 {
   // create sync socket
@@ -78,7 +86,7 @@ ChatDialog::initializeSync()
     std::string syncPrefix = BROADCAST_PREFIX_FOR_SYNC_DEMO;
     syncPrefix += "/";
     syncPrefix += m_user.getChatroom().toStdString();
-    try 
+    try
     {
       m_sock = new Sync::SyncAppSocket(syncPrefix,
                                        bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
@@ -93,7 +101,7 @@ ChatDialog::initializeSync()
         m_timer->start(FRESHNESS * 1000);
         disableTreeDisplay();
         QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
-        Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
+        Sync::CcnxWrapperPtr handle = boost::make_shared<Sync::CcnxWrapper> ();
         handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
       }
       else
@@ -101,7 +109,7 @@ ChatDialog::initializeSync()
         // this socket is going to be destroyed anyway
         // why bother doing the following steps
 
-        // the same steps would be performed for another socket 
+        // the same steps would be performed for another socket
         // in settingUpdated
       }
     }
@@ -115,7 +123,7 @@ ChatDialog::initializeSync()
 
 ChatDialog::~ChatDialog()
 {
-  if (m_sock != NULL) 
+  if (m_sock != NULL)
   {
     sendLeave();
     delete m_sock;
@@ -153,7 +161,7 @@ ChatDialog::summonReaper()
   std::map<std::string, bool> branches = logic.getBranchPrefixes();
   QMap<QString, DisplayUserPtr> roster = m_scene->getRosterFull();
 
-  m_zombieList.clear(); 
+  m_zombieList.clear();
 
   QMapIterator<QString, DisplayUserPtr> it(roster);
   std::map<std::string, bool>::iterator mapIt;
@@ -221,7 +229,7 @@ ChatDialog::updateRosterList(QStringList staleUserList)
   }
 }
 
-void 
+void
 ChatDialog::setVisible(bool visible)
 {
   minimizeAction->setEnabled(visible);
@@ -230,7 +238,7 @@ ChatDialog::setVisible(bool visible)
   QDialog::setVisible(visible);
 }
 
-void 
+void
 ChatDialog::closeEvent(QCloseEvent *e)
 {
   if (trayIcon->isVisible() && !m_minimaniho)
@@ -247,13 +255,13 @@ ChatDialog::closeEvent(QCloseEvent *e)
   }
 }
 
-void 
+void
 ChatDialog::changeEvent(QEvent *e)
 {
-  switch(e->type()) 
+  switch(e->type())
   {
   case QEvent::ActivationChange:
-    if (isActiveWindow()) 
+    if (isActiveWindow())
     {
       trayIcon->setIcon(QIcon(":/images/icon_small.png"));
     }
@@ -268,7 +276,7 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg, bool isHistory)
 {
   boost::recursive_mutex::scoped_lock lock(m_msgMutex);
 
-  if (msg.type() == SyncDemo::ChatMessage::CHAT) 
+  if (msg.type() == SyncDemo::ChatMessage::CHAT)
   {
 
     if (!msg.has_data())
@@ -311,7 +319,7 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg, bool isHistory)
 
     time_t timestamp = msg.timestamp();
     printTimeInCell(table, timestamp);
-    
+
     QTextCursor nextCursor(textEdit->textCursor());
     nextCursor.movePosition(QTextCursor::End);
     table = nextCursor.insertTable(1, 1, tableFormat);
@@ -358,7 +366,7 @@ ChatDialog::appendMessage(const SyncDemo::ChatMessage msg, bool isHistory)
   bar->setValue(bar->maximum());
 }
 
-void 
+void
 ChatDialog::printTimeInCell(QTextTable *table, time_t timestamp)
 {
   QTextCharFormat timeFormat;
@@ -423,12 +431,12 @@ ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
 
   int n = v.size();
   int totalMissingPackets = 0;
-  for (int i = 0; i < n; i++) 
+  for (int i = 0; i < n; i++)
   {
     totalMissingPackets += v[i].high.getSeq() - v[i].low.getSeq() + 1;
   }
-  
-  for (int i = 0; i < n; i++) 
+
+  for (int i = 0; i < n; i++)
   {
     if (totalMissingPackets < 4)
     {
@@ -468,7 +476,7 @@ ChatDialog::processDataNoShowWrapper(std::string name, const char *buf, size_t l
   char *tempBuf = new char[len];
   memcpy(tempBuf, buf, len);
   emit dataReceived(name.c_str(), tempBuf, len, false, false);
-  
+
   if (!m_historyInitialized)
   {
     fetchHistory(name);
@@ -484,13 +492,13 @@ ChatDialog::processDataHistoryWrapper(std::string name, const char *buf, size_t 
   emit dataReceived(name.c_str(), tempBuf, len, true, true);
 }
 
-void 
+void
 ChatDialog::fetchHistory(std::string name)
 {
   std::string nameWithoutSeq = name.substr(0, name.find_last_of('/'));
   std::string prefix = nameWithoutSeq.substr(0, nameWithoutSeq.find_last_of('/'));
   prefix += "/history";
-  Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create(); 
+  Sync::CcnxWrapperPtr handle = boost::make_shared<Sync::CcnxWrapper> ();
   QString randomString = getRandomString();
   for (int i = 0; i < MAX_HISTORY_ENTRY; i++)
   {
@@ -502,11 +510,11 @@ ChatDialog::fetchHistory(std::string name)
 void
 ChatDialog::respondHistoryRequest(std::string interest)
 {
-  std::string seqStr = interest.substr(interest.find_last_of('/') + 1); 
+  std::string seqStr = interest.substr(interest.find_last_of('/') + 1);
   int seq = boost::lexical_cast<int>(seqStr);
   if (seq >= 0 && seq < m_history.size())
   {
-    Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
+    Sync::CcnxWrapperPtr handle = boost::make_shared<Sync::CcnxWrapper> ();
     SyncDemo::ChatMessage msg = m_history.at(seq);
     size_t size = msg.ByteSize();
     char *buf = new char[size];
@@ -521,7 +529,7 @@ ChatDialog::processData(QString name, const char *buf, size_t len, bool show, bo
 {
   SyncDemo::ChatMessage msg;
   bool corrupted = false;
-  if (!msg.ParseFromArray(buf, len)) 
+  if (!msg.ParseFromArray(buf, len))
   {
     std::cerr << "Errrrr.. Can not parse msg with name: " << name.toStdString() << ". what is happening?" << std::endl;
     // nasty stuff: as a remedy, we'll form some standard msg for inparsable msgs
@@ -542,7 +550,7 @@ ChatDialog::processData(QString name, const char *buf, size_t len, bool show, bo
   {
     appendMessage(msg, isHistory);
   }
-  
+
   if (!isHistory)
   {
     // update the tree view
@@ -598,7 +606,7 @@ ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
   msg.set_type(SyncDemo::ChatMessage::CHAT);
 }
 
-void 
+void
 ChatDialog::formControlMessage(SyncDemo::ChatMessage &msg, SyncDemo::ChatMessage::ChatMessageType type)
 {
   msg.set_from(m_user.getNick().toStdString());
@@ -626,8 +634,8 @@ ChatDialog::getRandomString()
 bool
 ChatDialog::getLocalPrefix()
 {
-//   /* 
-//    * this method tries to use ccncat 
+//   /*
+//    * this method tries to use ccncat
 //    * however, it does not work in Mac OS X app bundle
 //    * it works well in command line though
 //    */
@@ -658,10 +666,10 @@ ChatDialog::getLocalPrefix()
 //   }
 //   return localPrefix;
   std::cerr << "trying to get local prefix" << std::endl;
-  
+
   if (m_sock != NULL)
   {
-    QString originPrefix = QString::fromStdString (m_sock->getLocalPrefix()).trimmed ();
+    QString originPrefix = QString::fromStdString (m_sock->GetLocalPrefix()).trimmed ();
     std::cerr << "got: " << originPrefix.toStdString () << std::endl;
 
     if (originPrefix != "" && m_user.getOriginPrefix () != originPrefix)
@@ -693,9 +701,9 @@ ChatDialog::readSettings()
   // Sync::CcnxWrapperPtr wrapper = Sync::CcnxWrapper::Create ();
   // QString originPrefix = QString::fromStdString (wrapper->getLocalPrefix());
   // Sync::CcnxWrapper::Destroy ();
-  
+
   QString originPrefix = DEFAULT_LOCAL_PREFIX;
-  
+
   m_minimaniho = s.value("minimaniho", false).toBool();
   if (nick == "" || chatroom == "" || originPrefix == "") {
     m_user.setOriginPrefix(DEFAULT_LOCAL_PREFIX);
@@ -716,7 +724,7 @@ ChatDialog::readSettings()
  // return false;
 }
 
-void 
+void
 ChatDialog::writeSettings()
 {
   QSettings s(ORGANIZATION, APPLICATION);
@@ -732,7 +740,7 @@ ChatDialog::updateLabels()
   QString settingDisp = QString("Chatroom: %1").arg(m_user.getChatroom());
   infoLabel->setStyleSheet("QLabel {color: #630; font-size: 16px; font: bold \"Verdana\";}");
   infoLabel->setText(settingDisp);
-  QString prefixDisp; 
+  QString prefixDisp;
   if (m_user.getPrefix().startsWith(DEFAULT_LOCAL_PREFIX))
   {
     prefixDisp = QString("<Warning: no connection to hub or hub does not support prefix autoconfig.>\n <Prefix = %1>").arg(m_user.getPrefix());
@@ -746,13 +754,13 @@ ChatDialog::updateLabels()
   prefixLabel->setText(prefixDisp);
 }
 
-void 
+void
 ChatDialog::returnPressed()
 {
   QString text = lineEdit->text();
   if (text.isEmpty())
     return;
- 
+
   lineEdit->clear();
 
   if (text.startsWith("boruoboluomi"))
@@ -771,7 +779,7 @@ ChatDialog::returnPressed()
 
   SyncDemo::ChatMessage msg;
   formChatMessage(text, msg);
-  
+
   appendMessage(msg);
 
   sendMsg(msg);
@@ -779,14 +787,14 @@ ChatDialog::returnPressed()
   fitView();
 }
 
-void 
+void
 ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
 {
   // send msg
   size_t size = msg.ByteSize();
   char *buf = new char[size];
   msg.SerializeToArray(buf, size);
-  if (!msg.IsInitialized()) 
+  if (!msg.IsInitialized())
   {
     std::cerr << "Errrrr.. msg was not probally initialized "<<__FILE__ <<":"<<__LINE__<<". what is happening?" << std::endl;
     abort();
@@ -808,7 +816,7 @@ ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
   }
 }
 
-void 
+void
 ChatDialog::sendJoin()
 {
   m_joined = true;
@@ -821,7 +829,7 @@ ChatDialog::sendJoin()
   QTimer::singleShot(m_randomizedInterval, this, SLOT(sendHello()));
 }
 
-void 
+void
 ChatDialog::sendHello()
 {
   time_t now = time(NULL);
@@ -850,7 +858,7 @@ ChatDialog::buttonPressed()
     Sync::SyncLogic &logic = m_sock->getLogic ();
     logic.printState ();
   }
-  
+
   SettingDialog dialog(this, m_user.getNick(), m_user.getChatroom(), m_user.getOriginPrefix());
   connect(&dialog, SIGNAL(updated(QString, QString, QString)), this, SLOT(settingUpdated(QString, QString, QString)));
   dialog.exec();
@@ -965,7 +973,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       usleep(100000);
       m_sock = new Sync::SyncAppSocket(syncPrefix, bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2), bind(&ChatDialog::processRemoveWrapper, this, _1));
       usleep(100000);
-      Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
+      Sync::CcnxWrapperPtr handle = boost::make_shared<Sync::CcnxWrapper> ();
       handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
       QTimer::singleShot(600, this, SLOT(sendJoin()));
       m_timer->start(FRESHNESS * 1000);
@@ -978,7 +986,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       std::exit(1);
     }
 
-    
+
   }
   else if (needFresh && m_sock == NULL)
   {
@@ -1019,7 +1027,7 @@ void
 ChatDialog::showMessage(QString from, QString data)
 {
   //  std::cout <<"Showing Message: " << from.toStdString() << ": " << data.toStdString() << std::endl;
-  if (!isActiveWindow()) 
+  if (!isActiveWindow())
   {
     trayIcon->showMessage(QString("Chatroom %1 has a new message").arg(m_user.getChatroom()), QString("<%1>: %2").arg(from).arg(data), QSystemTrayIcon::Information, 20000);
     trayIcon->setIcon(QIcon(":/images/note.png"));
@@ -1037,13 +1045,13 @@ ChatDialog::createActions()
 {
   minimizeAction = new QAction(tr("Mi&nimize"), this);
   connect(minimizeAction, SIGNAL(triggered()), this, SLOT(hide()));
-  
+
   maximizeAction = new QAction(tr("Ma&ximize"), this);
   connect(maximizeAction, SIGNAL(triggered()), this, SLOT(showMaximized()));
-  
+
   restoreAction = new QAction(tr("&Restore"), this);
   connect(restoreAction, SIGNAL(triggered()), this, SLOT(showNormal()));
-  
+
   quitAction = new QAction(tr("Quit"), this);
   connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
 }
@@ -1068,13 +1076,13 @@ ChatDialog::createTrayIcon()
   trayIcon->setVisible(true);
 }
 
-void 
+void
 ChatDialog::resizeEvent(QResizeEvent *e)
 {
   fitView();
 }
 
-void 
+void
 ChatDialog::showEvent(QShowEvent *e)
 {
   fitView();

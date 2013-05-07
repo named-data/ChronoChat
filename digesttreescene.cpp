@@ -1,10 +1,14 @@
+#include "digesttreescene.h"
+
 #include <QtGui>
+
+#ifndef Q_MOC_RUN
 #include <vector>
 #include <iostream>
 #include <assert.h>
 #include <boost/lexical_cast.hpp>
 #include <memory>
-#include "digesttreescene.h"
+#endif
 
 static const double Pi = 3.14159265358979323846264338327950288419717;
 

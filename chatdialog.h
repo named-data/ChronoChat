@@ -1,7 +1,10 @@
 #ifndef CHATDIALOG_H
 #define CHATDIALOG_H
+
+#ifndef Q_MOC_RUN
 #include <boost/function.hpp>
 #include <boost/thread/recursive_mutex.hpp>
+
 #include <vector>
 #include "digesttreescene.h"
 #include "ui_chatdialog.h"
@@ -9,6 +12,8 @@
 #include <sync-app-socket.h>
 #include <sync-logic.h>
 #include <sync-seq-no.h>
+#endif
+
 #include <QSystemTrayIcon>
 #include <QQueue>
 
