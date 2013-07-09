@@ -368,30 +368,30 @@ if __name__ == '__main__':
 
 
   # Do the finishing touches to our Application bundle before release
-  a = AppBundle('Chronos.app', ver)
+  a = AppBundle('ChronoChat.app', ver)
   a.copy_qt_plugins()
   a.handle_libs()
   a.copy_resources(['demo.icns', 'qt.conf'])
   a.update_plist()
-  a.set_min_macosx_version('10.7.0')
+  a.set_min_macosx_version('10.8.0')
   a.done()
 
   # Sign our binaries, etc.
   if options.codesign:
     print ' * Signing binaries with identity `%s\'' % options.codesign
     binaries = (
-      'Chronos.app',
+      'ChronoChat.app',
     )
 
     codesign(binaries)
     print ''
 
   # Create diskimage
-  title = "Chronos-Snapshot-%s" % ver
+  title = "ChronosChat %s" % ver
   fn = "%s.dmg" % title
   d = DiskImage(fn, title)
   d.symlink('/Applications', '/Applications')
-  d.copy('Chronos.app', '/Chronos.app')
+  d.copy('ChronoChat.app', '/ChronoChat.app')
   d.copy('README', '/README.txt')
   d.create()
 
