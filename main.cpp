@@ -2,10 +2,9 @@
 #include "chatdialog.h"
 #include <QMessageBox>
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
-
-  Q_INIT_RESOURCE(demo);
+  // Q_INIT_RESOURCE(demo);
   QApplication app(argc, argv);
 
   if (!QSystemTrayIcon::isSystemTrayAvailable()) {
@@ -14,8 +13,8 @@ int main(int argc, char *argv[])
 				      "on this system."));
     return 1;
   }
-  QApplication::setQuitOnLastWindowClosed(false);
-  
+  QApplication::setQuitOnLastWindowClosed (false);
+
 #ifdef __APPLE__
 	app.setWindowIcon(QIcon(":/demo.icns"));
 #else
@@ -23,7 +22,10 @@ int main(int argc, char *argv[])
 #endif
 
   ChatDialog dialog;
-  dialog.show();
-  dialog.activateWindow();
+
+  dialog.show ();
+  dialog.activateWindow ();
+  dialog.raise ();
+
   return app.exec();
 }

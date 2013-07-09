@@ -1,3 +1,15 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2013, Regents of the University of California
+ *                     Alexander Afanasyev
+ *                     Zhenkai Zhu
+ *
+ * GNU v3.0 license, See the LICENSE file for more information
+ *
+ * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
+ *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ */
+
 #include "chatdialog.h"
 
 #include "settingdialog.h"
@@ -19,21 +31,27 @@
 #include <stdio.h>
 #endif
 
-#define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/chronos"
+#define BROADCAST_PREFIX_FOR_SYNC_DEMO "/ndn/broadcast/ChronoChat-0.3"
 #define LOCAL_PREFIX_QUERY "/local/ndn/prefix"
 #define DEFAULT_LOCAL_PREFIX "/private/local"
-#define CCN_EXEC  "/usr/local/bin/ccnpeek"
+// #define CCN_EXEC  "/usr/local/bin/ccnpeek"
 
 static const int HELLO_INTERVAL = FRESHNESS * 3 / 4;  // seconds
 
 ChatDialog::ChatDialog(QWidget *parent)
-  : QDialog(parent), m_sock(NULL), m_lastMsgTime(0), m_historyInitialized(false), m_joined(false)
+  : QDialog(parent)
+  , m_sock(NULL)
+  , m_lastMsgTime(0)
+  , m_historyInitialized(false)
+  , m_joined(false)
 {
   // have to register this, otherwise
   // the signal-slot system won't recognize this type
   qRegisterMetaType<std::vector<Sync::MissingDataInfo> >("std::vector<Sync::MissingDataInfo>");
   qRegisterMetaType<size_t>("size_t");
-  setupUi(this);
+
+  setupUi (this);
+
   m_session = time(NULL);
   m_scene = new DigestTreeScene(this);
 
@@ -44,28 +62,31 @@ ChatDialog::ChatDialog(QWidget *parent)
   lineEdit->setFocusPolicy(Qt::StrongFocus);
 
   treeViewer->setScene(m_scene);
+  treeViewer->hide ();
   m_scene->plot("Empty");
   QRectF rect = m_scene->itemsBoundingRect();
   m_scene->setSceneRect(rect);
 
-  listView->setStyleSheet("QListView { alternate-background-color: white; background: #F0F0F0; color: darkGreen; font: bold large; }");
-  listView->setEditTriggers(QAbstractItemView::NoEditTriggers);
-  listView->setDragDropMode(QAbstractItemView::NoDragDrop);
-  listView->setSelectionMode(QAbstractItemView::NoSelection);
+  // listView->setStyleSheet("QListView { alternate-background-color: white; background: #F0F0F0; color: darkGreen; font: bold large; }");
+  // listView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  // listView->setDragDropMode(QAbstractItemView::NoDragDrop);
+  // listView->setSelectionMode(QAbstractItemView::NoSelection);
+
   m_rosterModel = new QStringListModel(this);
   listView->setModel(m_rosterModel);
 
-  refreshButton->setIcon(QIcon(QPixmap(":images/refresh.png")));
-  reapButton->hide();
+  // refreshButton->setIcon(QIcon(QPixmap(":images/refresh.png")));
+  // reapButton->hide();
 
   createActions();
   createTrayIcon();
   m_timer = new QTimer(this);
   connect(lineEdit, SIGNAL(returnPressed()), this, SLOT(returnPressed()));
-  connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
+  // connect(setButton, SIGNAL(pressed()), this, SLOT(buttonPressed()));
   connect(treeButton, SIGNAL(pressed()), this, SLOT(treeButtonPressed()));
-  connect(reapButton, SIGNAL(pressed()), this, SLOT(summonReaper()));
-  connect(refreshButton, SIGNAL(pressed()), this, SLOT(updateLocalPrefix()));
+  // connect(reapButton, SIGNAL(pressed()), this, SLOT(summonReaper()));
+  // connect(refreshButton, SIGNAL(pressed()), this, SLOT(updateLocalPrefix()));
+
   connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool, bool)), this, SLOT(processData(QString, const char *, size_t, bool, bool)));
   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
   connect(m_timer, SIGNAL(timeout()), this, SLOT(replot()));
@@ -75,7 +96,6 @@ ChatDialog::ChatDialog(QWidget *parent)
   connect(m_scene, SIGNAL(rosterChanged(QStringList)), this, SLOT(updateRosterList(QStringList)));
 
   initializeSync();
-
 }
 
 void
@@ -235,6 +255,10 @@ ChatDialog::setVisible(bool visible)
   minimizeAction->setEnabled(visible);
   maximizeAction->setEnabled(!isMaximized());
   restoreAction->setEnabled(isMaximized() || !visible);
+
+  raise();  // for MacOS
+  activateWindow(); // for Windows
+
   QDialog::setVisible(visible);
 }
 
@@ -693,10 +717,11 @@ ChatDialog::updateLocalPrefix()
 bool
 ChatDialog::readSettings()
 {
-  QSettings s(ORGANIZATION, APPLICATION);
-  QString nick = s.value("nick", "").toString();
-  QString chatroom = s.value("chatroom", "").toString();
-  // QString originPrefix = s.value("originPrefix", "").toString();
+  QSettings settings (QSettings::NativeFormat, QSettings::UserScope, ORGANIZATION, APPLICATION);
+
+  QString nick = settings.value("nick", "").toString();
+  QString chatroom = settings.value("chatroom", "").toString();
+  // QString originPrefix = settings.value("originPrefix", "").toString();
 
   // Sync::CcnxWrapperPtr wrapper = Sync::CcnxWrapper::Create ();
   // QString originPrefix = QString::fromStdString (wrapper->getLocalPrefix());
@@ -704,7 +729,7 @@ ChatDialog::readSettings()
 
   QString originPrefix = DEFAULT_LOCAL_PREFIX;
 
-  m_minimaniho = s.value("minimaniho", false).toBool();
+  m_minimaniho = settings.value("minimaniho", false).toBool();
   if (nick == "" || chatroom == "" || originPrefix == "") {
     m_user.setOriginPrefix(DEFAULT_LOCAL_PREFIX);
     m_user.setChatroom("retreat2012");
@@ -727,11 +752,12 @@ ChatDialog::readSettings()
 void
 ChatDialog::writeSettings()
 {
-  QSettings s(ORGANIZATION, APPLICATION);
-  s.setValue("nick", m_user.getNick());
-  s.setValue("chatroom", m_user.getChatroom());
-  //s.setValue("originPrefix", m_user.getOriginPrefix());
-  s.setValue("minimaniho", m_minimaniho);
+  QSettings settings (QSettings::NativeFormat, QSettings::UserScope, ORGANIZATION, APPLICATION);
+
+  settings.setValue("nick", m_user.getNick());
+  settings.setValue("chatroom", m_user.getChatroom());
+  //settings.setValue("originPrefix", m_user.getOriginPrefix());
+  settings.setValue("minimaniho", m_minimaniho);
 }
 
 void
@@ -765,14 +791,15 @@ ChatDialog::returnPressed()
 
   if (text.startsWith("boruoboluomi"))
   {
-    reapButton->show();
+    summonReaper ();
+    // reapButton->show();
     fitView();
     return;
   }
 
   if (text.startsWith("minimanihong"))
   {
-    reapButton->hide();
+    // reapButton->hide();
     fitView();
     return;
   }
@@ -870,12 +897,12 @@ void ChatDialog::treeButtonPressed()
   if (treeViewer->isVisible())
   {
     treeViewer->hide();
-    treeButton->setText("Show Sync Tree");
+    treeButton->setText("Show ChronoSync Tree");
   }
   else
   {
     treeViewer->show();
-    treeButton->setText("Hide Sync Tree");
+    treeButton->setText("Hide ChronoSync Tree");
   }
 
   fitView();
@@ -884,8 +911,8 @@ void ChatDialog::treeButtonPressed()
 void ChatDialog::enableTreeDisplay()
 {
   treeButton->setEnabled(true);
-  treeViewer->show();
-  fitView();
+  // treeViewer->show();
+  // fitView();
 }
 
 void ChatDialog::disableTreeDisplay()
@@ -1052,6 +1079,14 @@ ChatDialog::createActions()
   restoreAction = new QAction(tr("&Restore"), this);
   connect(restoreAction, SIGNAL(triggered()), this, SLOT(showNormal()));
 
+  settingsAction = new QAction(tr("Settings"), this);
+  connect (settingsAction, SIGNAL(triggered()), this, SLOT(buttonPressed()));
+
+  settingsAction->setMenuRole (QAction::PreferencesRole);
+
+  updateLocalPrefixAction = new QAction(tr("Update local prefix"), this);
+  connect (updateLocalPrefixAction, SIGNAL(triggered()), this, SLOT(updateLocalPrefix()));
+
   quitAction = new QAction(tr("Quit"), this);
   connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
 }
@@ -1064,6 +1099,10 @@ ChatDialog::createTrayIcon()
   trayIconMenu->addAction(maximizeAction);
   trayIconMenu->addAction(restoreAction);
   trayIconMenu->addSeparator();
+  trayIconMenu->addAction(settingsAction);
+  trayIconMenu->addSeparator();
+  trayIconMenu->addAction(updateLocalPrefixAction);
+  trayIconMenu->addSeparator();
   trayIconMenu->addAction(quitAction);
 
   trayIcon = new QSystemTrayIcon(this);
@@ -1074,6 +1113,11 @@ ChatDialog::createTrayIcon()
   setWindowIcon(icon);
   trayIcon->setToolTip("Chronos System Tray Icon");
   trayIcon->setVisible(true);
+
+  // // QApplication::getMenu ()->addMenu (trayIconMenu);
+  // QMenuBar *bar = new QMenuBar ();
+  // bar->setMenu (trayIconMenu);
+  // setMenuBar (bar);
 }
 
 void
@@ -1096,3 +1140,8 @@ ChatDialog::fitView()
   m_scene->setSceneRect(rect);
   treeViewer->fitInView(m_scene->itemsBoundingRect(), Qt::KeepAspectRatio);
 }
+
+#if WAF
+#include "chatdialog.moc"
+#include "chatdialog.cpp.moc"
+#endif

@@ -313,3 +313,7 @@ DigestTreeScene::reDrawNode(DisplayUserPtr p, QColor rimColor)
     seqTextItem->setPos(innerBR.x() + (innerBR.width() - textBR.width())/2, innerBR.y() + (innerBR.height() - textBR.height())/2);
 }
 
+#if WAF
+#include "digesttreescene.moc"
+#include "digesttreescene.cpp.moc"
+#endif

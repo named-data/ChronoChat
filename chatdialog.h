@@ -1,3 +1,15 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2013, Regents of the University of California
+ *                     Alexander Afanasyev
+ *                     Zhenkai Zhu
+ *
+ * GNU v3.0 license, See the LICENSE file for more information
+ *
+ * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
+ *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ */
+
 #ifndef CHATDIALOG_H
 #define CHATDIALOG_H
 
@@ -15,10 +27,11 @@
 #endif
 
 #include <QSystemTrayIcon>
+#include <QMainWindow>
 #include <QQueue>
 
-#define ORGANIZATION "IRL@UCLA"
-#define APPLICATION "CHRONOS"
+#define ORGANIZATION "irl.cs.ucla.edu"
+#define APPLICATION "ChronoChat"
 #define MAX_HISTORY_ENTRY   20
 
 class QAction;
@@ -26,7 +39,7 @@ class QMenu;
 class QStringListModel;
 class QTextTable;
 
-class ChatDialog : public QDialog,  private Ui::ChatDialog 
+class ChatDialog : public QDialog, private Ui::ChatDialog
 {
 	Q_OBJECT
 
@@ -122,8 +135,11 @@ private:
   QAction *minimizeAction;
   QAction *maximizeAction;
   QAction *restoreAction;
+  QAction *settingsAction;
+  QAction *updateLocalPrefixAction;
   QAction *quitAction;
   QSystemTrayIcon *trayIcon;
+  // QMenu *menuBar;
   QMenu *trayIconMenu;
 };
 #endif

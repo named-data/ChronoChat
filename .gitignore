@@ -7,3 +7,6 @@ moc_*
 *.pb.*
 qrc*
 gdb-target
+.waf*
+.lock*
+build/

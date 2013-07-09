@@ -240,7 +240,7 @@ class AppBundle(object):
       print ' * Changing version in Info.plist'
       p = self.infoplist
       p['CFBundleVersion'] = self.version
-      p['CFBundleExecutable'] = "Chronos"
+      p['CFBundleExecutable'] = "ChronoChat"
       p['CFBundleIconFile'] = 'demo.icns'
       p['CFBundleGetInfoString'] = '''
         '''
@@ -344,11 +344,11 @@ class DiskImage(FolderObject):
 
 if __name__ == '__main__':
   parser = OptionParser()
-  parser.add_option('', '--release', dest='release', help='Build a release. This determines the version number of the release.')
-  parser.add_option('', '--snapshot', dest='snapshot', help='Build a snapshot release. This determines the \'snapshot version\'.')
-  parser.add_option('', '--git', dest='git', help='Build a snapshot release. Use the git revision number as the \'snapshot version\'.', action='store_true', default=False)
-  parser.add_option('', '--codesign', dest='codesign', help='Identity to use for code signing. (If not set, no code signing will occur)')
-  parser.add_option('', '--codesign-keychain', dest='codesign_keychain', help='The keychain to use when invoking the codesign utility.')
+  parser.add_option('-r', '--release', dest='release', help='Build a release. This determines the version number of the release.')
+  parser.add_option('-s', '--snapshot', dest='snapshot', help='Build a snapshot release. This determines the \'snapshot version\'.')
+  parser.add_option('-g', '--git', dest='git', help='Build a snapshot release. Use the git revision number as the \'snapshot version\'.', action='store_true', default=False)
+  parser.add_option('--codesign', dest='codesign', help='Identity to use for code signing. (If not set, no code signing will occur)')
+  parser.add_option('--codesign-keychain', dest='codesign_keychain', help='The keychain to use when invoking the codesign utility.')
 
   options, args = parser.parse_args()
 
@@ -363,16 +363,17 @@ if __name__ == '__main__':
       ver = gitrev()  
       #ver = "0.0.1"
   else:
-    print 'Neither snapshot or release selected. Bailing.'
+    print 'ERROR: Neither snapshot or release selected. Bailing.'
+    parser.print_help ()
     sys.exit(1)
 
 
   # Do the finishing touches to our Application bundle before release
-  a = AppBundle('ChronoChat.app', ver)
+  a = AppBundle('build/ChronoChat.app', ver)
   a.copy_qt_plugins()
   a.handle_libs()
-  a.copy_resources(['demo.icns', 'qt.conf'])
-  a.update_plist()
+  a.copy_resources(['qt.conf'])
+  # a.update_plist()
   a.set_min_macosx_version('10.8.0')
   a.done()
 
@@ -380,18 +381,18 @@ if __name__ == '__main__':
   if options.codesign:
     print ' * Signing binaries with identity `%s\'' % options.codesign
     binaries = (
-      'ChronoChat.app',
+      'build/ChronoChat.app',
     )
 
     codesign(binaries)
     print ''
 
   # Create diskimage
-  title = "ChronosChat %s" % ver
-  fn = "%s.dmg" % title
+  title = "ChronosChat-%s" % ver
+  fn = "build/%s.dmg" % title
   d = DiskImage(fn, title)
   d.symlink('/Applications', '/Applications')
-  d.copy('ChronoChat.app', '/ChronoChat.app')
-  d.copy('README', '/README.txt')
+  d.copy('build/ChronoChat.app', '/ChronoChat.app')
+  d.copy('README.md', '/README.txt')
   d.create()
 

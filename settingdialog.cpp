@@ -50,3 +50,8 @@ SettingDialog::keyPressEvent(QKeyEvent *e)
       QDialog::keyPressEvent(e);
   }
 }
+
+#if WAF
+#include "settingdialog.moc"
+#include "settingdialog.cpp.moc"
+#endif
