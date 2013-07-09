@@ -388,7 +388,7 @@ if __name__ == '__main__':
     print ''
 
   # Create diskimage
-  title = "ChronosChat-%s" % ver
+  title = "ChronoChat-%s" % ver
   fn = "build/%s.dmg" % title
   d = DiskImage(fn, title)
   d.symlink('/Applications', '/Applications')
