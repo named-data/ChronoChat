@@ -148,6 +148,8 @@ def build (bld):
     <string>THIS IS A GENERATED FILE, DO NOT MODIFY</string>
     <key>CFBundleExecutable</key>
     <string>%s</string>
+    <key>LSUIElement</key>
+    <string>1</string>
     <key>SUPublicDSAKeyFile</key>
     <string>dsa_pub.pem</string>
     <key>CFBundleIconFile</key>
@@ -155,8 +157,6 @@ def build (bld):
 </dict>
 </plist>'''
 
-    # <key>LSUIElement</key>
-    # <string>1</string>
         qt.mac_app = "ChronoChat.app"
         qt.mac_plist = app_plist % "ChronoChat"
         qt.mac_resources = 'demo.icns'

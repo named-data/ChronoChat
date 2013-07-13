@@ -254,7 +254,7 @@ ChatDialog::setVisible(bool visible)
 {
   minimizeAction->setEnabled(visible);
   maximizeAction->setEnabled(!isMaximized());
-  restoreAction->setEnabled(isMaximized() || !visible);
+  // restoreAction->setEnabled(isMaximized() || !visible);
 
   raise();  // for MacOS
   activateWindow(); // for Windows

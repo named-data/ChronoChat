@@ -14,9 +14,9 @@ Note that after you click to close ChronoChat, it will keep running on your syst
 ## For those who wants (or is forced to) compile from source code
 -----------------------------------------------------------------
 
-You need pkg-config, protobuf, boost, and qt to compile this app. All of them can be installed through macports.
+You need pkg-config command, protobuf, boost, and qt to compile this app. All of them can be installed through macports.
 The following command should do it:
-$ sudo port install pkg-config protobuf-cpp boost qt4-mac 
+$ sudo port install pkgconfig protobuf-cpp boost qt4-mac
 
 To compile this app:
 
