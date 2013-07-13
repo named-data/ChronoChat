@@ -94,11 +94,11 @@ def configure(conf):
 
     conf.load('boost')
 
-    conf.check_boost(lib='system test iostreams filesystem regex thread date_time random')
+    conf.check_boost(lib='system random')
 
     boost_version = conf.env.BOOST_VERSION.split('_')
-    if int(boost_version[0]) < 1 or int(boost_version[1]) < 46:
-        Logs.error ("Minumum required boost version is 1.46")
+    if int(boost_version[0]) < 1 or int(boost_version[1]) < 48:
+        Logs.error ("Minumum required boost version is 1.48")
         return
 
     # if conf.options._test:
@@ -126,7 +126,7 @@ def build (bld):
         defines = "WAF",
         source = bld.path.ant_glob(['*.cpp', '*.ui', 'demo.qrc', '*.proto']),
         includes = " . ",
-        use = "BOOST BOOST_FILESYSTEM BOOST_RANDOM BOOST_DATE_TIME SQLITE3 QTCORE QTGUI LOG4CXX SYNC",
+        use = "BOOST BOOST_THREAD QTCORE QTGUI SYNC",
         )
 
     if Utils.unversioned_sys_platform () == "darwin":
