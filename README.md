@@ -14,30 +14,90 @@ Note that after you click to close ChronoChat, it will keep running on your syst
 ## For those who wants (or is forced to) compile from source code
 -----------------------------------------------------------------
 
-You need pkg-config command, protobuf, boost, and qt to compile this app. All of them can be installed through macports.
-The following command should do it:
-$ sudo port install pkgconfig protobuf-cpp boost qt4-mac
+### Compilation steps for OSX
 
-To compile this app:
+1. Install MacPorts, if not yet installed (http://www.macports.org/) and configure NDN ports repository (https://github.com/named-data/ccnx/wiki/Using-ccnx-with-macports).  If your Macports are installed in `/opt/local`, add the following line at the end of `/opt/local/etc/macports/sources.conf` before the default port repository:
 
-1. in the top directory, check out the "sync" submodule
+        rsync://macports.named-data.net/macports/
 
-	$ git submodule update --init
+2. Update port definitions and install (+load) required packages
 
-2. go to sync directory, do:
+        $ sudo port selfupdate
 
-	$ ./waf configure
-	$ ./waf
-	$ sudo ./waf install
+        # Install and CCNx
+        sudo port install ccnx
+        sudo port load ccnx
 
-3. back to the top directory, set up environment for pkg-config, make sure libsync.pc is searchable, this is mine:
+        # Install ChronoChat dependencies
+        sudo port install pkgconfig protobuf-cpp boost qt4-mac
 
-	$ export PKG_CONFIG_PATH=/opt/local/lib/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/pkgconfig
+3. Fetch source code with submodules
 
-4. compile Chronos:
+         git clone --recursive git://github.com/named-data/ChronoChat
 
-	$ ./waf configure
-	$ ./waf
+If you already cloned repository, you can update submodules this way:
+
+	git submodule update --init
+
+4. Configure and install libsync
+
+        cd ChronoChat/sync
+	./waf configure
+	./waf
+	sudo ./waf install
+
+5. Configure and build ChronoChat
+
+        cd ..
+        PKG_CONFIG_PATH=/opt/local/lib/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/pkgconfig ./waf configure
+        ./waf
 
 Congratulations! build/ChronoChat.app is ready to use (on a Mac).
+
+### Compilation steps for Ubuntu 12.04
+
+1. Install dependencies 
+
+        # General dependencies (build tools and dependencies for CCNx)
+        sudo apt-get install git libpcap-dev libxml2-dev make libssl-dev libexpat-dev g++ pkg-config
+
+        # ChronoSync/ChronoChat dependencies
+        sudo apt-get install libprotobuf-dev protobuf-compiler libevent-dev
+        sudo apt-get install libboost1.48-all-dev
+        sudo apt-get install qt4-dev-tools
+
+**NOTE** Only 1.48 version of boost libraries should be installed from packages.  Since Ubuntu 12.04 ships with two versions, please make sure that 1.46 is not present, otherwise result is not guaranteed.
+
+2. Download and install NDN fork of CCNx software
+
+        git clone git://github.com/named-data/ccnx
+        cd ccnx
+        ./configure
+        make
+        sudo make install
+
+3. Fetch source code with submodules
+
+         git clone --recursive git://github.com/named-data/ChronoChat
+
+If you already cloned repository, you can update submodules this way:
+
+	git submodule update --init
+
+4. Configure and install libsync
+
+        cd ChronoChat/sync
+	./waf configure
+	./waf
+	sudo ./waf install
+        sudo ldconfig
+
+5. Configure and build ChronoChat
+
+        cd ..
+        ./waf configure
+        ./waf
+
+Congratulations! build/ChronoChat is ready to use.  Do not forget to start ccnd and configure FIB before using ChronoChat.
+
 
