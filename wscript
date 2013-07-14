@@ -5,7 +5,8 @@ APPNAME='ChronoChat'
 from waflib import Build, Logs, Utils, Task, TaskGen, Configure
 
 def options(opt):
-    opt.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
+    grp = opt.add_option_group ("ChronoChat Options")
+    grp.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
     # opt.add_option('--test', action='store_true',default=False,dest='_test',help='''build unit tests''')
     # opt.add_option('--log4cxx', action='store_true',default=False,dest='log4cxx',help='''Compile with log4cxx logging support''')
 
@@ -30,7 +31,7 @@ def configure(conf):
     else:
         conf.add_supported_cxxflags (cxxflags = ['-O3', '-g'])
 
-    conf.check_cfg (package='libsync', args=['--cflags', '--libs'], uselib_store='SYNC', mandatory=True)
+    conf.check_cfg (package='libChronoSync', args=['--cflags', '--libs'], uselib_store='SYNC', mandatory=True)
 
     conf.define ("CHRONOCHAT_VERSION", VERSION)
 

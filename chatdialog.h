@@ -21,7 +21,7 @@
 #include "digesttreescene.h"
 #include "ui_chatdialog.h"
 #include "chatbuf.pb.h"
-#include <sync-app-socket.h>
+#include <ccnx/sync-app-socket.h>
 #include <sync-logic.h>
 #include <sync-seq-no.h>
 #endif
