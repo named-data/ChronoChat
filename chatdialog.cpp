@@ -732,7 +732,7 @@ ChatDialog::readSettings()
   m_minimaniho = settings.value("minimaniho", false).toBool();
   if (nick == "" || chatroom == "" || originPrefix == "") {
     m_user.setOriginPrefix(DEFAULT_LOCAL_PREFIX);
-    m_user.setChatroom("retreat2012");
+    m_user.setChatroom("clue");
     QTimer::singleShot(500, this, SLOT(buttonPressed()));
     return false;
   }
