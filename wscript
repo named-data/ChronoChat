@@ -31,7 +31,9 @@ def configure(conf):
     else:
         conf.add_supported_cxxflags (cxxflags = ['-O3', '-g'])
 
-    conf.check_cfg (package='libChronoSync', args=['--cflags', '--libs'], uselib_store='SYNC', mandatory=True)
+    conf.check_cfg (package='ChronoSync', 
+                    args=['ChronoSync >= 0.1', '--cflags', '--libs'], 
+                    uselib_store='SYNC', mandatory=True)
 
     conf.define ("CHRONOCHAT_VERSION", VERSION)
 

@@ -10,6 +10,19 @@ import sys, os, string, re, shutil, plistlib, tempfile, exceptions, datetime, ta
 from subprocess import Popen, PIPE
 from optparse import OptionParser
 
+import platform
+
+if platform.system () != 'Darwin':
+  print "This script is indended to be run only on OSX platform"
+  exit (1)
+
+SUPPORTED_VERSION = "10.8"
+BINARY_POSTFIX = "MountainLion-10.8"
+
+if '.'.join (platform.mac_ver()[0].split('.')[0:2]) != SUPPORTED_VERSION:
+  print "This script is indended to be run only on OSX %s platform" % SUPPORTED_VERSION
+  exit (1)
+
 options = None
 
 def gitrev():
@@ -28,6 +41,18 @@ def codesign(path):
   return 0
 
 class AppBundle(object):
+
+  def __init__(self, bundle, version, binary):
+    shutil.copytree (src = binary, dst = bundle, symlinks = True)
+
+    self.framework_path = ''
+    self.handled_libs = {}
+    self.bundle = bundle
+    self.version = version
+    self.infopath = os.path.join(os.path.abspath(bundle), 'Contents', 'Info.plist')
+    self.infoplist = plistlib.readPlist(self.infopath)
+    self.binary = os.path.join(os.path.abspath(bundle), 'Contents', 'MacOS', self.infoplist['CFBundleExecutable'])
+    print ' * Preparing AppBundle'
 
   def is_system_lib(self, lib):
     '''
@@ -232,21 +257,6 @@ class AppBundle(object):
           os.system('install_name_tool -id %s %s' % (file, abs))
           self.handle_binary_libs(abs)
 
-  def update_plist(self):
-    '''
-      Modify our bundle's Info.plist to make it ready for release.
-    '''
-    if self.version is not None:
-      print ' * Changing version in Info.plist'
-      p = self.infoplist
-      p['CFBundleVersion'] = self.version
-      p['CFBundleExecutable'] = "ChronoChat"
-      p['CFBundleIconFile'] = 'demo.icns'
-      p['CFBundleGetInfoString'] = '''
-        '''
-      plistlib.writePlist(p, self.infopath)
-
-
   def set_min_macosx_version(self, version):
     '''
       Set the minimum version of Mac OS X version that this App will run on.
@@ -258,16 +268,6 @@ class AppBundle(object):
     plistlib.writePlist(self.infoplist, self.infopath)
     print ' * Done!'
     print ''
-
-  def __init__(self, bundle, version=None):
-    self.framework_path = ''
-    self.handled_libs = {}
-    self.bundle = bundle
-    self.version = version
-    self.infopath = os.path.join(os.path.abspath(bundle), 'Contents', 'Info.plist')
-    self.infoplist = plistlib.readPlist(self.infopath)
-    self.binary = os.path.join(os.path.abspath(bundle), 'Contents', 'MacOS', self.infoplist['CFBundleExecutable'])
-    print ' * Preparing AppBundle'
 
 class FolderObject(object):
   class Exception(exceptions.Exception):
@@ -361,7 +361,6 @@ if __name__ == '__main__':
       ver = options.snapshot
     else:
       ver = gitrev()  
-      #ver = "0.0.1"
   else:
     print 'ERROR: Neither snapshot or release selected. Bailing.'
     parser.print_help ()
@@ -369,12 +368,11 @@ if __name__ == '__main__':
 
 
   # Do the finishing touches to our Application bundle before release
-  a = AppBundle('build/ChronoChat.app', ver)
+  a = AppBundle('build/%s/ChronoChat.app' % (BINARY_POSTFIX), ver, 'build/ChronoChat.app')
   a.copy_qt_plugins()
   a.handle_libs()
   a.copy_resources(['qt.conf'])
-  # a.update_plist()
-  a.set_min_macosx_version('10.8.0')
+  a.set_min_macosx_version('%s.0' % SUPPORTED_VERSION)
   a.done()
 
   # Sign our binaries, etc.
@@ -388,11 +386,10 @@ if __name__ == '__main__':
     print ''
 
   # Create diskimage
-  title = "ChronoChat-%s" % ver
+  title = "ChronoChat-%s-%s" % (ver, BINARY_POSTFIX)
   fn = "build/%s.dmg" % title
   d = DiskImage(fn, title)
   d.symlink('/Applications', '/Applications')
-  d.copy('build/ChronoChat.app', '/ChronoChat.app')
-  d.copy('README.md', '/README.txt')
+  d.copy('build/%s/ChronoChat.app' % BINARY_POSTFIX, '/ChronoChat.app')
   d.create()
 
