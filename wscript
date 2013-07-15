@@ -97,7 +97,7 @@ def configure(conf):
 
     conf.load('boost')
 
-    conf.check_boost(lib='system random')
+    conf.check_boost(lib='system random thread')
 
     boost_version = conf.env.BOOST_VERSION.split('_')
     if int(boost_version[0]) < 1 or int(boost_version[1]) < 48:

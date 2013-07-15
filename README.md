@@ -33,18 +33,21 @@ Note that after you click to close ChronoChat, it will keep running on your syst
 
 3. Fetch source code with submodules
 
-         git clone --recursive git://github.com/named-data/ChronoChat
+        git clone --recursive git://github.com/named-data/ChronoChat
 
 If you already cloned repository, you can update submodules this way:
 
-	git submodule update --init
+        git submodule update --init
 
-4. Configure and install libsync
+4. Configure and install ChronoSync
 
-        cd ChronoChat/sync
-	./waf configure
-	./waf
-	sudo ./waf install
+        cd ChronoChat/ChronoSync
+        ./waf configure
+        ./waf
+        sudo ./waf install
+
+Note, you may need to add ``--ndnx=<DIR>`` or ``--openssl=<DIR>`` flags to ``./waf configure`` 
+if NDNx and/or openssl cannot be found.
 
 5. Configure and build ChronoChat
 
@@ -78,19 +81,22 @@ Congratulations! build/ChronoChat.app is ready to use (on a Mac).
 
 3. Fetch source code with submodules
 
-         git clone --recursive git://github.com/named-data/ChronoChat
+        git clone --recursive git://github.com/named-data/ChronoChat
 
 If you already cloned repository, you can update submodules this way:
 
-	git submodule update --init
+	    git submodule update --init
 
-4. Configure and install libsync
+4. Configure and install ChronoSync
 
-        cd ChronoChat/sync
-	./waf configure
-	./waf
-	sudo ./waf install
+        cd ChronoChat/ChronoSync
+        ./waf configure
+        ./waf
+        sudo ./waf install
         sudo ldconfig
+
+Note, you may need to add ``--ndnx=<DIR>`` or ``--openssl=<DIR>`` flags to ``./waf configure`` 
+if NDNx and/or openssl cannot be found.
 
 5. Configure and build ChronoChat
 
