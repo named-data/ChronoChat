@@ -8,17 +8,23 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
+#include <QApplication>
+
 #include "chronochat.h"
-#include "ui_chronochat.h"
 
-ChronoChat::ChronoChat(QWidget *parent) :
-    QDialog(parent),
-    ui(new Ui::ChronoChat)
+int main(int argc, char *argv[])
 {
-    ui->setupUi(this);
-}
+  QApplication app(argc, argv);
 
-ChronoChat::~ChronoChat()
-{
-    delete ui;
+// #ifdef __APPLE__
+// 	app.setWindowIcon(QIcon(":/demo.icns"));
+// #else
+// 	app.setWindowIcon(QIcon(":/images/icon_large.png"));
+// #endif
+
+  ChronoChat dialog;
+
+  dialog.show ();
+  
+  return app.exec();
 }
