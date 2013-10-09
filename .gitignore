@@ -1,0 +1,8 @@
+.waf-*
+*.pyc
+build/
+.lock*
+*.o
+*.DS_Store
+*~
+
