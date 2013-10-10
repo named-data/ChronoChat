@@ -30,7 +30,7 @@ def build (bld):
         defines = "WAF",
         source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui']),
         includes = ".",
-        use = "BOOST BOOST_THREAD QTCORE QTGUI",
+        use = "QTCORE QTGUI",
         )   
 
 
@@ -48,3 +48,13 @@ def add_supported_cxxflags(self, cxxflags):
 
     self.end_msg (' '.join (supportedFlags))
     self.env.CXXFLAGS += supportedFlags
+
+from waflib.TaskGen import feature, before_method, after_method
+@feature('cxx')
+@after_method('process_source')
+@before_method('apply_incpaths')
+def add_includes_paths(self):
+    incs = set(self.to_list(getattr(self, 'includes', '')))
+    for x in self.compiled_tasks:
+        incs.add(x.inputs[0].parent.path_from(self.path))
+        self.includes = list(incs)

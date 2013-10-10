@@ -22,3 +22,8 @@ ChronoChat::~ChronoChat()
 {
     delete ui;
 }
+
+#if WAF
+#include "chronochat.moc"
+#include "chronochat.cpp.moc"
+#endif
