@@ -11,18 +11,43 @@
 #include "contactpanel.h"
 #include "ui_contactpanel.h"
 
+
+#include <QStringList>
+#include <QItemSelectionModel>
+#include <QModelIndex>
+
 ContactPanel::ContactPanel(QWidget *parent) :
     QDialog(parent),
-    ui(new Ui::ContactPanel)
+    ui(new Ui::ContactPanel),
+    m_contactListModel(new QStringListModel)
 {
     ui->setupUi(this);
+
+    QStringList contactNameList;
+    contactNameList << "Alex" << "Wentao" << "Yingdi";
+
+    m_contactListModel->setStringList(contactNameList);
+    ui->ContactList->setModel(m_contactListModel);
+
+    QItemSelectionModel* selectionModel = ui->ContactList->selectionModel();
+    connect(selectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
+	    this, SLOT(updateSelection(const QItemSelection &, const QItemSelection &)));
 }
 
 ContactPanel::~ContactPanel()
 {
     delete ui;
+    delete m_contactListModel;
 }
 
+void
+ContactPanel::updateSelection(const QItemSelection &selected,
+			      const QItemSelection &deselected)
+{
+  QModelIndexList items = selected.indexes();
+  QString text = m_contactListModel->data(items.first(), Qt::DisplayRole).toString();
+  ui->NameData->setText(text);
+}
 
 #if WAF
 #include "contactpanel.moc"

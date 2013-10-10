@@ -25,7 +25,7 @@ def configure(conf):
 		
 def build (bld):
     qt = bld (
-        target = "ChronoChat",
+        target = "Contacts",
         features = "qt4 cxx cxxprogram",
         defines = "WAF",
         source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui']),

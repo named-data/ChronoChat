@@ -2,6 +2,9 @@
 <ui version="4.0">
  <class>ContactPanel</class>
  <widget class="QDialog" name="ContactPanel">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -10,8 +13,14 @@
     <height>450</height>
    </rect>
   </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Contacts</string>
   </property>
   <widget class="QWidget" name="">
    <property name="geometry">
@@ -26,8 +35,21 @@
     <property name="spacing">
      <number>10</number>
     </property>
+    <property name="sizeConstraint">
+     <enum>QLayout::SetDefaultConstraint</enum>
+    </property>
     <item>
-     <widget class="QListWidget" name="ContactList"/>
+     <widget class="QListView" name="ContactList">
+      <property name="contextMenuPolicy">
+       <enum>Qt::DefaultContextMenu</enum>
+      </property>
+      <property name="acceptDrops">
+       <bool>false</bool>
+      </property>
+      <property name="editTriggers">
+       <set>QAbstractItemView::NoEditTriggers</set>
+      </property>
+     </widget>
     </item>
     <item>
      <widget class="QTabWidget" name="ContactInfo">
@@ -64,14 +86,25 @@
             <number>-1</number>
            </property>
            <item>
-            <widget class="QLabel" name="label">
+            <widget class="QLabel" name="NameSpaceLabel">
+             <property name="font">
+              <font>
+               <weight>75</weight>
+               <bold>true</bold>
+              </font>
+             </property>
              <property name="text">
               <string>Name space</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QLineEdit" name="lineEdit">
+            <widget class="QLineEdit" name="NameSpaceData">
+             <property name="font">
+              <font>
+               <family>Lucida Grande</family>
+              </font>
+             </property>
              <property name="readOnly">
               <bool>true</bool>
              </property>
@@ -82,14 +115,25 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="35,100">
            <item>
-            <widget class="QLabel" name="label_2">
+            <widget class="QLabel" name="NameLabel">
+             <property name="font">
+              <font>
+               <weight>75</weight>
+               <bold>true</bold>
+              </font>
+             </property>
              <property name="text">
               <string>Name</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QLineEdit" name="lineEdit_2">
+            <widget class="QLineEdit" name="NameData">
+             <property name="font">
+              <font>
+               <family>Lucida Grande</family>
+              </font>
+             </property>
              <property name="readOnly">
               <bool>true</bool>
              </property>
@@ -100,14 +144,25 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="35,100">
            <item>
-            <widget class="QLabel" name="label_3">
+            <widget class="QLabel" name="InstitutionLabel">
+             <property name="font">
+              <font>
+               <weight>75</weight>
+               <bold>true</bold>
+              </font>
+             </property>
              <property name="text">
               <string>Institution   </string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QLineEdit" name="lineEdit_3">
+            <widget class="QLineEdit" name="InstitutionData">
+             <property name="font">
+              <font>
+               <family>Lucida Grande</family>
+              </font>
+             </property>
              <property name="readOnly">
               <bool>true</bool>
              </property>

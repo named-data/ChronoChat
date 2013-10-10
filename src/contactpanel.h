@@ -12,6 +12,7 @@
 #define CONTACTPANEL_H
 
 #include <QDialog>
+#include <QStringListModel>
 
 namespace Ui {
 class ContactPanel;
@@ -25,8 +26,14 @@ public:
     explicit ContactPanel(QWidget *parent = 0);
     ~ContactPanel();
 
+private slots:
+  void
+  updateSelection(const QItemSelection &selected,
+                  const QItemSelection &deselected);
+
 private:
     Ui::ContactPanel *ui;
+    QStringListModel* m_contactListModel;
 };
 
 #endif // CONTACTPANEL_H
