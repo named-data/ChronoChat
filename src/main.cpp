@@ -9,6 +9,7 @@
  */
 
 #include <QApplication>
+#include <QSystemTrayIcon>
 
 #include "chronochat.h"
 
@@ -16,15 +17,17 @@ int main(int argc, char *argv[])
 {
   QApplication app(argc, argv);
 
-// #ifdef __APPLE__
-// 	app.setWindowIcon(QIcon(":/demo.icns"));
-// #else
-// 	app.setWindowIcon(QIcon(":/images/icon_large.png"));
-// #endif
+
+//   app.setWindowIcon(QIcon("/Users/yuyingdi/Develop/QT/demo.icns"));
+// // #else
+// // 	app.setWindowIcon(QIcon("/Users/yuyingdi/Develop/QT/images/icon_large.png"));
+// // #endif
 
   ChronoChat dialog;
 
   dialog.show ();
+  dialog.activateWindow ();
+  dialog.raise ();
   
   return app.exec();
 }
