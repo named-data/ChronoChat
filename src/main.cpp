@@ -12,6 +12,7 @@
 #include <QSystemTrayIcon>
 
 #include "chronochat.h"
+#include "contactpanel.h"
 
 int main(int argc, char *argv[])
 {
@@ -23,11 +24,11 @@ int main(int argc, char *argv[])
 // // 	app.setWindowIcon(QIcon("/Users/yuyingdi/Develop/QT/images/icon_large.png"));
 // // #endif
 
-  ChronoChat dialog;
+  ContactPanel contactPanel;
 
-  dialog.show ();
-  dialog.activateWindow ();
-  dialog.raise ();
+  contactPanel.show ();
+  contactPanel.activateWindow ();
+  contactPanel.raise ();
   
   return app.exec();
 }
