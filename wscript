@@ -18,6 +18,9 @@ def configure(conf):
 
     conf.load('boost')
 
+    conf.check_cfg(package='libndn.cxx', args=['--cflags', '--libs'], uselib_store='NDNCXX', mandatory=True)
+    conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
+
     conf.check_boost(lib='system random thread')
 
     conf.write_config_header('config.h')
@@ -30,7 +33,7 @@ def build (bld):
         defines = "WAF",
         source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui']),
         includes = ".",
-        use = "QTCORE QTGUI",
+        use = "QTCORE QTGUI SQLITE3 NDNCXX",
         )   
 
 
