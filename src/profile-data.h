@@ -22,10 +22,9 @@ public:
 
   ProfileData (const ProfileData& profile);
 
-  ~ProfileData () {}
+  ProfileData (const ndn::Data& data);
 
-  static ndn::Ptr<ProfileData> 
-  fromData (const ndn::Data& data);
+  ~ProfileData () {}
 
   inline const ndn::Name&
   getIdentityName() const
