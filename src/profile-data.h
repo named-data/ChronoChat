@@ -23,7 +23,8 @@ public:
   ProfileData (const ProfileData& profile);
 
   ProfileData (const ndn::Data& data);
-
+  
+  virtual
   ~ProfileData () {}
 
   inline const ndn::Name&
