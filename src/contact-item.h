@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CONTACT_ITEM_H
-#define CONTACT_ITEM_H
+#ifndef LINKNDN_CONTACT_ITEM_H
+#define LINKNDN_CONTACT_ITEM_H
 
 #include <ndn.cxx/data.h>
 #include <vector>
@@ -17,7 +17,7 @@
 
 class ContactItem
 {
-  typedef std::vector<Ptr<EndorseCertificate> > EndorseCertificateList;
+  typedef std::vector<ndn::Ptr<EndorseCertificate> > EndorseCertificateList;
 
 public:
   ContactItem(const EndorseCertificate& selfEndorseCertificate,
@@ -25,23 +25,31 @@ public:
   
   ~ContactItem() {}
 
-  const ndn::Name&
+  inline const EndorseCertificate&
+  getSelfEndorseCertificate() const
+  { return m_selfEndorseCertificate; }
+
+  inline const ndn::Name&
   getNameSpace() const
   { return m_namespace; }
 
-  const std::string&
+  inline const std::string&
   getAlias() const
   { return m_alias; }
 
-  const std::string&
+  inline const std::string&
   getName() const
   { return m_name; }
 
-  const std::string&
+  inline const std::string&
   getInstitution() const
   { return m_institution; }
 
-private:
+  inline const ndn::Name
+  getPublicKeyName() const
+  { return m_selfEndorseCertificate.getPublicKeyName(); }
+
+protected:
   EndorseCertificate m_selfEndorseCertificate;
 
   ndn::Name m_namespace;
