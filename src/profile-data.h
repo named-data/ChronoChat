@@ -8,36 +8,35 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef PROFILE_DATA_H
-#define PROFILE_DATA_H
+#ifndef LINKNDN_PROFILE_DATA_H
+#define LINKNDN_PROFILE_DATA_H
 
 #include <ndn.cxx/data.h>
+#include "profile.h"
 
 class ProfileData : public ndn::Data
 {
 public:
-  ProfileData (const ndn::Name& identityName,
-               const std::string& profileType,
-               const ndn::Blob& profileValue);
+  ProfileData(const ndn::Name& identity,
+              const Profile& profile);
 
-  ProfileData (const ProfileData& profile);
+  ProfileData(const ProfileData& profileData);
 
-  ProfileData (const ndn::Data& data);
-  
-  virtual
-  ~ProfileData () {}
+  ProfileData(const ndn::Data& data);
 
-  inline const ndn::Name&
+  ~ProfileData() {}
+
+  inline const ndn::Name& 
   getIdentityName() const
-  { return m_identityName; }
+  { return m_identity; }
 
-  inline const std::string&
-  getProfileType() const
-  { return m_profileType; }
+  inline const Profile&
+  getProfile() const
+  { return m_profile; }
 
 private:
-  ndn::Name m_identityName;
-  std::string m_profileType;
+  ndn::Name m_identity;
+  Profile m_profile;
 };
 
 #endif

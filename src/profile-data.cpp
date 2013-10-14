@@ -10,35 +10,51 @@
 
 #include "profile-data.h"
 #include "exception.h"
-
 #include <ndn.cxx/fields/signature-sha256-with-rsa.h>
 
-using namespace std;
 using namespace ndn;
+using namespace std;
 
-ProfileData::ProfileData (const Name& identityName,
-			  const string& profileType,
-			  const Blob& profileValue)
+ProfileData::ProfileData(const Name& identity,
+			 const Profile& profile)
   : Data()
-  , m_identityName(identityName)
-  , m_profileType(profileType)
+  , m_identity(identity)
+  , m_profile(profile)
 {
-  Name tmpName = identityName;
-  setName(tmpName.append(profileType));
-  setContent(Content(profileValue.buf(), profileValue.size()));
+  Name dataName = identity;
+  TimeInterval ti = time::NowUnixTimestamp();
+  ostringstream oss;
+  oss << ti.total_seconds();
+
+  dataName.append("PROFILE").append(oss.str());
+  setName(dataName);
+  Ptr<Blob> profileBlob = profile.toDerBlob();
+  setContent(Content(profileBlob->buf(), profileBlob->size()));
 }
 
-
-ProfileData::ProfileData (const ProfileData& profile)
+ProfileData::ProfileData(const ProfileData& profileData)
   : Data()
-  , m_identityName(profile.m_identityName)
-  , m_profileType(profile.m_profileType)
+  , m_identity(profileData.m_identity)
+  , m_profile(profileData.m_profile)
 {
-  setName(profile.getName());
-  setContent(profile.getContent());
+  Ptr<const signature::Sha256WithRsa> dataSig = boost::dynamic_pointer_cast<const signature::Sha256WithRsa>(profileData.getSignature());
+  Ptr<signature::Sha256WithRsa> newSig = Ptr<signature::Sha256WithRsa>::Create();
+
+  Ptr<SignedBlob> newSignedBlob = NULL;
+  if(profileData.getSignedBlob() != NULL)
+    newSignedBlob = Ptr<SignedBlob>(new SignedBlob(*profileData.getSignedBlob()));
+  
+  newSig->setKeyLocator(dataSig->getKeyLocator());
+  newSig->setPublisherKeyDigest(dataSig->getPublisherKeyDigest());
+  newSig->setSignatureBits(dataSig->getSignatureBits());
+  
+  setName(profileData.getName());
+  setSignature(newSig);
+  setContent(profileData.getContent());
+  setSignedBlob(newSignedBlob);
 }
- 
-ProfileData::ProfileData (const Data& data)
+
+ProfileData::ProfileData(const Data& data)
   : Data()
 {
   const Name& dataName = data.getName();
@@ -54,12 +70,14 @@ ProfileData::ProfileData (const Data& data)
 	}
     }
 
-  if(profileIndex < 0 || profileIndex + 1 >= dataName.size())
+  if(profileIndex < 0)
     throw LnException("No PROFILE component in data name!");
-  
+
+  m_identity = dataName.getSubName(0, profileIndex);
+
   Ptr<const signature::Sha256WithRsa> dataSig = boost::dynamic_pointer_cast<const signature::Sha256WithRsa>(data.getSignature());
   Ptr<signature::Sha256WithRsa> newSig = Ptr<signature::Sha256WithRsa>::Create();
-
+  
   Ptr<SignedBlob> newSignedBlob = NULL;
   if(data.getSignedBlob() != NULL)
     newSignedBlob = Ptr<SignedBlob>(new SignedBlob(*data.getSignedBlob()));
@@ -73,7 +91,5 @@ ProfileData::ProfileData (const Data& data)
   setContent(data.getContent());
   setSignedBlob(newSignedBlob);
 
-  m_identityName = dataName.getSubName(0, profileIndex);
-  m_profileType = dataName.get(profileIndex+1).toUri();
+  m_profile = *Profile::fromDerBlob(data.content());
 }
-
