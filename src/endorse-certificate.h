@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef LINKEDN_ENDORSE_CERTIFICATE_H
-#define LINKEDN_ENDORSE_CERTIFICATE_H
+#ifndef LINKNDN_ENDORSE_CERTIFICATE_H
+#define LINKNDN_ENDORSE_CERTIFICATE_H
 
 #include <vector>
 #include <ndn.cxx/data.h>
@@ -18,22 +18,54 @@
 
 #include "profile-data.h"
 
+class ProfileExtension : public ndn::security::CertificateExtension
+{
+public:
+  ProfileExtension(const ProfileData& profileData);
+  
+  ProfileExtension(const ProfileExtension& profileExtension);
+
+  ProfileExtension(const CertificateExtension& extension);
+
+  ~ProfileExtension() {}
+
+  ndn::Ptr<ProfileData>
+  getProfileData();
+};
+
 class EndorseExtension : public ndn::security::CertificateExtension
 {
 public:
-  EndorseExtension(const ndn::Blob & value);
+  EndorseExtension(const std::vector<std::string>& endorsedList);
 
-  virtual
+  EndorseExtension(const EndorseExtension& endorseExtension);
+
+  EndorseExtension(const CertificateExtension& extension);
+
   ~EndorseExtension() {}
+
+  std::vector<std::string>
+  getEndorsedList();
+
+private:
+  static ndn::Ptr<ndn::Blob>
+  prepareValue(const std::vector<std::string>& endorsedList);
 };
 
 class EndorseCertificate : public ndn::security::Certificate
 {
 public:
   EndorseCertificate(const ndn::security::IdentityCertificate& kskCertificate,
+                     const ndn::Time& notBefore,
+                     const ndn::Time& notAfter,
+                     ndn::Ptr<ProfileData> profileData,
+                     const std::vector<std::string>& endorseList);
+
+  EndorseCertificate(const EndorseCertificate& endorseCertificate,
                      const ndn::Name& signer,
                      const ndn::Time& notBefore,
-                     const ndn::Time& notAfter);
+                     const ndn::Time& notAfter,
+                     const std::vector<std::string>& endorseList);
 
   EndorseCertificate(const EndorseCertificate& endorseCertificate);
 
@@ -43,32 +75,27 @@ public:
   ~EndorseCertificate()
   {}
 
-  void 
-  addProfile(const ProfileData& profile);
-
-  void
-  encode();
-
   inline const ndn::Name&
   getSigner() const
   { return m_signer; }
 
-  inline const std::vector<ProfileData>&
-  getProfileList() const
-  { return m_profileList; }
+  inline ndn::Ptr<ProfileData>
+  getProfileData() const
+  { return m_profileData; }
 
-  inline ndn::Name
-  getPublicKeyName ()
+  inline const std::vector<std::string>&
+  getEndorseList() const
+  { return m_endorseList; }
+
+  inline virtual ndn::Name
+  getPublicKeyName () const
   { return m_keyName; }
 
-private:
-  void 
-  decode();
-
-private:
+protected:
   ndn::Name m_keyName;
   ndn::Name m_signer;
-  std::vector<ProfileData> m_profileList;
+  ndn::Ptr<ProfileData> m_profileData;
+  std::vector<std::string> m_endorseList;
 };
 
 #endif
