@@ -42,10 +42,10 @@ Profile::setProfileEntry(const string& profileType,
 { m_entries[profileType] = profileValue; }
 
 Ptr<const Blob>
-Profile::getProfileEntry(const string& profileType)
+Profile::getProfileEntry(const string& profileType) const
 {
   if(m_entries.find(profileType) != m_entries.end())
-      return Ptr<Blob>(new Blob(m_entries[profileType].buf(), m_entries[profileType].size()));
+    return Ptr<Blob>(new Blob(m_entries.at(profileType).buf(), m_entries.at(profileType).size()));
 
   return NULL;
 }

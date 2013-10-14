@@ -41,7 +41,7 @@ public:
                   const ndn::Blob& profileValue);
   
   ndn::Ptr<const ndn::Blob>
-  getProfileEntry(const std::string& profileType);
+  getProfileEntry(const std::string& profileType) const;
 
   inline Profile::iterator
   begin()
