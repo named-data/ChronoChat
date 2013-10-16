@@ -17,13 +17,21 @@ using namespace ndn;
 
 Profile::Profile(const Name& identityName)
   : m_identityName(identityName)
-{}
+{
+  const string& nameString = identityName.toUri();
+  Blob identityBlob (nameString.c_str(), nameString.size());
+  m_entries[string("IDENTITY")] = identityBlob;
+}
 
 Profile::Profile(const Name& identityName,
 		 const string& name,
 		 const string& institution)
   : m_identityName(identityName)
 {
+  const string& nameString = identityName.toUri();
+  Blob identityBlob (nameString.c_str(), nameString.size());
+  m_entries[string("IDENTITY")] = identityBlob;
+
   Blob nameBlob (name.c_str(), name.size());
   Blob institutionBlob (institution.c_str(), institution.size());
 

@@ -17,6 +17,8 @@ def configure(conf):
     conf.check_tinyxml(path=conf.options.tinyxml_dir)
     conf.check_cfg(package='libndn.cxx', args=['--cflags', '--libs'], uselib_store='NDNCXX', mandatory=True)
     conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
+    conf.check_cfg(package='liblog4cxx', args=['--cflags', '--libs'], uselib_store='LOG4CXX', mandatory=True)
+    conf.define ("HAVE_LOG4CXX", 1)
 
     conf.check_boost(lib='system random thread filesystem')
 
@@ -28,9 +30,9 @@ def build (bld):
         target = "Contacts",
         features = "qt4 cxx cxxprogram",
         defines = "WAF",
-        source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui']),
+        source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', 'logging.cc']),
         includes = ".",
-        use = "QTCORE QTGUI SQLITE3 NDNCXX TINYXML BOOST BOOST_FILESYSTEM",
+        use = "QTCORE QTGUI QTSQL SQLITE3 NDNCXX TINYXML BOOST BOOST_FILESYSTEM LOG4CXX",
         )   
 
 

@@ -14,13 +14,25 @@
 #include <sqlite3.h>
 #include "trusted-contact.h"
 #include "contact-item.h"
+#include "profile-data.h"
+#include <ndn.cxx/security/identity/identity-manager.h>
+#include <ndn.cxx/fields/signature-sha256-with-rsa.h>
 
 class ContactStorage
 {
 public:
-  ContactStorage();
+  ContactStorage(ndn::Ptr<ndn::security::IdentityManager> identityManager);
   
   ~ContactStorage() {}
+
+  void
+  setSelfProfileIdentity(const ndn::Name& identity);
+
+  void
+  setSelfProfileEntry(const std::string& profileType, const ndn::Blob& profileValue);
+
+  ndn::Ptr<Profile>
+  getSelfProfile();
 
   void
   addTrustedContact(const TrustedContact& trustedContact);
@@ -34,7 +46,13 @@ public:
   std::vector<ndn::Ptr<ContactItem> >
   getAllNormalContacts() const;
 
+  void
+  updateProfileData() const;
+
 private:
+  bool
+  doesSelfEntryExist(const std::string& profileType);
+
   inline bool
   doesTrustedContactExist(const ndn::Name& name)
   { return doesContactExist(name, false); }
@@ -45,8 +63,16 @@ private:
 
   bool
   doesContactExist(const ndn::Name& name, bool normal);
+
+  ndn::Ptr<Profile>
+  getSelfProfile() const;
+
+  ndn::Ptr<ProfileData>
+  getSignedSelfProfileData(const ndn::Name& identity,
+                           const Profile& profile) const;
   
 private:
+  ndn::Ptr<ndn::security::IdentityManager> m_identityManager;
   sqlite3 *m_db;
 };
 

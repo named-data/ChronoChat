@@ -13,6 +13,13 @@
 
 #include <QDialog>
 #include <QStringListModel>
+#include <QtSql/QSqlDatabase>
+
+#include "profileeditor.h"
+
+#ifndef Q_MOC_RUN
+#include "contact-storage.h"
+#endif
 
 namespace Ui {
 class ContactPanel;
@@ -23,17 +30,22 @@ class ContactPanel : public QDialog
     Q_OBJECT
 
 public:
-    explicit ContactPanel(QWidget *parent = 0);
-    ~ContactPanel();
+  explicit ContactPanel(ndn::Ptr<ContactStorage> contactStorage, QWidget *parent = 0);
+  ~ContactPanel();
 
 private slots:
   void
   updateSelection(const QItemSelection &selected,
                   const QItemSelection &deselected);
 
+  void
+  openProfileEditor();
+
 private:
-    Ui::ContactPanel *ui;
-    QStringListModel* m_contactListModel;
+  Ui::ContactPanel *ui;
+  ndn::Ptr<ContactStorage> m_contactStorage;
+  QStringListModel* m_contactListModel;
+  ProfileEditor* m_profileEditor;
 };
 
 #endif // CONTACTPANEL_H
