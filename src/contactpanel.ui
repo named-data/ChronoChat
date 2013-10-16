@@ -56,7 +56,7 @@
       <item>
        <widget class="QTabWidget" name="ContactInfo">
         <property name="currentIndex">
-         <number>0</number>
+         <number>2</number>
         </property>
         <widget class="QWidget" name="General">
          <attribute name="title">
@@ -224,7 +224,7 @@
          <attribute name="title">
           <string>Endorse</string>
          </attribute>
-         <widget class="QTableView" name="endorseList">
+         <widget class="QTableWidget" name="endorseList">
           <property name="geometry">
            <rect>
             <x>20</x>

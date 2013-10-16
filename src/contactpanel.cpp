@@ -33,7 +33,8 @@ ContactPanel::ContactPanel(Ptr<ContactStorage> contactStorage, QWidget *parent)
     , ui(new Ui::ContactPanel)
     , m_contactStorage(contactStorage)
     , m_contactListModel(new QStringListModel)
-    , m_profileEditor(NULL)
+    , m_profileEditor(new ProfileEditor(m_contactStorage))
+    , m_addContactPanel(new AddContactPanel())
 {
   
     ui->setupUi(this);
@@ -51,16 +52,22 @@ ContactPanel::ContactPanel(Ptr<ContactStorage> contactStorage, QWidget *parent)
     ui->ContactList->setModel(m_contactListModel);
 
     QItemSelectionModel* selectionModel = ui->ContactList->selectionModel();
+
     connect(selectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
 	    this, SLOT(updateSelection(const QItemSelection &, const QItemSelection &)));
     connect(ui->EditProfileButton, SIGNAL(clicked()), 
             this, SLOT(openProfileEditor()));
+
+    connect(ui->AddContactButton, SIGNAL(clicked()),
+            this, SLOT(openAddContactPanel()));
 }
 
 ContactPanel::~ContactPanel()
 {
     delete ui;
     delete m_contactListModel;
+    delete m_profileEditor;
+    delete m_addContactPanel;
 }
 
 void
@@ -74,12 +81,11 @@ ContactPanel::updateSelection(const QItemSelection &selected,
 
 void
 ContactPanel::openProfileEditor()
-{
-  if(m_profileEditor == NULL)
-    m_profileEditor = new ProfileEditor(m_contactStorage);
+{ m_profileEditor->show(); }
 
-  m_profileEditor->show();
-}
+void
+ContactPanel::openAddContactPanel()
+{ m_addContactPanel->show(); }
 
 #if WAF
 #include "contactpanel.moc"

@@ -16,6 +16,7 @@
 #include <QtSql/QSqlDatabase>
 
 #include "profileeditor.h"
+#include "addcontactpanel.h"
 
 #ifndef Q_MOC_RUN
 #include "contact-storage.h"
@@ -41,11 +42,15 @@ private slots:
   void
   openProfileEditor();
 
+  void
+  openAddContactPanel();
+
 private:
   Ui::ContactPanel *ui;
   ndn::Ptr<ContactStorage> m_contactStorage;
   QStringListModel* m_contactListModel;
   ProfileEditor* m_profileEditor;
+  AddContactPanel* m_addContactPanel;
 };
 
 #endif // CONTACTPANEL_H
