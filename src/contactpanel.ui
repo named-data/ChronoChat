@@ -22,7 +22,7 @@
   <property name="windowTitle">
    <string>Contacts</string>
   </property>
-  <widget class="QWidget" name="">
+  <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
      <x>11</x>
@@ -175,15 +175,78 @@
           </layout>
          </widget>
         </widget>
-        <widget class="QWidget" name="TrustLevel">
+        <widget class="QWidget" name="TrustScope">
          <attribute name="title">
-          <string>Trust Level</string>
+          <string>Trust Scope</string>
          </attribute>
+         <widget class="QWidget" name="">
+          <property name="geometry">
+           <rect>
+            <x>20</x>
+            <y>10</y>
+            <width>351</width>
+            <height>371</height>
+           </rect>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <item>
+            <widget class="QCheckBox" name="isIntroducer">
+             <property name="text">
+              <string>Set as introducer</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QListView" name="trustScopeList"/>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_4">
+             <item>
+              <widget class="QPushButton" name="addScope">
+               <property name="text">
+                <string>Add Scope</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="addScope_2">
+               <property name="text">
+                <string>Delete Scope</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
         </widget>
         <widget class="QWidget" name="Endorse">
          <attribute name="title">
           <string>Endorse</string>
          </attribute>
+         <widget class="QTableView" name="endorseList">
+          <property name="geometry">
+           <rect>
+            <x>20</x>
+            <y>10</y>
+            <width>351</width>
+            <height>331</height>
+           </rect>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="endorseButton">
+          <property name="geometry">
+           <rect>
+            <x>260</x>
+            <y>350</y>
+            <width>114</width>
+            <height>32</height>
+           </rect>
+          </property>
+          <property name="text">
+           <string>Endorse</string>
+          </property>
+         </widget>
         </widget>
        </widget>
       </item>
