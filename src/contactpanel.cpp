@@ -15,13 +15,34 @@
 #include <QStringList>
 #include <QItemSelectionModel>
 #include <QModelIndex>
+#include <QDir>
 
-ContactPanel::ContactPanel(QWidget *parent) :
-    QDialog(parent),
-    ui(new Ui::ContactPanel),
-    m_contactListModel(new QStringListModel)
+#ifndef Q_MOC_RUN
+#include <boost/filesystem.hpp>
+#include "logging.h"
+#include "exception.h"
+#endif
+
+namespace fs = boost::filesystem;
+using namespace ndn;
+
+INIT_LOGGER("ContactPanel");
+
+ContactPanel::ContactPanel(Ptr<ContactStorage> contactStorage, QWidget *parent) 
+    : QDialog(parent)
+    , ui(new Ui::ContactPanel)
+    , m_contactStorage(contactStorage)
+    , m_contactListModel(new QStringListModel)
+    , m_profileEditor(NULL)
 {
+  
     ui->setupUi(this);
+
+    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+    QString path = (QDir::home().path());
+    path.append(QDir::separator()).append(".chronos").append(QDir::separator()).append("chronos.db");
+    db.setDatabaseName(path);
+    bool ok = db.open();
 
     QStringList contactNameList;
     contactNameList << "Alex" << "Wentao" << "Yingdi";
@@ -32,6 +53,8 @@ ContactPanel::ContactPanel(QWidget *parent) :
     QItemSelectionModel* selectionModel = ui->ContactList->selectionModel();
     connect(selectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
 	    this, SLOT(updateSelection(const QItemSelection &, const QItemSelection &)));
+    connect(ui->EditProfileButton, SIGNAL(clicked()), 
+            this, SLOT(openProfileEditor()));
 }
 
 ContactPanel::~ContactPanel()
@@ -47,6 +70,15 @@ ContactPanel::updateSelection(const QItemSelection &selected,
   QModelIndexList items = selected.indexes();
   QString text = m_contactListModel->data(items.first(), Qt::DisplayRole).toString();
   ui->NameData->setText(text);
+}
+
+void
+ContactPanel::openProfileEditor()
+{
+  if(m_profileEditor == NULL)
+    m_profileEditor = new ProfileEditor(m_contactStorage);
+
+  m_profileEditor->show();
 }
 
 #if WAF
