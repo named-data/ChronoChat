@@ -24,12 +24,14 @@ INIT_LOGGER ("ContactStorage");
 const string INIT_SP_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
   SelfProfile(                                                       \n \
-      profile_id        INTEGER PRIMARY KEY AUTOINCREMENT,           \n \
+      profile_identity  BLOB NOT NULL,                               \n \
       profile_type      BLOB NOT NULL,                               \n \
-      profile_value     BLOB NOT NULL                                \n \
+      profile_value     BLOB NOT NULL,                               \n \
+                                                                     \
+      PRIMARY KEY (profile_identity, profile_type)                   \n \
   );                                                                 \n \
                                                                      \
-CREATE INDEX sp_index ON SelfProfile(profile_type);                  \n \
+CREATE INDEX sp_index ON SelfProfile(profile_identity,profile_type); \n \
 ";
 
 const string INIT_PD_TABLE = "\
@@ -153,13 +155,14 @@ ContactStorage::ContactStorage(Ptr<security::IdentityManager> identityManager)
 }
 
 bool
-ContactStorage::doesSelfEntryExist(const string& profileType)
+ContactStorage::doesSelfEntryExist(const Name& identity, const string& profileType)
 {
   bool result = false;
   
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT count(*) FROM SelfProfile WHERE profile_type=?", -1, &stmt, 0);
+  sqlite3_prepare_v2 (m_db, "SELECT count(*) FROM SelfProfile WHERE profile_type=? and profile_identity=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
 
   int res = sqlite3_step (stmt);
     
@@ -173,69 +176,59 @@ ContactStorage::doesSelfEntryExist(const string& profileType)
   return result;
 }
 
-void
-ContactStorage::setSelfProfileIdentity(const Name& identity)
-{
-  string profileType("IDENTITY");
-  Blob identityBlob(identity.toUri().c_str(), identity.toUri().size());
+// void
+// ContactStorage::setSelfProfileIdentity(const Name& identity)
+// {
+//   string profileType("IDENTITY");
+//   Blob identityBlob(identity.toUri().c_str(), identity.toUri().size());
   
-  sqlite3_stmt *stmt;  
-  if(doesSelfEntryExist(profileType))
-    {
-      sqlite3_prepare_v2 (m_db, "UPDATE SelfProfile SET profile_value=? WHERE profile_type=?", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, identityBlob.buf(), identityBlob.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
-    }
-  else
-    {
-      sqlite3_prepare_v2 (m_db, "INSERT INTO SelfProfile (profile_type, profile_value) values (?, ?)", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, identityBlob.buf(), identityBlob.size(), SQLITE_TRANSIENT);
-    }
-  sqlite3_step (stmt);
-  sqlite3_finalize (stmt);
-}
+//   sqlite3_stmt *stmt;  
+//   if(doesSelfEntryExist(profileType))
+//     {
+//       sqlite3_prepare_v2 (m_db, "UPDATE SelfProfile SET profile_value=? WHERE profile_type=?", -1, &stmt, 0);
+//       sqlite3_bind_text(stmt, 1, identityBlob.buf(), identityBlob.size(), SQLITE_TRANSIENT);
+//       sqlite3_bind_text(stmt, 2, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
+//     }
+//   else
+//     {
+//       sqlite3_prepare_v2 (m_db, "INSERT INTO SelfProfile (profile_type, profile_value) values (?, ?)", -1, &stmt, 0);
+//       sqlite3_bind_text(stmt, 1, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
+//       sqlite3_bind_text(stmt, 2, identityBlob.buf(), identityBlob.size(), SQLITE_TRANSIENT);
+//     }
+//   sqlite3_step (stmt);
+//   sqlite3_finalize (stmt);
+// }
 
 void
-ContactStorage::setSelfProfileEntry(const string& profileType, const Blob& profileValue)
+ContactStorage::setSelfProfileEntry(const Name& identity, const string& profileType, const Blob& profileValue)
 {
-  if(profileType == string("IDENTITY"))
-    return;
-
   sqlite3_stmt *stmt;  
-  if(doesSelfEntryExist(profileType))
+  if(doesSelfEntryExist(identity, profileType))
     {
-      sqlite3_prepare_v2 (m_db, "UPDATE SelfProfile SET profile_value=? WHERE profile_type=?", -1, &stmt, 0);
+      sqlite3_prepare_v2 (m_db, "UPDATE SelfProfile SET profile_value=? WHERE profile_type=? and profile_identity=?", -1, &stmt, 0);
       sqlite3_bind_text(stmt, 1, profileValue.buf(), profileValue.size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 2, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 3, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
     }
   else
     {
-      sqlite3_prepare_v2 (m_db, "INSERT INTO SelfProfile (profile_type, profile_value) values (?, ?)", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, profileValue.buf(), profileValue.size(), SQLITE_TRANSIENT);
+      sqlite3_prepare_v2 (m_db, "INSERT INTO SelfProfile (profile_identity, profile_type, profile_value) values (?, ?, ?)", -1, &stmt, 0);
+      sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 2, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 3, profileValue.buf(), profileValue.size(), SQLITE_TRANSIENT);
     }
   sqlite3_step (stmt);
   sqlite3_finalize (stmt);
 }
 
 Ptr<Profile>
-ContactStorage::getSelfProfile()
+ContactStorage::getSelfProfile(const Name& identity)
 {
-  string idString("IDENTITY");
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2(m_db, "SELECT profile_value FROM SelfProfile WHERE profile_type=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, idString.c_str(), idString.size(), SQLITE_TRANSIENT);
-
-  Name nameSpace;
-  int res = sqlite3_step (stmt);
-  if (res == SQLITE_ROW)
-    nameSpace.append(string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
-
-  Ptr<Profile> profile = Ptr<Profile>(new Profile(nameSpace));
+  Ptr<Profile> profile = Ptr<Profile>(new Profile(identity));
   
-  sqlite3_prepare_v2(m_db, "SELECT profile_type, profile_value FROM SelfProfile WHERE profile_type!=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, idString.c_str(), idString.size(), SQLITE_TRANSIENT);
+  sqlite3_prepare_v2(m_db, "SELECT profile_type, profile_value FROM SelfProfile WHERE profile_identity=", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
   
   while( sqlite3_step (stmt) == SQLITE_ROW)
     {
@@ -370,75 +363,55 @@ ContactStorage::getAllNormalContacts() const
 }
 
 void
-ContactStorage::updateProfileData() const
+ContactStorage::updateProfileData(const Name& identity) const
 {
+  // Get current profile;
+  Ptr<Profile> newProfile = getSelfProfile(identity);
+  if(NULL == newProfile)
+    return;
+  Ptr<Blob> newProfileBlob = newProfile->toDerBlob();
+
+  Ptr<ProfileData> newProfileData = getSignedSelfProfileData(identity, *newProfile);
+  if(NULL != newProfileData)
+    return;
+  Ptr<Blob> newProfileDataBlob = newProfileData->encodeToWire();
+
+
+  // Check if profile exists
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT identity, profile_data FROM ProfileData", -1, &stmt, 0);
+  sqlite3_prepare_v2 (m_db, "SELECT profile_data FROM ProfileData where identity=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
 
   if(sqlite3_step (stmt) != SQLITE_ROW)
     {
       sqlite3_finalize (stmt);
-      return;
-    }
-
-  Name identity(string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
-
-  Ptr<Blob> profileDataBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1)));
-  Ptr<Data> plainData = Data::decodeFromWire(profileDataBlob);
-  const Blob& oldProfileBlob = plainData->content();
-  sqlite3_finalize (stmt);
-  
-  Ptr<Profile> newProfile = getSelfProfile();
-  if(NULL == newProfile)
-    return;
-  Ptr<Blob> newProfileBlob = newProfile->toDerBlob();
-  
-  if(oldProfileBlob == *newProfileBlob)
-    return;
-  
-  string idString("IDENTITY");
-  Ptr<const Blob> identityBlob = newProfile->getProfileEntry(idString);
-  Name newIdentity(string(identityBlob->buf(), identityBlob->size()));
-
-  Ptr<ProfileData> newProfileData = getSignedSelfProfileData(newIdentity, *newProfile);
-  Ptr<Blob> newProfileDataBlob = newProfileData->encodeToWire();
-
-  if(identity == newIdentity)
-    {
-      sqlite3_prepare_v2 (m_db, "UPDATE ProfileData SET profile_data=? WHERE identity=?", -1, &stmt, 0);
+      sqlite3_prepare_v2 (m_db, "INSERT INTO ProfileData (identity, profile_data) values (?, ?)", -1, &stmt, 0);
+      sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 1, newProfileDataBlob->buf(), newProfileDataBlob->size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, newIdentity.toUri().c_str(), newIdentity.toUri().size(), SQLITE_TRANSIENT);
     }
   else
     {
-      sqlite3_prepare_v2 (m_db, "INSERT INTO ProfileData (identity, profile_data) values (?, ?)", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 2, newIdentity.toUri().c_str(), newIdentity.toUri().size(), SQLITE_TRANSIENT);
+      Ptr<Blob> profileDataBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
+      Ptr<Data> plainData = Data::decodeFromWire(profileDataBlob);
+      const Blob& oldProfileBlob = plainData->content();
+      sqlite3_finalize (stmt);
+
+      if(oldProfileBlob == *newProfileBlob)
+        return;
+
+      sqlite3_prepare_v2 (m_db, "UPDATE ProfileData SET profile_data=? WHERE identity=?", -1, &stmt, 0);
       sqlite3_bind_text(stmt, 1, newProfileDataBlob->buf(), newProfileDataBlob->size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
     }
 }
 
 Ptr<Profile>
-ContactStorage::getSelfProfile() const
-{
-  string idString("IDENTITY");
-
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT profile_value FROM SelfProfile WHERE profile_type=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, idString.c_str(), idString.size(), SQLITE_TRANSIENT);
-
-  if(sqlite3_step (stmt) != SQLITE_ROW)
-    {
-      sqlite3_finalize (stmt);
-      return NULL;
-    }
-
-  Name identity(string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
-  
+ContactStorage::getSelfProfile(const Name& identity) const
+{  
   Ptr<Profile> profile = Ptr<Profile>(new Profile(identity));
-  sqlite3_finalize (stmt);
-  
-  sqlite3_prepare_v2 (m_db, "SELECT profile_type, profile_value FROM SelfProfile WHERE profile_type!=? and profile_type!=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, idString.c_str(), idString.size(), SQLITE_TRANSIENT);
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT profile_type, profile_value FROM SelfProfile WHERE profile_identity=?", -1, &stmt, 0);
+  sqlite3_bind_text (stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
 
   while( sqlite3_step (stmt) == SQLITE_ROW)
     {
@@ -455,6 +428,9 @@ ContactStorage::getSignedSelfProfileData(const Name& identity,
                          const Profile& profile) const
 {
   Name certificateName = m_identityManager->getDefaultCertificateNameByIdentity(identity);
+  if(0 == certificateName.size())
+    return NULL;
+
   Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(identity, profile));
   m_identityManager->signByCertificate(*profileData, certificateName);
 

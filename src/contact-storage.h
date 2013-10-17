@@ -26,13 +26,10 @@ public:
   ~ContactStorage() {}
 
   void
-  setSelfProfileIdentity(const ndn::Name& identity);
-
-  void
-  setSelfProfileEntry(const std::string& profileType, const ndn::Blob& profileValue);
+  setSelfProfileEntry(const ndn::Name& identity, const std::string& profileType, const ndn::Blob& profileValue);
 
   ndn::Ptr<Profile>
-  getSelfProfile();
+  getSelfProfile(const ndn::Name& identity);
 
   void
   addTrustedContact(const TrustedContact& trustedContact);
@@ -47,11 +44,11 @@ public:
   getAllNormalContacts() const;
 
   void
-  updateProfileData() const;
+  updateProfileData(const ndn::Name& identity) const;
 
 private:
   bool
-  doesSelfEntryExist(const std::string& profileType);
+  doesSelfEntryExist(const ndn::Name& identity, const std::string& profileType);
 
   inline bool
   doesTrustedContactExist(const ndn::Name& name)
@@ -65,7 +62,7 @@ private:
   doesContactExist(const ndn::Name& name, bool normal);
 
   ndn::Ptr<Profile>
-  getSelfProfile() const;
+  getSelfProfile(const ndn::Name& identity) const;
 
   ndn::Ptr<ProfileData>
   getSignedSelfProfileData(const ndn::Name& identity,
