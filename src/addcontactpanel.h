@@ -41,7 +41,7 @@ private slots:
 
 private:
   Ui::AddContactPanel *ui;
-  Ptr<EndorseCertificate> m_selfEndorseCertificate;
+  ndn::Ptr<EndorseCertificate> m_selfEndorseCertificate;
 };
 
 #endif // ADDCONTACTPANEL_H
