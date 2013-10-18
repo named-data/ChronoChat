@@ -14,7 +14,7 @@
 #include <sqlite3.h>
 #include "trusted-contact.h"
 #include "contact-item.h"
-#include "profile-data.h"
+#include "endorse-certificate.h"
 #include <ndn.cxx/security/identity/identity-manager.h>
 #include <ndn.cxx/fields/signature-sha256-with-rsa.h>
 
@@ -68,9 +68,9 @@ private:
   ndn::Ptr<Profile>
   getSelfProfile(const ndn::Name& identity) const;
 
-  ndn::Ptr<ProfileData>
-  getSignedSelfProfileData(const ndn::Name& identity,
-                           const Profile& profile) const;
+  ndn::Ptr<EndorseCertificate>
+  getSignedSelfEndorseCertificate(const ndn::Name& identity,
+                                  const Profile& profile) const;
   
 private:
   ndn::Ptr<ndn::security::IdentityManager> m_identityManager;

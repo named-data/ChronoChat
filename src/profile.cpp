@@ -10,11 +10,14 @@
 
 #include "profile.h"
 #include <ndn.cxx/helpers/der/der.h>
+#include <ndn.cxx/helpers/der/visitor/print-visitor.h>
 #include <ndn.cxx/helpers/der/visitor/simple-visitor.h>
+#include "logging.h"
 
 using namespace std;
 using namespace ndn;
 
+INIT_LOGGER("Profile");
 Profile::Profile(const Name& identityName)
   : m_identityName(identityName)
 {
@@ -91,7 +94,6 @@ Profile::fromDerBlob(const Blob& derBlob)
     <boost::iostreams::array_source> is (derBlob.buf(), derBlob.size());
 
   Ptr<der::DerSequence> root = DynamicCast<der::DerSequence>(der::DerNode::parse(reinterpret_cast<InputIterator &>(is)));
-  
   const der::DerNodePtrList & children = root->getChildren();
   der::SimpleVisitor simpleVisitor;
   string identityName = boost::any_cast<string>(children[0]->accept(simpleVisitor));
@@ -100,7 +102,7 @@ Profile::fromDerBlob(const Blob& derBlob)
   for(int i = 1; i < children.size(); i++)
     {
       Ptr<der::DerSequence> entry = DynamicCast<der::DerSequence>(children[i]);
-      const der::DerNodePtrList & tuple = root->getChildren();
+      const der::DerNodePtrList & tuple = entry->getChildren();
       string type = boost::any_cast<string>(tuple[0]->accept(simpleVisitor));
       Ptr<Blob> value = boost::any_cast<Ptr<Blob> >(tuple[1]->accept(simpleVisitor));
       profile->setProfileEntry(type, *value);
