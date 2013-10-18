@@ -46,6 +46,9 @@
         <property name="text">
          <string>Get Profile</string>
         </property>
+        <property name="autoDefault">
+         <bool>false</bool>
+        </property>
        </widget>
       </item>
      </layout>
@@ -76,6 +79,9 @@
         <property name="text">
          <string>Add</string>
         </property>
+        <property name="autoDefault">
+         <bool>false</bool>
+        </property>
        </widget>
       </item>
       <item>
@@ -83,12 +89,18 @@
         <property name="text">
          <string>Delete</string>
         </property>
+        <property name="autoDefault">
+         <bool>false</bool>
+        </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="okButton">
         <property name="text">
          <string>OK</string>
+        </property>
+        <property name="autoDefault">
+         <bool>false</bool>
         </property>
        </widget>
       </item>

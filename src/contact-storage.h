@@ -45,7 +45,11 @@ public:
 
   void
   updateProfileData(const ndn::Name& identity) const;
-
+  
+  inline ndn::Ptr<ndn::security::IdentityManager> 
+  getIdentityManager()
+  { return m_identityManager; }
+  
 private:
   bool
   doesSelfEntryExist(const ndn::Name& identity, const std::string& profileType);

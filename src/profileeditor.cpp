@@ -23,31 +23,28 @@ using namespace ndn;
 
 INIT_LOGGER("ProfileEditor");
 
-ProfileEditor::ProfileEditor(Ptr<ContactStorage> contactStorage, QWidget *parent) 
+ProfileEditor::ProfileEditor(Ptr<ContactStorage> contactStorage, 
+                             QWidget *parent) 
     : QDialog(parent)
     , ui(new Ui::ProfileEditor)
     , m_tableModel(new QSqlTableModel())
     , m_contactStorage(contactStorage)
 {
-    ui->setupUi(this);
+  ui->setupUi(this);
+  
+  Name defaultIdentity = contactStorage->getIdentityManager()->getDefaultIdentity();
+  ui->identityInput->setText(defaultIdentity.toUri().c_str());
 
-    connect(ui->addRowButton, SIGNAL(clicked()),
-            this, SLOT(onAddClicked()));
-    connect(ui->deleteRowButton, SIGNAL(clicked()),
-            this, SLOT(onDeleteClicked()));
-    connect(ui->okButton, SIGNAL(clicked()),
-            this, SLOT(onOkClicked()));
-    
-    m_tableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
-    m_tableModel->setTable("SelfProfile");
-    m_tableModel->select();
-    m_tableModel->setHeaderData(0, Qt::Horizontal, QObject::tr("Index"));
-    m_tableModel->setHeaderData(1, Qt::Horizontal, QObject::tr("Type"));
-    m_tableModel->setHeaderData(2, Qt::Horizontal, QObject::tr("Value"));
+  connect(ui->addRowButton, SIGNAL(clicked()),
+          this, SLOT(onAddClicked()));
+  connect(ui->deleteRowButton, SIGNAL(clicked()),
+          this, SLOT(onDeleteClicked()));
+  connect(ui->okButton, SIGNAL(clicked()),
+          this, SLOT(onOkClicked()));
+  connect(ui->getButton, SIGNAL(clicked()),
+          this, SLOT(onGetClicked()));
 
-    ui->profileTable->setModel(m_tableModel);
-    ui->profileTable->setColumnHidden(0, true);
-    ui->profileTable->show();
+
 
 }
 
@@ -61,19 +58,12 @@ void
 ProfileEditor::onAddClicked()
 {
   int rowCount = m_tableModel->rowCount();
-
-  // QSqlRecord record;
-  // QSqlField typeField("profile_type", QVariant::String);
-  // QSqlField valueField("profile_value", QVariant::String);
-  // record.append(typeField);
-  // record.append(valueField);
-  // record.setValue("profile_type", QString("N/A"));
-  // record.setValue("profile_value", QString("N/A"));
-
-  // bool res = m_tableModel->insertRecord(-1, record);
-
-  // res = m_tableModel->submitAll();
+  QSqlRecord record;
+  QSqlField identityField("profile_identity", QVariant::String);
+  record.append(identityField);
+  record.setValue("profile_identity", QString(m_currentIdentity.toUri().c_str()));
   m_tableModel->insertRow(rowCount);
+  m_tableModel->setRecord(rowCount, record);
 }
 
 void
@@ -84,10 +74,8 @@ ProfileEditor::onDeleteClicked()
 
   int i = indexList.size() - 1;  
   for(; i >= 0; i--)
-    {
-      if(0 != indexList[i].row())
-        m_tableModel->removeRow(indexList[i].row());
-    }
+    m_tableModel->removeRow(indexList[i].row());
+    
   m_tableModel->submitAll();
 }
 
@@ -95,7 +83,29 @@ void
 ProfileEditor::onOkClicked()
 {
   m_tableModel->submitAll();
+  m_contactStorage->updateProfileData(m_currentIdentity);
   this->hide();
+}
+
+void
+ProfileEditor::onGetClicked()
+{
+  QString inputIdentity = ui->identityInput->text();
+  m_currentIdentity = Name(inputIdentity.toUtf8().constData());
+  string filter("profile_identity = '");
+  filter.append(m_currentIdentity.toUri()).append("'");
+
+  m_tableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+  m_tableModel->setTable("SelfProfile");
+  m_tableModel->setFilter(filter.c_str());
+  m_tableModel->select();
+  m_tableModel->setHeaderData(0, Qt::Horizontal, QObject::tr("Identity"));
+  m_tableModel->setHeaderData(1, Qt::Horizontal, QObject::tr("Type"));
+  m_tableModel->setHeaderData(2, Qt::Horizontal, QObject::tr("Value"));
+
+  ui->profileTable->setModel(m_tableModel);
+  ui->profileTable->setColumnHidden(0, true);
+  ui->profileTable->show();
 }
 
 #if WAF

@@ -33,7 +33,6 @@ ContactPanel::ContactPanel(Ptr<ContactStorage> contactStorage, QWidget *parent)
     , ui(new Ui::ContactPanel)
     , m_contactStorage(contactStorage)
     , m_contactListModel(new QStringListModel)
-    , m_profileEditor(new ProfileEditor(m_contactStorage))
     , m_addContactPanel(new AddContactPanel())
 {
   
@@ -44,6 +43,8 @@ ContactPanel::ContactPanel(Ptr<ContactStorage> contactStorage, QWidget *parent)
     path.append(QDir::separator()).append(".chronos").append(QDir::separator()).append("chronos.db");
     db.setDatabaseName(path);
     bool ok = db.open();
+
+    m_profileEditor = new ProfileEditor(m_contactStorage);
 
     QStringList contactNameList;
     contactNameList << "Alex" << "Wentao" << "Yingdi";

@@ -365,17 +365,12 @@ ContactStorage::getAllNormalContacts() const
 void
 ContactStorage::updateProfileData(const Name& identity) const
 {
+   _LOG_DEBUG("Enter updateProfileData!");
   // Get current profile;
   Ptr<Profile> newProfile = getSelfProfile(identity);
   if(NULL == newProfile)
     return;
   Ptr<Blob> newProfileBlob = newProfile->toDerBlob();
-
-  Ptr<ProfileData> newProfileData = getSignedSelfProfileData(identity, *newProfile);
-  if(NULL != newProfileData)
-    return;
-  Ptr<Blob> newProfileDataBlob = newProfileData->encodeToWire();
-
 
   // Check if profile exists
   sqlite3_stmt *stmt;
@@ -385,9 +380,19 @@ ContactStorage::updateProfileData(const Name& identity) const
   if(sqlite3_step (stmt) != SQLITE_ROW)
     {
       sqlite3_finalize (stmt);
+
+      Ptr<ProfileData> newProfileData = getSignedSelfProfileData(identity, *newProfile);
+      _LOG_DEBUG("Signing DONE!");
+      if(NULL == newProfileData)
+        return;
+      Ptr<Blob> newProfileDataBlob = newProfileData->encodeToWire();
+
+      _LOG_DEBUG("Before Inserting!");
+
       sqlite3_prepare_v2 (m_db, "INSERT INTO ProfileData (identity, profile_data) values (?, ?)", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 1, newProfileDataBlob->buf(), newProfileDataBlob->size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 2, newProfileDataBlob->buf(), newProfileDataBlob->size(), SQLITE_TRANSIENT);
+      sqlite3_step(stmt);
     }
   else
     {
@@ -399,9 +404,18 @@ ContactStorage::updateProfileData(const Name& identity) const
       if(oldProfileBlob == *newProfileBlob)
         return;
 
+      Ptr<ProfileData> newProfileData = getSignedSelfProfileData(identity, *newProfile);
+      _LOG_DEBUG("Signing DONE!");
+      if(NULL == newProfileData)
+        return;
+      Ptr<Blob> newProfileDataBlob = newProfileData->encodeToWire();
+
+      _LOG_DEBUG("Before Updating!");
+
       sqlite3_prepare_v2 (m_db, "UPDATE ProfileData SET profile_data=? WHERE identity=?", -1, &stmt, 0);
       sqlite3_bind_text(stmt, 1, newProfileDataBlob->buf(), newProfileDataBlob->size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+      sqlite3_step(stmt);
     }
 }
 
@@ -432,6 +446,8 @@ ContactStorage::getSignedSelfProfileData(const Name& identity,
     return NULL;
 
   Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(identity, profile));
+  _LOG_DEBUG("Get ProfileData, size: " << profileData->content().size());
+  _LOG_DEBUG("Get SigningCert, name: " << certificateName.toUri());
   m_identityManager->signByCertificate(*profileData, certificateName);
 
   return profileData;

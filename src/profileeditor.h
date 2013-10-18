@@ -27,7 +27,8 @@ class ProfileEditor : public QDialog
     Q_OBJECT
 
 public:
-  explicit ProfileEditor(ndn::Ptr<ContactStorage> contactStorage, QWidget *parent = 0);
+  explicit ProfileEditor(ndn::Ptr<ContactStorage> contactStorage, 
+                         QWidget *parent = 0);
   
   ~ProfileEditor();
   
@@ -41,11 +42,16 @@ private slots:
   void
   onOkClicked();
 
+  void
+  onGetClicked();
+
 
 private:
   Ui::ProfileEditor *ui;
   QSqlTableModel* m_tableModel;
   ndn::Ptr<ContactStorage> m_contactStorage;
+  ndn::Name m_defaultIdentity;
+  ndn::Name m_currentIdentity;
 };
 
 #endif // PROFILEEDITOR_H
