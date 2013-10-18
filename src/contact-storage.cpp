@@ -454,6 +454,7 @@ ContactStorage::getSignedSelfEndorseCertificate(const Name& identity,
 
   Ptr<security::IdentityCertificate> dskCert = m_identityManager->getCertificate(certificateName);
   Ptr<const signature::Sha256WithRsa> dskCertSig = boost::dynamic_pointer_cast<const signature::Sha256WithRsa>(dskCert->getSignature());
+  // HACK! KSK certificate should be retrieved from network.
   Ptr<security::IdentityCertificate> kskCert = m_identityManager->getCertificate(dskCertSig->getKeyLocator().getKeyName());
 
   vector<string> endorseList;

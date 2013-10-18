@@ -14,6 +14,7 @@
 #include "chronochat.h"
 #include "contactpanel.h"
 #include "contact-storage.h"
+#include "contact-manager.h"
 #include <ndn.cxx/security/identity/identity-manager.h>
 #include <ndn.cxx/security/identity/osx-privatekey-storage.h>
 #include <ndn.cxx/security/identity/basic-identity-storage.h>
@@ -34,7 +35,9 @@ int main(int argc, char *argv[])
   Ptr<security::OSXPrivatekeyStorage> privateStorage = Ptr<security::OSXPrivatekeyStorage>::Create();
   Ptr<security::IdentityManager> identityManager = Ptr<security::IdentityManager>(new security::IdentityManager(publicStorage, privateStorage));
   Ptr<ContactStorage> contactStorage = Ptr<ContactStorage>(new ContactStorage(identityManager));
-  ContactPanel contactPanel(contactStorage);
+  Ptr<ContactManager> contactManager = Ptr<ContactManager>(new ContactManager(contactStorage));
+  ContactPanel contactPanel(contactManager);
+
 
   contactPanel.show ();
   contactPanel.activateWindow ();
