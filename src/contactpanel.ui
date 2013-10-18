@@ -56,7 +56,7 @@
       <item>
        <widget class="QTabWidget" name="ContactInfo">
         <property name="currentIndex">
-         <number>2</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="General">
          <attribute name="title">
@@ -179,7 +179,7 @@
          <attribute name="title">
           <string>Trust Scope</string>
          </attribute>
-         <widget class="QWidget" name="">
+         <widget class="QWidget" name="layoutWidget">
           <property name="geometry">
            <rect>
             <x>20</x>
