@@ -33,7 +33,16 @@ def build (bld):
         source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', 'logging.cc']),
         includes = ".",
         use = "QTCORE QTGUI QTSQL SQLITE3 NDNCXX TINYXML BOOST BOOST_FILESYSTEM LOG4CXX",
-        )   
+        )
+
+    cert_publish = bld (
+        target = "CertPublish",
+        features = "cxx cxxprogram",
+        defines = "WAF",
+        source = bld.path.ant_glob(['tmp/cert-publish.cpp']),
+        includes = ".",
+        use = "SQLITE3 NDNCXX BOOST BOOST_FILESYSTEM LOG4CXX",
+        )
 
 
 @Configure.conf

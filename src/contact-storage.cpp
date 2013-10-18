@@ -13,6 +13,9 @@
 
 #include <string>
 #include <boost/filesystem.hpp>
+#include <ndn.cxx/fields/signature-sha256-with-rsa.h>
+#include <ndn.cxx/security/exception.h>
+#include <ndn.cxx/helpers/der/exception.h>
 #include "logging.h"
 
 using namespace std;
@@ -365,7 +368,6 @@ ContactStorage::getAllNormalContacts() const
 void
 ContactStorage::updateProfileData(const Name& identity) const
 {
-   _LOG_DEBUG("Enter updateProfileData!");
   // Get current profile;
   Ptr<Profile> newProfile = getSelfProfile(identity);
   if(NULL == newProfile)
@@ -381,39 +383,41 @@ ContactStorage::updateProfileData(const Name& identity) const
     {
       sqlite3_finalize (stmt);
 
-      Ptr<ProfileData> newProfileData = getSignedSelfProfileData(identity, *newProfile);
+      Ptr<EndorseCertificate> newEndorseCertificate = getSignedSelfEndorseCertificate(identity, *newProfile);
       _LOG_DEBUG("Signing DONE!");
-      if(NULL == newProfileData)
+      if(NULL == newEndorseCertificate)
         return;
-      Ptr<Blob> newProfileDataBlob = newProfileData->encodeToWire();
+      Ptr<Blob> newEndorseCertificateBlob = newEndorseCertificate->encodeToWire();
 
       _LOG_DEBUG("Before Inserting!");
 
       sqlite3_prepare_v2 (m_db, "INSERT INTO ProfileData (identity, profile_data) values (?, ?)", -1, &stmt, 0);
       sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, newProfileDataBlob->buf(), newProfileDataBlob->size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 2, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
       sqlite3_step(stmt);
     }
   else
     {
       Ptr<Blob> profileDataBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
       Ptr<Data> plainData = Data::decodeFromWire(profileDataBlob);
-      const Blob& oldProfileBlob = plainData->content();
+      EndorseCertificate oldEndorseCertificate(*plainData);    
+      // _LOG_DEBUG("Certificate converted!");
+      const Blob& oldProfileBlob = oldEndorseCertificate.getProfileData()->content();
       sqlite3_finalize (stmt);
 
       if(oldProfileBlob == *newProfileBlob)
         return;
 
-      Ptr<ProfileData> newProfileData = getSignedSelfProfileData(identity, *newProfile);
+      Ptr<EndorseCertificate> newEndorseCertificate = getSignedSelfEndorseCertificate(identity, *newProfile);
       _LOG_DEBUG("Signing DONE!");
-      if(NULL == newProfileData)
+      if(NULL == newEndorseCertificate)
         return;
-      Ptr<Blob> newProfileDataBlob = newProfileData->encodeToWire();
+      Ptr<Blob> newEndorseCertificateBlob = newEndorseCertificate->encodeToWire();
 
       _LOG_DEBUG("Before Updating!");
 
       sqlite3_prepare_v2 (m_db, "UPDATE ProfileData SET profile_data=? WHERE identity=?", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, newProfileDataBlob->buf(), newProfileDataBlob->size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 1, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
       sqlite3_step(stmt);
     }
@@ -437,19 +441,33 @@ ContactStorage::getSelfProfile(const Name& identity) const
   return profile;
 }
 
-Ptr<ProfileData>
-ContactStorage::getSignedSelfProfileData(const Name& identity,
-                         const Profile& profile) const
+Ptr<EndorseCertificate>
+ContactStorage::getSignedSelfEndorseCertificate(const Name& identity,
+                                                const Profile& profile) const
 {
   Name certificateName = m_identityManager->getDefaultCertificateNameByIdentity(identity);
   if(0 == certificateName.size())
     return NULL;
 
   Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(identity, profile));
-  _LOG_DEBUG("Get ProfileData, size: " << profileData->content().size());
-  _LOG_DEBUG("Get SigningCert, name: " << certificateName.toUri());
   m_identityManager->signByCertificate(*profileData, certificateName);
 
-  return profileData;
+  Ptr<security::IdentityCertificate> dskCert = m_identityManager->getCertificate(certificateName);
+  Ptr<const signature::Sha256WithRsa> dskCertSig = boost::dynamic_pointer_cast<const signature::Sha256WithRsa>(dskCert->getSignature());
+  Ptr<security::IdentityCertificate> kskCert = m_identityManager->getCertificate(dskCertSig->getKeyLocator().getKeyName());
+
+  vector<string> endorseList;
+  Profile::const_iterator it = profile.begin();
+  for(; it != profile.end(); it++)
+    endorseList.push_back(it->first);
+  
+  Ptr<EndorseCertificate> selfEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(*kskCert,
+                                                                                                  kskCert->getNotBefore(),
+                                                                                                  kskCert->getNotAfter(),
+                                                                                                  profileData,
+                                                                                                  endorseList));
+  m_identityManager->signByCertificate(*selfEndorseCertificate, kskCert->getName());
+
+  return selfEndorseCertificate;
 }
 
