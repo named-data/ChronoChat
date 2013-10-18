@@ -28,12 +28,12 @@ using namespace ndn;
 
 INIT_LOGGER("ContactPanel");
 
-ContactPanel::ContactPanel(Ptr<ContactStorage> contactStorage, QWidget *parent) 
+ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent) 
     : QDialog(parent)
     , ui(new Ui::ContactPanel)
-    , m_contactStorage(contactStorage)
+    , m_contactManager(contactManager)
     , m_contactListModel(new QStringListModel)
-    , m_addContactPanel(new AddContactPanel())
+    , m_addContactPanel(new AddContactPanel(contactManager))
 {
   
     ui->setupUi(this);
@@ -44,7 +44,7 @@ ContactPanel::ContactPanel(Ptr<ContactStorage> contactStorage, QWidget *parent)
     db.setDatabaseName(path);
     bool ok = db.open();
 
-    m_profileEditor = new ProfileEditor(m_contactStorage);
+    m_profileEditor = new ProfileEditor(m_contactManager->getContactStorage());
 
     QStringList contactNameList;
     contactNameList << "Alex" << "Wentao" << "Yingdi";

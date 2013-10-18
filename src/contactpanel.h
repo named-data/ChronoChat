@@ -19,7 +19,7 @@
 #include "addcontactpanel.h"
 
 #ifndef Q_MOC_RUN
-#include "contact-storage.h"
+#include "contact-manager.h"
 #endif
 
 namespace Ui {
@@ -31,7 +31,7 @@ class ContactPanel : public QDialog
     Q_OBJECT
 
 public:
-  explicit ContactPanel(ndn::Ptr<ContactStorage> contactStorage, QWidget *parent = 0);
+  explicit ContactPanel(ndn::Ptr<ContactManager> contactManager, QWidget *parent = 0);
   ~ContactPanel();
 
 private slots:
@@ -47,7 +47,7 @@ private slots:
 
 private:
   Ui::ContactPanel *ui;
-  ndn::Ptr<ContactStorage> m_contactStorage;
+  ndn::Ptr<ContactManager> m_contactManager;
   QStringListModel* m_contactListModel;
   ProfileEditor* m_profileEditor;
   AddContactPanel* m_addContactPanel;

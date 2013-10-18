@@ -15,6 +15,7 @@
 
 #ifndef Q_MOC_RUN
 #include "endorse-certificate.h"
+#include "contact-manager.h"
 #endif
 
 namespace Ui {
@@ -23,11 +24,13 @@ class AddContactPanel;
 
 class AddContactPanel : public QDialog
 {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
-    explicit AddContactPanel(QWidget *parent = 0);
-    ~AddContactPanel();
+  explicit AddContactPanel(ndn::Ptr<ContactManager> contactManager,
+                           QWidget *parent = 0);
+
+  ~AddContactPanel();
 
 private slots:
   void
@@ -41,7 +44,7 @@ private slots:
 
 private:
   Ui::AddContactPanel *ui;
-  ndn::Ptr<EndorseCertificate> m_selfEndorseCertificate;
+  ndn::Ptr<ContactManager> m_contactManager;
 };
 
 #endif // ADDCONTACTPANEL_H

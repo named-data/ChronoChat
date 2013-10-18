@@ -11,10 +11,11 @@
 #include "addcontactpanel.h"
 #include "ui_addcontactpanel.h"
 
-AddContactPanel::AddContactPanel(QWidget *parent) 
+AddContactPanel::AddContactPanel(ndn::Ptr<ContactManager> contactManager,
+                                 QWidget *parent) 
   : QDialog(parent)
   , ui(new Ui::AddContactPanel)
-  , m_selfEndorseCertificate(NULL)
+  , m_contactManager(contactManager)
 {
   ui->setupUi(this);
 
