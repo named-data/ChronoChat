@@ -26,8 +26,8 @@ AddContactPanel::AddContactPanel(Ptr<ContactManager> contactManager,
           this, SLOT(onCancelClicked()));
   connect(ui->searchButton, SIGNAL(clicked()),
           this, SLOT(onSearchClicked()));
-  connect(&*m_contactManager, SIGNAL(contactFetched(Ptr<EndorseCertificate>)),
-          this, SLOT(selfEndorseCertificateFetched(Ptr<EndorseCertificate>)));
+  connect(&*m_contactManager, SIGNAL(contactFetched(ndn::Ptr<EndorseCertificate>)),
+          this, SLOT(selfEndorseCertificateFetched(ndn::Ptr<EndorseCertificate>)));
 }
 
 AddContactPanel::~AddContactPanel()
