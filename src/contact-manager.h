@@ -17,7 +17,7 @@
 #include "contact-storage.h"
 #include "dns-storage.h"
 #include "endorse-certificate.h"
-#include "ndn.cxx/wrapper/wrapper.h"
+#include <ndn.cxx/wrapper/wrapper.h>
 #endif
 
 
@@ -27,7 +27,8 @@ class ContactManager : public QObject
 
 public:
   ContactManager(ndn::Ptr<ContactStorage> contactStorage,
-                 ndn::Ptr<DnsStorage> dnsStorage);
+                 ndn::Ptr<DnsStorage> dnsStorage,
+                 QObject* parent = 0);
 
   ~ContactManager();
 

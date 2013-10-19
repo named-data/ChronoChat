@@ -34,15 +34,15 @@ CREATE TABLE IF NOT EXISTS                                           \n \
 CREATE INDEX sp_index ON SelfProfile(profile_identity,profile_type); \n \
 ";
 
-const string INIT_PD_TABLE = "\
+const string INIT_SE_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
-  ProfileData(                                                       \n \
+  SelfEndorse(                                                       \n \
       identity          BLOB NOT NULL UNIQUE,                        \n \
-      profile_data      BLOB NOT NULL,                               \n \
+      endorse_data      BLOB NOT NULL,                               \n \
                                                                      \
       PRIMARY KEY (identity)                                         \n \
   );                                                                 \n \
-CREATE INDEX pd_index ON ProfileData(identity);                      \n \
+CREATE INDEX se_index ON SelfEndorse(identity);                      \n \
 ";
 
 const string INIT_TC_TABLE = "\
@@ -99,21 +99,21 @@ ContactStorage::ContactStorage()
         throw LnException("Init \"error\" in SelfProfile");
     }
 
-  // Check if ProfileData table exists
-  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='ProfileData'", -1, &stmt, 0);
+  // Check if SelfEndorse table exists
+  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='SelfEndorse'", -1, &stmt, 0);
   res = sqlite3_step (stmt);
 
-  bool pdTableExist = false;
+  bool seTableExist = false;
   if (res == SQLITE_ROW)
-      pdTableExist = true;
+      seTableExist = true;
   sqlite3_finalize (stmt);
 
-  if(!pdTableExist)
+  if(!seTableExist)
     {
       char *errmsg = 0;
-      res = sqlite3_exec (m_db, INIT_PD_TABLE.c_str (), NULL, NULL, &errmsg);
+      res = sqlite3_exec (m_db, INIT_SE_TABLE.c_str (), NULL, NULL, &errmsg);
       if (res != SQLITE_OK && errmsg != 0)
-        throw LnException("Init \"error\" in ProfileData");
+        throw LnException("Init \"error\" in SelfEndorse");
     }
 
 
@@ -360,7 +360,7 @@ Ptr<Blob>
 ContactStorage::getSelfEndorseCertificate(const Name& identity)
 {
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT profile_data FROM ProfileData where identity=?", -1, &stmt, 0);
+  sqlite3_prepare_v2 (m_db, "SELECT endorse_data FROM SelfEndorse where identity=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
 
   Ptr<Blob> result = NULL;
@@ -378,7 +378,7 @@ ContactStorage::updateSelfEndorseCertificate(Ptr<EndorseCertificate> newEndorseC
   Ptr<Blob> newEndorseCertificateBlob = newEndorseCertificate->encodeToWire();
 
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "UPDATE ProfileData SET profile_data=? WHERE identity=?", -1, &stmt, 0);
+  sqlite3_prepare_v2 (m_db, "UPDATE SelfEndorse SET endorse_data=? WHERE identity=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
   sqlite3_step(stmt);
@@ -390,7 +390,7 @@ ContactStorage::addSelfEndorseCertificate(Ptr<EndorseCertificate> newEndorseCert
   Ptr<Blob> newEndorseCertificateBlob = newEndorseCertificate->encodeToWire();
 
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "INSERT INTO ProfileData (identity, profile_data) values (?, ?)", -1, &stmt, 0);
+  sqlite3_prepare_v2 (m_db, "INSERT INTO SelfEndorse (identity, endorse_data) values (?, ?)", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 2, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
   sqlite3_step(stmt);

@@ -20,14 +20,19 @@
 #include <ndn.cxx/security/cache/ttl-certificate-cache.h>
 #include <ndn.cxx/security/encryption/basic-encryption-manager.h>
 #include <fstream>
+#include "logging.h"
 #endif
 
 using namespace ndn;
 using namespace ndn::security;
 
+INIT_LOGGER("ContactManager");
+
 ContactManager::ContactManager(Ptr<ContactStorage> contactStorage,
-                               Ptr<DnsStorage> dnsStorage)
-  : m_contactStorage(contactStorage)
+                               Ptr<DnsStorage> dnsStorage,
+                               QObject* parent)
+  : QObject(parent)
+  , m_contactStorage(contactStorage)
   , m_dnsStorage(dnsStorage)
 {
   setKeychain();
@@ -134,7 +139,7 @@ ContactManager::updateProfileData(const Name& identity)
       // _LOG_DEBUG("Signing DONE!");
       if(NULL == newEndorseCertificate)
         return;
-
+      _LOG_DEBUG("About to update");
       m_contactStorage->updateSelfEndorseCertificate(newEndorseCertificate, identity);
 
       publishSelfEndorseCertificateInDNS(newEndorseCertificate);
@@ -145,7 +150,7 @@ ContactManager::updateProfileData(const Name& identity)
       // _LOG_DEBUG("Signing DONE!");
       if(NULL == newEndorseCertificate)
         return;
-      
+      _LOG_DEBUG("About to Insert");
       m_contactStorage->addSelfEndorseCertificate(newEndorseCertificate, identity);
 
       publishSelfEndorseCertificateInDNS(newEndorseCertificate);
@@ -249,6 +254,8 @@ ContactManager::publishSelfEndorseCertificateInDNS(Ptr<EndorseCertificate> selfE
   data->setContent(content);
 
   m_keychain->signByIdentity(*data, identity);
+
+  m_dnsStorage->updateDnsSelfProfileData(*data, identity);
   
   Ptr<Blob> dnsBlob = data->encodeToWire();
 
