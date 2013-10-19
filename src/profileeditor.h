@@ -15,7 +15,7 @@
 #include <QtSql/QSqlTableModel>
 
 #ifndef Q_MOC_RUN
-#include "contact-storage.h"
+#include "contact-manager.h"
 #endif
 
 namespace Ui {
@@ -27,7 +27,7 @@ class ProfileEditor : public QDialog
     Q_OBJECT
 
 public:
-  explicit ProfileEditor(ndn::Ptr<ContactStorage> contactStorage, 
+  explicit ProfileEditor(ndn::Ptr<ContactManager> contactManager, 
                          QWidget *parent = 0);
   
   ~ProfileEditor();
@@ -49,7 +49,7 @@ private slots:
 private:
   Ui::ProfileEditor *ui;
   QSqlTableModel* m_tableModel;
-  ndn::Ptr<ContactStorage> m_contactStorage;
+  ndn::Ptr<ContactManager> m_contactManager;
   ndn::Name m_defaultIdentity;
   ndn::Name m_currentIdentity;
 };

@@ -23,16 +23,16 @@ using namespace ndn;
 
 INIT_LOGGER("ProfileEditor");
 
-ProfileEditor::ProfileEditor(Ptr<ContactStorage> contactStorage, 
+ProfileEditor::ProfileEditor(Ptr<ContactManager> contactManager, 
                              QWidget *parent) 
     : QDialog(parent)
     , ui(new Ui::ProfileEditor)
     , m_tableModel(new QSqlTableModel())
-    , m_contactStorage(contactStorage)
+    , m_contactManager(contactManager)
 {
   ui->setupUi(this);
   
-  Name defaultIdentity = contactStorage->getIdentityManager()->getDefaultIdentity();
+  Name defaultIdentity = contactManager->getDefaultIdentity();
   ui->identityInput->setText(defaultIdentity.toUri().c_str());
 
   connect(ui->addRowButton, SIGNAL(clicked()),
@@ -83,7 +83,7 @@ void
 ProfileEditor::onOkClicked()
 {
   m_tableModel->submitAll();
-  m_contactStorage->updateProfileData(m_currentIdentity);
+  m_contactManager->updateProfileData(m_currentIdentity);
   this->hide();
 }
 

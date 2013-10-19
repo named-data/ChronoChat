@@ -11,11 +11,8 @@
 #include "contact-storage.h"
 #include "exception.h"
 
-#include <string>
 #include <boost/filesystem.hpp>
 #include <ndn.cxx/fields/signature-sha256-with-rsa.h>
-#include <ndn.cxx/security/exception.h>
-#include <ndn.cxx/helpers/der/exception.h>
 #include "logging.h"
 
 using namespace std;
@@ -75,8 +72,7 @@ CREATE TABLE IF NOT EXISTS                                           \n \
 CREATE INDEX nc_index ON NormalContact(contact_namespace);           \n \
 ";
 
-ContactStorage::ContactStorage(Ptr<security::IdentityManager> identityManager)
-  : m_identityManager(identityManager)
+ContactStorage::ContactStorage()
 {
   fs::path chronosDir = fs::path(getenv("HOME")) / ".chronos";
   fs::create_directories (chronosDir);
@@ -178,29 +174,6 @@ ContactStorage::doesSelfEntryExist(const Name& identity, const string& profileTy
   sqlite3_finalize (stmt); 
   return result;
 }
-
-// void
-// ContactStorage::setSelfProfileIdentity(const Name& identity)
-// {
-//   string profileType("IDENTITY");
-//   Blob identityBlob(identity.toUri().c_str(), identity.toUri().size());
-  
-//   sqlite3_stmt *stmt;  
-//   if(doesSelfEntryExist(profileType))
-//     {
-//       sqlite3_prepare_v2 (m_db, "UPDATE SelfProfile SET profile_value=? WHERE profile_type=?", -1, &stmt, 0);
-//       sqlite3_bind_text(stmt, 1, identityBlob.buf(), identityBlob.size(), SQLITE_TRANSIENT);
-//       sqlite3_bind_text(stmt, 2, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
-//     }
-//   else
-//     {
-//       sqlite3_prepare_v2 (m_db, "INSERT INTO SelfProfile (profile_type, profile_value) values (?, ?)", -1, &stmt, 0);
-//       sqlite3_bind_text(stmt, 1, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
-//       sqlite3_bind_text(stmt, 2, identityBlob.buf(), identityBlob.size(), SQLITE_TRANSIENT);
-//     }
-//   sqlite3_step (stmt);
-//   sqlite3_finalize (stmt);
-// }
 
 void
 ContactStorage::setSelfProfileEntry(const Name& identity, const string& profileType, const Blob& profileValue)
@@ -365,64 +338,6 @@ ContactStorage::getAllNormalContacts() const
   return normalContacts;
 }
 
-void
-ContactStorage::updateProfileData(const Name& identity) const
-{
-  // Get current profile;
-  Ptr<Profile> newProfile = getSelfProfile(identity);
-  if(NULL == newProfile)
-    return;
-  Ptr<Blob> newProfileBlob = newProfile->toDerBlob();
-
-  // Check if profile exists
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT profile_data FROM ProfileData where identity=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-
-  if(sqlite3_step (stmt) != SQLITE_ROW)
-    {
-      sqlite3_finalize (stmt);
-
-      Ptr<EndorseCertificate> newEndorseCertificate = getSignedSelfEndorseCertificate(identity, *newProfile);
-      _LOG_DEBUG("Signing DONE!");
-      if(NULL == newEndorseCertificate)
-        return;
-      Ptr<Blob> newEndorseCertificateBlob = newEndorseCertificate->encodeToWire();
-
-      _LOG_DEBUG("Before Inserting!");
-
-      sqlite3_prepare_v2 (m_db, "INSERT INTO ProfileData (identity, profile_data) values (?, ?)", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
-      sqlite3_step(stmt);
-    }
-  else
-    {
-      Ptr<Blob> profileDataBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
-      Ptr<Data> plainData = Data::decodeFromWire(profileDataBlob);
-      EndorseCertificate oldEndorseCertificate(*plainData);    
-      // _LOG_DEBUG("Certificate converted!");
-      const Blob& oldProfileBlob = oldEndorseCertificate.getProfileData()->content();
-      sqlite3_finalize (stmt);
-
-      if(oldProfileBlob == *newProfileBlob)
-        return;
-
-      Ptr<EndorseCertificate> newEndorseCertificate = getSignedSelfEndorseCertificate(identity, *newProfile);
-      _LOG_DEBUG("Signing DONE!");
-      if(NULL == newEndorseCertificate)
-        return;
-      Ptr<Blob> newEndorseCertificateBlob = newEndorseCertificate->encodeToWire();
-
-      _LOG_DEBUG("Before Updating!");
-
-      sqlite3_prepare_v2 (m_db, "UPDATE ProfileData SET profile_data=? WHERE identity=?", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-      sqlite3_step(stmt);
-    }
-}
-
 Ptr<Profile>
 ContactStorage::getSelfProfile(const Name& identity) const
 {  
@@ -441,34 +356,42 @@ ContactStorage::getSelfProfile(const Name& identity) const
   return profile;
 }
 
-Ptr<EndorseCertificate>
-ContactStorage::getSignedSelfEndorseCertificate(const Name& identity,
-                                                const Profile& profile) const
+Ptr<Blob>
+ContactStorage::getSelfEndorseCertificate(const Name& identity)
 {
-  Name certificateName = m_identityManager->getDefaultCertificateNameByIdentity(identity);
-  if(0 == certificateName.size())
-    return NULL;
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT profile_data FROM ProfileData where identity=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
 
-  Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(identity, profile));
-  m_identityManager->signByCertificate(*profileData, certificateName);
+  Ptr<Blob> result = NULL;
+  if(sqlite3_step (stmt) == SQLITE_ROW)
+    result = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
 
-  Ptr<security::IdentityCertificate> dskCert = m_identityManager->getCertificate(certificateName);
-  Ptr<const signature::Sha256WithRsa> dskCertSig = boost::dynamic_pointer_cast<const signature::Sha256WithRsa>(dskCert->getSignature());
-  // HACK! KSK certificate should be retrieved from network.
-  Ptr<security::IdentityCertificate> kskCert = m_identityManager->getCertificate(dskCertSig->getKeyLocator().getKeyName());
+  sqlite3_finalize (stmt);
 
-  vector<string> endorseList;
-  Profile::const_iterator it = profile.begin();
-  for(; it != profile.end(); it++)
-    endorseList.push_back(it->first);
-  
-  Ptr<EndorseCertificate> selfEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(*kskCert,
-                                                                                                  kskCert->getNotBefore(),
-                                                                                                  kskCert->getNotAfter(),
-                                                                                                  profileData,
-                                                                                                  endorseList));
-  m_identityManager->signByCertificate(*selfEndorseCertificate, kskCert->getName());
-
-  return selfEndorseCertificate;
+  return result;
 }
 
+void
+ContactStorage::updateSelfEndorseCertificate(Ptr<EndorseCertificate> newEndorseCertificate, const Name& identity)
+{
+  Ptr<Blob> newEndorseCertificateBlob = newEndorseCertificate->encodeToWire();
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "UPDATE ProfileData SET profile_data=? WHERE identity=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+  sqlite3_step(stmt);
+}
+
+void
+ContactStorage::addSelfEndorseCertificate(Ptr<EndorseCertificate> newEndorseCertificate, const Name& identity)
+{
+  Ptr<Blob> newEndorseCertificateBlob = newEndorseCertificate->encodeToWire();
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "INSERT INTO ProfileData (identity, profile_data) values (?, ?)", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
+  sqlite3_step(stmt);
+}
