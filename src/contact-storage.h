@@ -18,12 +18,15 @@
 #include <ndn.cxx/security/identity/identity-manager.h>
 #include <ndn.cxx/fields/signature-sha256-with-rsa.h>
 
+
 class ContactStorage
 {
+
 public:
-  ContactStorage(ndn::Ptr<ndn::security::IdentityManager> identityManager);
+  ContactStorage();
   
-  ~ContactStorage() {}
+  ~ContactStorage() 
+  {sqlite3_close(m_db);}
 
   void
   setSelfProfileEntry(const ndn::Name& identity, const std::string& profileType, const ndn::Blob& profileValue);
@@ -42,13 +45,18 @@ public:
 
   std::vector<ndn::Ptr<ContactItem> >
   getAllNormalContacts() const;
+    
+  ndn::Ptr<Profile>
+  getSelfProfile(const ndn::Name& identity) const;
+
+  ndn::Ptr<ndn::Blob>
+  getSelfEndorseCertificate(const ndn::Name& identity);
 
   void
-  updateProfileData(const ndn::Name& identity) const;
-  
-  inline ndn::Ptr<ndn::security::IdentityManager> 
-  getIdentityManager()
-  { return m_identityManager; }
+  updateSelfEndorseCertificate(ndn::Ptr<EndorseCertificate> endorseCertificate, const ndn::Name& identity);
+
+  void
+  addSelfEndorseCertificate(ndn::Ptr<EndorseCertificate> endorseCertificate, const ndn::Name& identity);
   
 private:
   bool
@@ -65,15 +73,7 @@ private:
   bool
   doesContactExist(const ndn::Name& name, bool normal);
 
-  ndn::Ptr<Profile>
-  getSelfProfile(const ndn::Name& identity) const;
-
-  ndn::Ptr<EndorseCertificate>
-  getSignedSelfEndorseCertificate(const ndn::Name& identity,
-                                  const Profile& profile) const;
-  
 private:
-  ndn::Ptr<ndn::security::IdentityManager> m_identityManager;
   sqlite3 *m_db;
 };
 

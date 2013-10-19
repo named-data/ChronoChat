@@ -11,7 +11,10 @@
 #include "addcontactpanel.h"
 #include "ui_addcontactpanel.h"
 
-AddContactPanel::AddContactPanel(ndn::Ptr<ContactManager> contactManager,
+using namespace ndn;
+using namespace std;
+
+AddContactPanel::AddContactPanel(Ptr<ContactManager> contactManager,
                                  QWidget *parent) 
   : QDialog(parent)
   , ui(new Ui::AddContactPanel)
@@ -23,6 +26,8 @@ AddContactPanel::AddContactPanel(ndn::Ptr<ContactManager> contactManager,
           this, SLOT(onCancelClicked()));
   connect(ui->searchButton, SIGNAL(clicked()),
           this, SLOT(onSearchClicked()));
+  connect(&*m_contactManager, SIGNAL(contactFetched(Ptr<EndorseCertificate>)),
+          this, SLOT(selfEndorseCertificateFetched(Ptr<EndorseCertificate>)));
 }
 
 AddContactPanel::~AddContactPanel()
@@ -37,10 +42,17 @@ AddContactPanel::onCancelClicked()
 void
 AddContactPanel::onSearchClicked()
 {
+  QString inputIdentity = ui->contactInput->text();
+  m_searchIdentity = Name(inputIdentity.toUtf8().constData());
 }
 
 void
 AddContactPanel::onAddClicked()
+{
+}
+
+void 
+AddContactPanel::selfEndorseCertificateFetched(Ptr<EndorseCertificate> endorseCertificate)
 {
 }
 

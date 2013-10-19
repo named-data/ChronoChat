@@ -42,8 +42,12 @@ private slots:
   void
   onAddClicked();
 
+  void
+  selfEndorseCertificateFetched(ndn::Ptr<EndorseCertificate> endorseCertificate);
+
 private:
   Ui::AddContactPanel *ui;
+  ndn::Name m_searchIdentity;
   ndn::Ptr<ContactManager> m_contactManager;
 };
 

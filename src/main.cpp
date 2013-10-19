@@ -14,6 +14,7 @@
 #include "chronochat.h"
 #include "contactpanel.h"
 #include "contact-storage.h"
+#include "dns-storage.h"
 #include "contact-manager.h"
 #include <ndn.cxx/security/identity/identity-manager.h>
 #include <ndn.cxx/security/identity/osx-privatekey-storage.h>
@@ -31,13 +32,11 @@ int main(int argc, char *argv[])
 // // 	app.setWindowIcon(QIcon("/Users/yuyingdi/Develop/QT/images/icon_large.png"));
 // // #endif
 
-  Ptr<security::BasicIdentityStorage> publicStorage = Ptr<security::BasicIdentityStorage>::Create();
-  Ptr<security::OSXPrivatekeyStorage> privateStorage = Ptr<security::OSXPrivatekeyStorage>::Create();
-  Ptr<security::IdentityManager> identityManager = Ptr<security::IdentityManager>(new security::IdentityManager(publicStorage, privateStorage));
-  Ptr<ContactStorage> contactStorage = Ptr<ContactStorage>(new ContactStorage(identityManager));
-  Ptr<ContactManager> contactManager = Ptr<ContactManager>(new ContactManager(contactStorage));
-  ContactPanel contactPanel(contactManager);
+  Ptr<ContactStorage> contactStorage = Ptr<ContactStorage>(new ContactStorage());
+  Ptr<DnsStorage> dnsStorage = Ptr<DnsStorage>(new DnsStorage());
+  Ptr<ContactManager> contactManager = Ptr<ContactManager>(new ContactManager(contactStorage, dnsStorage));
 
+  ContactPanel contactPanel(contactManager);
 
   contactPanel.show ();
   contactPanel.activateWindow ();

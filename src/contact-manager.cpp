@@ -10,6 +10,7 @@
 
 #include "contact-manager.h"
 
+#ifndef Q_MOC_RUN
 #include <ndn.cxx/wrapper/wrapper.h>
 #include <ndn.cxx/security/keychain.h>
 #include <ndn.cxx/security/identity/basic-identity-storage.h>
@@ -18,24 +19,27 @@
 #include <ndn.cxx/security/policy/identity-policy-rule.h>
 #include <ndn.cxx/security/cache/ttl-certificate-cache.h>
 #include <ndn.cxx/security/encryption/basic-encryption-manager.h>
-
 #include <fstream>
+#endif
 
 using namespace ndn;
 using namespace ndn::security;
 
-ContactManager::ContactManager(Ptr<ContactStorage> contactStorage)
+ContactManager::ContactManager(Ptr<ContactStorage> contactStorage,
+                               Ptr<DnsStorage> dnsStorage)
   : m_contactStorage(contactStorage)
+  , m_dnsStorage(dnsStorage)
 {
-  
-  m_wrapper = Ptr<Wrapper>(new Wrapper(setKeychain()));
+  setKeychain();
+
+  m_wrapper = Ptr<Wrapper>(new Wrapper(m_keychain));
 }
 
 ContactManager::~ContactManager()
 {
 }
 
-Ptr<Keychain>
+void
 ContactManager::setKeychain()
 {
   Ptr<OSXPrivatekeyStorage> privateStorage = Ptr<OSXPrivatekeyStorage>::Create();
@@ -45,15 +49,22 @@ ContactManager::setKeychain()
   Ptr<EncryptionManager> encryptionManager = Ptr<EncryptionManager>(new BasicEncryptionManager(privateStorage, "/tmp/encryption.db"));
   Ptr<Keychain> keychain = Ptr<Keychain>(new Keychain(identityManager, policyManager, encryptionManager));
 
+  policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<DNS>]*)<DNS><PROFILE>",
+                                                                                          "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT>",
+                                                                                          "==", "\\1", "\\1\\2", true)));
   policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<PROFILE-CERT>]*)<PROFILE-CERT>",
 											  "^([^<KEY>]*)<KEY>(<>*<KSK-.*>)<ID-CERT>", 
-											  "==", "\\1", "\\1\\2", false)));
+											  "==", "\\1", "\\1\\2", true)));
   policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY>(<>*)<KSK-.*><ID-CERT>",
 											  "^([^<KEY>]*)<KEY><DSK-.*><ID-CERT>",
-											  ">", "\\1\\2", "\\1", false)));
+											  ">", "\\1\\2", "\\1", true)));
   policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><DSK-.*><ID-CERT>",
 											  "^([^<KEY>]*)<KEY>(<>*)<KSK-.*><ID-CERT>",
-											  "==", "\\1", "\\1\\2", false)));
+											  "==", "\\1", "\\1\\2", true)));
+
+  policyManager->addSigningPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<DNS>]*)<DNS><PROFILE>",
+                                                                                     "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT>",
+                                                                                     "==", "\\1", "\\1\\2", true)));
 
   ifstream is ("trust-anchor.data", ios::binary);
   is.seekg (0, ios::end);
@@ -70,5 +81,182 @@ ContactManager::setKeychain()
   
   delete memblock;
 
-  return keychain;
+  m_keychain = keychain;
 }
+
+
+void
+ContactManager::fetchSelfEndorseCertificate(const ndn::Name& identity)
+{
+  Name interestName = identity;
+  interestName.append("DNS").append("PROFILE");
+  
+  Ptr<Interest> interestPtr = Ptr<Interest>(new Interest(interestName));
+  Ptr<Closure> closure = Ptr<Closure> (new Closure(boost::bind(&ContactManager::onDnsSelfEndorseCertificateVerified, 
+                                                               this,
+                                                               _1,
+                                                               identity),
+						   boost::bind(&ContactManager::onDnsSelfEndorseCertificateTimeout,
+                                                               this,
+                                                               _1, 
+                                                               _2,
+                                                               identity,
+                                                               0),
+						   boost::bind(&ContactManager::onDnsSelfEndorseCertificateUnverified,
+                                                               this,
+                                                               _1,
+                                                               identity)));
+  m_wrapper->sendInterest(interestPtr, closure);
+}
+
+void
+ContactManager::updateProfileData(const Name& identity)
+{
+  // Get current profile;
+  Ptr<Profile> newProfile = m_contactStorage->getSelfProfile(identity);
+  if(NULL == newProfile)
+    return;
+  Ptr<Blob> newProfileBlob = newProfile->toDerBlob();
+
+  // Check if profile exists
+  Ptr<Blob> profileDataBlob = m_contactStorage->getSelfEndorseCertificate(identity);
+  if(NULL != profileDataBlob)
+    {
+      Ptr<Data> plainData = Data::decodeFromWire(profileDataBlob);
+      EndorseCertificate oldEndorseCertificate(*plainData);    
+      // _LOG_DEBUG("Certificate converted!");
+      const Blob& oldProfileBlob = oldEndorseCertificate.getProfileData()->content();
+
+      if(oldProfileBlob == *newProfileBlob)
+        return;
+
+      Ptr<EndorseCertificate> newEndorseCertificate = getSignedSelfEndorseCertificate(identity, *newProfile);
+      // _LOG_DEBUG("Signing DONE!");
+      if(NULL == newEndorseCertificate)
+        return;
+
+      m_contactStorage->updateSelfEndorseCertificate(newEndorseCertificate, identity);
+
+      publishSelfEndorseCertificateInDNS(newEndorseCertificate);
+    }
+  else
+    {
+      Ptr<EndorseCertificate> newEndorseCertificate = getSignedSelfEndorseCertificate(identity, *newProfile);
+      // _LOG_DEBUG("Signing DONE!");
+      if(NULL == newEndorseCertificate)
+        return;
+      
+      m_contactStorage->addSelfEndorseCertificate(newEndorseCertificate, identity);
+
+      publishSelfEndorseCertificateInDNS(newEndorseCertificate);
+    }
+}
+
+Ptr<EndorseCertificate>
+ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
+                                                const Profile& profile)
+{
+  Ptr<IdentityManager> identityManager = m_keychain->getIdentityManager();
+  Name certificateName = identityManager->getDefaultCertificateNameByIdentity(identity);
+  if(0 == certificateName.size())
+    return NULL;
+
+  Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(identity, profile));
+  identityManager->signByCertificate(*profileData, certificateName);
+
+  Ptr<security::IdentityCertificate> dskCert = identityManager->getCertificate(certificateName);
+  Ptr<const signature::Sha256WithRsa> dskCertSig = DynamicCast<const signature::Sha256WithRsa>(dskCert->getSignature());
+  // HACK! KSK certificate should be retrieved from network.
+  Ptr<security::IdentityCertificate> kskCert = identityManager->getCertificate(dskCertSig->getKeyLocator().getKeyName());
+
+  vector<string> endorseList;
+  Profile::const_iterator it = profile.begin();
+  for(; it != profile.end(); it++)
+    endorseList.push_back(it->first);
+  
+  Ptr<EndorseCertificate> selfEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(*kskCert,
+                                                                                                  kskCert->getNotBefore(),
+                                                                                                  kskCert->getNotAfter(),
+                                                                                                  profileData,
+                                                                                                  endorseList));
+  identityManager->signByCertificate(*selfEndorseCertificate, kskCert->getName());
+
+  return selfEndorseCertificate;
+}
+
+
+void
+ContactManager::onDnsSelfEndorseCertificateVerified(Ptr<Data> data, const Name& identity)
+{
+  const Blob& dataContentBlob = data->content();
+  
+  boost::iostreams::stream
+    <boost::iostreams::array_source> is (dataContentBlob.buf(), dataContentBlob.size());
+
+  Ptr<Data> plainData = Data::decodeFromWire(is);
+  Ptr<EndorseCertificate> selfEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(*plainData));
+  
+  const security::Publickey& ksk = selfEndorseCertificate->getPublicKeyInfo();
+  if(security::PolicyManager::verifySignature(*plainData, ksk))
+    emit contactFetched (selfEndorseCertificate); 
+  else
+    emit contactFetchFailed (identity);
+}
+
+void
+ContactManager::onDnsSelfEndorseCertificateUnverified(Ptr<Data> data, const Name& identity)
+{ emit contactFetchFailed (identity); }
+
+void
+ContactManager::onDnsSelfEndorseCertificateTimeout(Ptr<Closure> closure, Ptr<Interest> interest, const Name& identity, int retry)
+{
+  if(retry > 0)
+    {
+      Ptr<Closure> newClosure = Ptr<Closure>(new Closure(closure->m_dataCallback,
+                                                         boost::bind(&ContactManager::onDnsSelfEndorseCertificateTimeout, 
+                                                                     this, 
+                                                                     _1, 
+                                                                     _2, 
+                                                                     identity,
+                                                                     retry - 1),
+                                                         closure->m_unverifiedCallback,
+                                                         closure->m_stepCount)
+                                             );
+      m_wrapper->sendInterest(interest, newClosure);
+    }
+  else
+    emit contactFetchFailed(identity);
+}
+
+void
+ContactManager::publishSelfEndorseCertificateInDNS(Ptr<EndorseCertificate> selfEndorseCertificate)
+{
+  Ptr<Data> data = Ptr<Data>::Create();
+
+  Name keyName = selfEndorseCertificate->getPublicKeyName();
+  Name identity = keyName.getSubName(0, keyName.size()-1);
+
+  TimeInterval ti = time::NowUnixTimestamp();
+  ostringstream oss;
+  oss << ti.total_seconds();
+
+  Name dnsName = identity;
+  dnsName.append("DNS").append("PROFILE").append(oss.str());
+
+  data->setName(dnsName);
+  Ptr<Blob> blob = selfEndorseCertificate->encodeToWire();
+  Content content(blob->buf(), blob->size());
+  data->setContent(content);
+
+  m_keychain->signByIdentity(*data, identity);
+  
+  Ptr<Blob> dnsBlob = data->encodeToWire();
+
+  m_wrapper->putToCcnd(*dnsBlob);
+}
+
+
+#if WAF
+#include "contact-manager.moc"
+#include "contact-manager.cpp.moc"
+#endif

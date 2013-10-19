@@ -44,7 +44,7 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
     db.setDatabaseName(path);
     bool ok = db.open();
 
-    m_profileEditor = new ProfileEditor(m_contactManager->getContactStorage());
+    m_profileEditor = new ProfileEditor(m_contactManager);
 
     QStringList contactNameList;
     contactNameList << "Alex" << "Wentao" << "Yingdi";
