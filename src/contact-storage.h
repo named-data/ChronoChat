@@ -40,6 +40,9 @@ public:
   void
   addNormalContact(const ContactItem& contactItem);
 
+  void 
+  updateAlias(const ndn::Name& identity, std::string alias);
+
   std::vector<ndn::Ptr<TrustedContact> >
   getAllTrustedContacts() const;
 

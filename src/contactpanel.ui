@@ -43,7 +43,7 @@
       <item>
        <widget class="QListView" name="ContactList">
         <property name="contextMenuPolicy">
-         <enum>Qt::DefaultContextMenu</enum>
+         <enum>Qt::CustomContextMenu</enum>
         </property>
         <property name="acceptDrops">
          <bool>false</bool>

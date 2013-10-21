@@ -36,8 +36,10 @@ AddContactPanel::AddContactPanel(Ptr<ContactManager> contactManager,
           this, SLOT(onCancelClicked()));
   connect(ui->searchButton, SIGNAL(clicked()),
           this, SLOT(onSearchClicked()));
-  connect(&*m_contactManager, SIGNAL(contactFetched(const EndorseCertificate&>)),
-          this, SLOT(selfEndorseCertificateFetched(const EndorseCertificate&>)));
+  connect(ui->addButton, SIGNAL(clicked()),
+          this, SLOT(onAddClicked()));
+  connect(&*m_contactManager, SIGNAL(contactFetched(const EndorseCertificate&)),
+          this, SLOT(selfEndorseCertificateFetched(const EndorseCertificate&)));
   connect(&*m_contactManager, SIGNAL(contactFetchFailed(const ndn::Name&)),
           this, SLOT(selfEndorseCertificateFetchFailed(const ndn::Name&)));
 }
@@ -55,6 +57,9 @@ AddContactPanel::onCancelClicked()
 void
 AddContactPanel::onSearchClicked()
 {
+  ui->infoView->clear();
+  for(int i = ui->infoView->rowCount() - 1; i >= 0 ; i--)
+    ui->infoView->removeRow(i);
   QString inputIdentity = ui->contactInput->text();
   m_searchIdentity = Name(inputIdentity.toUtf8().constData());
 
@@ -64,12 +69,30 @@ AddContactPanel::onSearchClicked()
 void
 AddContactPanel::onAddClicked()
 {
+  ContactItem contactItem(*m_currentEndorseCertificate);
+  m_contactManager->getContactStorage()->addNormalContact(contactItem);
+  emit newContactAdded();
+  this->close();
 }
 
 void 
 AddContactPanel::selfEndorseCertificateFetched(const EndorseCertificate& endorseCertificate)
 {
-  _LOG_DEBUG("CALLED");
+  m_currentEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(endorseCertificate));
+  const Profile& profile = endorseCertificate.getProfileData()->getProfile();
+  ui->infoView->setColumnCount(3);
+  Profile::const_iterator it = profile.begin();
+  int rowCount = 0;
+  for(; it != profile.end(); it++)
+  {
+    ui->infoView->insertRow(rowCount);  
+    QTableWidgetItem *type = new QTableWidgetItem(QString::fromUtf8(it->first.c_str()));
+    ui->infoView->setItem(rowCount, 0, type);
+    string valueString(it->second.buf(), it->second.size());
+    QTableWidgetItem *value = new QTableWidgetItem(QString::fromUtf8(valueString.c_str()));
+    ui->infoView->setItem(rowCount, 1, value);
+    rowCount++;
+  }
 }
 
 void

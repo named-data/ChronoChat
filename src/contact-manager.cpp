@@ -157,6 +157,20 @@ ContactManager::updateProfileData(const Name& identity)
     }
 }
 
+vector<Ptr<ContactItem> >
+ContactManager::getContactItemList()
+{
+  vector<Ptr<ContactItem> > result;
+  
+  vector<Ptr<ContactItem> > ncList = m_contactStorage->getAllNormalContacts();
+  vector<Ptr<TrustedContact> > tcList = m_contactStorage->getAllTrustedContacts();
+
+  result.insert(result.end(), tcList.begin(), tcList.end());
+  result.insert(result.end(), ncList.begin(), ncList.end());
+
+  return result;
+}
+
 Ptr<EndorseCertificate>
 ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
                                                 const Profile& profile)
@@ -203,6 +217,11 @@ ContactManager::onDnsSelfEndorseCertificateVerified(Ptr<Data> data, const Name& 
 
   if(security::PolicyManager::verifySignature(*plainData, ksk))
     {
+      // Profile profile = selfEndorseCertificate->getProfileData()->getProfile();
+      // Profile::const_iterator it = profile.getEntries().begin();
+      // it++;
+      // _LOG_DEBUG("Entry Size: " << it->first);
+
       emit contactFetched (*selfEndorseCertificate); 
     }
   else

@@ -65,6 +65,10 @@ public:
   static ndn::Ptr<Profile>
   fromDerBlob(const ndn::Blob& derBlob);
 
+  inline const std::map<std::string, ndn::Blob>&
+  getEntries() const
+  { return m_entries; }
+
 protected:
   ndn::Name m_identityName;
   std::map<std::string, ndn::Blob> m_entries;
