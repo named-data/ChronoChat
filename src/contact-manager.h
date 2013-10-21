@@ -75,7 +75,7 @@ private:
 
 signals:
   void 
-  contactFetched(ndn::Ptr<EndorseCertificate> selfEndorseCertificate);
+  contactFetched(const EndorseCertificate& selfEndorseCertificate);
   
   void
   contactFetchFailed(const ndn::Name& identity);

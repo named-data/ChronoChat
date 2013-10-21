@@ -55,6 +55,8 @@ private:
 class EndorseCertificate : public ndn::security::Certificate
 {
 public:
+  EndorseCertificate() {}
+
   EndorseCertificate(const ndn::security::IdentityCertificate& kskCertificate,
                      const ndn::Time& notBefore,
                      const ndn::Time& notAfter,

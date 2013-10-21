@@ -12,6 +12,8 @@
 #define ADDCONTACTPANEL_H
 
 #include <QDialog>
+#include <QMetaType>
+#include "warningdialog.h"
 
 #ifndef Q_MOC_RUN
 #include "endorse-certificate.h"
@@ -21,6 +23,10 @@
 namespace Ui {
 class AddContactPanel;
 }
+
+Q_DECLARE_METATYPE(ndn::Name)
+
+Q_DECLARE_METATYPE(EndorseCertificate)
 
 class AddContactPanel : public QDialog
 {
@@ -43,12 +49,16 @@ private slots:
   onAddClicked();
 
   void
-  selfEndorseCertificateFetched(ndn::Ptr<EndorseCertificate> endorseCertificate);
+  selfEndorseCertificateFetched(const EndorseCertificate& endorseCertificate);
+
+  void
+  selfEndorseCertificateFetchFailed(const ndn::Name& identity);
 
 private:
   Ui::AddContactPanel *ui;
   ndn::Name m_searchIdentity;
   ndn::Ptr<ContactManager> m_contactManager;
+  WarningDialog* m_warningDialog;
 };
 
 #endif // ADDCONTACTPANEL_H
