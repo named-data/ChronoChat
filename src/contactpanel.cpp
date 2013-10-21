@@ -18,6 +18,7 @@
 #include <QDir>
 
 #ifndef Q_MOC_RUN
+#include <ndn.cxx/common.h>
 #include <boost/filesystem.hpp>
 #include "logging.h"
 #include "exception.h"
@@ -36,7 +37,8 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
     , m_contactListModel(new QStringListModel)
     , m_addContactPanel(new AddContactPanel(contactManager))
     , m_setAliasDialog(new SetAliasDialog(contactManager))
-    , m_menuInvite(new QAction("&Invite", this))
+    , m_startChatDialog(new StartChatDialog)
+    , m_menuInvite(new QAction("&Chat", this))
     , m_menuAlias(new QAction("&Set Alias", this))
 {
   
@@ -70,6 +72,9 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
     connect(m_setAliasDialog, SIGNAL(aliasChanged()),
             this, SLOT(refreshContactList()));
 
+    connect(m_startChatDialog, SIGNAL(chatroomConfirmed(const QString&, const QString&, bool)),
+            this, SLOT(startChatroom(const QString&, const QString&, bool)));
+
 
 
 }
@@ -92,8 +97,6 @@ ContactPanel::updateSelection(const QItemSelection &selected,
   QString text = m_contactListModel->data(items.first(), Qt::DisplayRole).toString();
   string alias = text.toUtf8().constData();
 
-  m_currentSelectedContact = alias;
-
   int i = 0;
   for(; i < m_contactList.size(); i++)
     {
@@ -107,7 +110,9 @@ ContactPanel::updateSelection(const QItemSelection &selected,
   ui->NameData->setText(name);
   ui->NameSpaceData->setText(nameSpace);
   ui->InstitutionData->setText(institution);
-  
+
+  m_currentSelectedContactAlias = alias;
+  m_currentSelectedContactNamespace = m_contactList[i]->getNameSpace().toUri();
   // _LOG_DEBUG("current Alias: " << m_currentSelectedContact);
 }
 
@@ -135,6 +140,8 @@ ContactPanel::showContextMenu(const QPoint& pos)
 {
   QMenu menu(ui->ContactList);
   menu.addAction(m_menuInvite);
+  connect(m_menuInvite, SIGNAL(triggered()),
+          this, SLOT(openStartChatDialog()));
   menu.addAction(m_menuAlias);
   connect(m_menuAlias, SIGNAL(triggered()),
           this, SLOT(openSetAliasDialog()));
@@ -145,9 +152,32 @@ ContactPanel::showContextMenu(const QPoint& pos)
 void
 ContactPanel::openSetAliasDialog()
 {
-  m_setAliasDialog->setTargetIdentity(m_currentSelectedContact);
+  m_setAliasDialog->setTargetIdentity(m_currentSelectedContactNamespace);
   m_setAliasDialog->show();
 }
+
+void
+ContactPanel::openStartChatDialog()
+{
+  TimeInterval ti = time::NowUnixTimestamp();
+  ostringstream oss;
+  oss << ti.total_seconds();
+
+  Name chatroom("/ndn/broadcast/chronos");
+  chatroom.append(string("chatroom-") + oss.str());
+
+  m_startChatDialog->setInvitee(m_currentSelectedContactNamespace, chatroom.toUri());
+  m_startChatDialog->show();
+}
+
+void
+ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, bool isIntroducer)
+{
+  _LOG_DEBUG("room: " << chatroom.toUtf8().constData());
+  _LOG_DEBUG("invitee: " << invitee.toUtf8().constData());
+  _LOG_DEBUG("introducer: " << std::boolalpha << isIntroducer);
+}
+
 
 #if WAF
 #include "contactpanel.moc"

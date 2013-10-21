@@ -19,6 +19,7 @@
 #include "profileeditor.h"
 #include "addcontactpanel.h"
 #include "setaliasdialog.h"
+#include "startchatdialog.h"
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
@@ -49,12 +50,18 @@ private slots:
 
   void
   openSetAliasDialog();
+  
+  void
+  openStartChatDialog();
 
   void
   refreshContactList();
 
   void
   showContextMenu(const QPoint& pos);
+
+  void
+  startChatroom(const QString& chatroom, const QString& invitee, bool isIntroducer);
 
 private:
   Ui::ContactPanel *ui;
@@ -63,13 +70,15 @@ private:
   ProfileEditor* m_profileEditor;
   AddContactPanel* m_addContactPanel;
   SetAliasDialog* m_setAliasDialog;
+  StartChatDialog* m_startChatDialog;
   QAction* m_menuInvite;
   QAction* m_menuAlias;
 
 
   std::vector<ndn::Ptr<ContactItem> > m_contactList;
 
-  std::string m_currentSelectedContact;
+  std::string m_currentSelectedContactAlias;
+  std::string m_currentSelectedContactNamespace;
 };
 
 #endif // CONTACTPANEL_H
