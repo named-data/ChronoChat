@@ -17,6 +17,7 @@
 #include "contact-storage.h"
 #include "dns-storage.h"
 #include "endorse-certificate.h"
+#include "profile.h"
 #include <ndn.cxx/wrapper/wrapper.h>
 #endif
 
@@ -37,6 +38,9 @@ public:
 
   void
   updateProfileData(const ndn::Name& identity);
+
+  std::vector<ndn::Ptr<ContactItem> >
+  getContactItemList();
 
   inline ndn::Ptr<ContactStorage>
   getContactStorage()
@@ -75,7 +79,7 @@ private:
 
 signals:
   void 
-  contactFetched(const EndorseCertificate& selfEndorseCertificate);
+  contactFetched(const EndorseCertificate& endorseCertificate);
   
   void
   contactFetchFailed(const ndn::Name& identity);

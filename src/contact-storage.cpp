@@ -200,14 +200,16 @@ ContactStorage::setSelfProfileEntry(const Name& identity, const string& profileT
 Ptr<Profile>
 ContactStorage::getSelfProfile(const Name& identity)
 {
+  _LOG_DEBUG("getSelfProfile " << identity.toUri());
   sqlite3_stmt *stmt;
   Ptr<Profile> profile = Ptr<Profile>(new Profile(identity));
   
-  sqlite3_prepare_v2(m_db, "SELECT profile_type, profile_value FROM SelfProfile WHERE profile_identity=", -1, &stmt, 0);
+  sqlite3_prepare_v2(m_db, "SELECT profile_type, profile_value FROM SelfProfile WHERE profile_identity=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-  
-  while( sqlite3_step (stmt) == SQLITE_ROW)
+
+  while(sqlite3_step (stmt) == SQLITE_ROW)
     {
+      _LOG_DEBUG("entry");
       string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
       Blob profileValue(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
 
@@ -260,7 +262,33 @@ ContactStorage::addNormalContact(const ContactItem& normalContact)
   sqlite3_bind_text(stmt, 3, selfCertificateBlob->buf(), selfCertificateBlob->size(), SQLITE_TRANSIENT);
 
   int res = sqlite3_step (stmt);
+  // _LOG_DEBUG("res " << res);
   sqlite3_finalize (stmt);
+}
+
+void 
+ContactStorage::updateAlias(const ndn::Name& identity, std::string alias)
+{
+  if(doesNormalContactExist(identity))
+    {
+      sqlite3_stmt *stmt;
+      sqlite3_prepare_v2 (m_db, "UPDATE NormalContact SET contact_alias=? WHERE contact_namespace=?", -1, &stmt, 0);
+      sqlite3_bind_text(stmt, 1, alias.c_str(), alias.size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 2, identity.toUri().c_str(),  identity.toUri().size (), SQLITE_TRANSIENT);
+      int res = sqlite3_step (stmt);
+      sqlite3_finalize (stmt);
+      return;
+    }
+  if(doesTrustedContactExist(identity))
+    {
+      sqlite3_stmt *stmt;
+      sqlite3_prepare_v2 (m_db, "UPDATE TrustedContact SET contact_alias=? WHERE contact_namespace=?", -1, &stmt, 0);
+      sqlite3_bind_text(stmt, 1, alias.c_str(), alias.size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 2, identity.toUri().c_str(),  identity.toUri().size (), SQLITE_TRANSIENT);
+      int res = sqlite3_step (stmt);
+      sqlite3_finalize (stmt);
+      return;
+    }
 }
 
 bool

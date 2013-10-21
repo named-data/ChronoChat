@@ -14,9 +14,11 @@
 #include <QDialog>
 #include <QStringListModel>
 #include <QtSql/QSqlDatabase>
+#include <QMenu>
 
 #include "profileeditor.h"
 #include "addcontactpanel.h"
+#include "setaliasdialog.h"
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
@@ -45,12 +47,29 @@ private slots:
   void
   openAddContactPanel();
 
+  void
+  openSetAliasDialog();
+
+  void
+  refreshContactList();
+
+  void
+  showContextMenu(const QPoint& pos);
+
 private:
   Ui::ContactPanel *ui;
   ndn::Ptr<ContactManager> m_contactManager;
   QStringListModel* m_contactListModel;
   ProfileEditor* m_profileEditor;
   AddContactPanel* m_addContactPanel;
+  SetAliasDialog* m_setAliasDialog;
+  QAction* m_menuInvite;
+  QAction* m_menuAlias;
+
+
+  std::vector<ndn::Ptr<ContactItem> > m_contactList;
+
+  std::string m_currentSelectedContact;
 };
 
 #endif // CONTACTPANEL_H

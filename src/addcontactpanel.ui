@@ -60,7 +60,11 @@
      </layout>
     </item>
     <item>
-     <widget class="QTableWidget" name="infoView"/>
+     <widget class="QTableWidget" name="infoView">
+      <attribute name="horizontalHeaderStretchLastSection">
+       <bool>true</bool>
+      </attribute>
+     </widget>
     </item>
     <item>
      <layout class="QHBoxLayout" name="buttonLayout">
