@@ -193,19 +193,22 @@ ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
 void
 ContactManager::onDnsSelfEndorseCertificateVerified(Ptr<Data> data, const Name& identity)
 {
-  const Blob& dataContentBlob = data->content();
-  
-  boost::iostreams::stream
-    <boost::iostreams::array_source> is (dataContentBlob.buf(), dataContentBlob.size());
+  Ptr<Blob> dataContentBlob = Ptr<Blob>(new Blob(data->content().buf(), data->content().size()));
 
-  Ptr<Data> plainData = Data::decodeFromWire(is);
+  Ptr<Data> plainData = Data::decodeFromWire(dataContentBlob);
+
   Ptr<EndorseCertificate> selfEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(*plainData));
-  
+
   const security::Publickey& ksk = selfEndorseCertificate->getPublicKeyInfo();
+
   if(security::PolicyManager::verifySignature(*plainData, ksk))
-    emit contactFetched (selfEndorseCertificate); 
+    {
+      emit contactFetched (*selfEndorseCertificate); 
+    }
   else
-    emit contactFetchFailed (identity);
+    {
+      emit contactFetchFailed (identity);
+    }
 }
 
 void
@@ -247,9 +250,15 @@ ContactManager::publishSelfEndorseCertificateInDNS(Ptr<EndorseCertificate> selfE
 
   Name dnsName = identity;
   dnsName.append("DNS").append("PROFILE").append(oss.str());
-
+  
   data->setName(dnsName);
   Ptr<Blob> blob = selfEndorseCertificate->encodeToWire();
+
+  // string encoded;
+  // CryptoPP::StringSource ss(reinterpret_cast<const unsigned char *>(blob->buf()), blob->size(), true,
+  //       		    new CryptoPP::Base64Encoder(new CryptoPP::StringSink(encoded), false));
+
+  // Content content(encoded.c_str(), encoded.size());
   Content content(blob->buf(), blob->size());
   data->setContent(content);
 
