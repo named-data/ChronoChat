@@ -20,10 +20,13 @@
 #include "addcontactpanel.h"
 #include "setaliasdialog.h"
 #include "startchatdialog.h"
+#include "invitationdialog.h"
+#include "settingdialog.h"
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
 #endif
+
 
 namespace Ui {
 class ContactPanel;
@@ -35,12 +38,58 @@ class ContactPanel : public QDialog
 
 public:
   explicit ContactPanel(ndn::Ptr<ContactManager> contactManager, QWidget *parent = 0);
+
   ~ContactPanel();
+
+private:
+  void
+  openDB();
+
+  void
+  setKeychain();
+
+  void
+  setLocalPrefix();
+
+  void
+  onLocalPrefixVerified(ndn::Ptr<ndn::Data> data);
+  
+  void
+  onLocalPrefixTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest);
+
+  void
+  onUnverified(ndn::Ptr<ndn::Data> data);
+  
+  void
+  onTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest);
+    
+  void
+  setInvitationListener();
+
+  void
+  onInvitation(ndn::Ptr<ndn::Interest> interest);
+
+  void
+  onInvitationCertVerified(ndn::Ptr<ndn::Data> data,
+                           const ndn::Name& interestName,
+                           int inviterIndex);
+
+  std::string
+  getRandomString();
+
+  void
+  popChatInvitation(const ndn::Name& interestName,
+                    int inviterIndex,
+                    const ndn::Name& inviterNameSpace,
+                    ndn::Ptr<ndn::security::IdentityCertificate> certificate);
 
 private slots:
   void
   updateSelection(const QItemSelection &selected,
                   const QItemSelection &deselected);
+
+  void
+  updateDefaultIdentity(const QString& identity);
 
   void
   openProfileEditor();
@@ -55,6 +104,9 @@ private slots:
   openStartChatDialog();
 
   void
+  openSettingDialog();
+
+  void
   refreshContactList();
 
   void
@@ -62,6 +114,18 @@ private slots:
 
   void
   startChatroom(const QString& chatroom, const QString& invitee, bool isIntroducer);
+
+  void 
+  startChatroom2(const QString& chatroom, const QString& inviter);
+
+  void
+  acceptInvitation(const ndn::Name& interestName, 
+                   const ndn::security::IdentityCertificate& identityCertificate, 
+                   QString inviter, 
+                   QString chatroom);
+
+  void
+  rejectInvitation(const ndn::Name& interestName);
 
 private:
   Ui::ContactPanel *ui;
@@ -71,14 +135,22 @@ private:
   AddContactPanel* m_addContactPanel;
   SetAliasDialog* m_setAliasDialog;
   StartChatDialog* m_startChatDialog;
+  InvitationDialog* m_invitationDialog;
+  SettingDialog* m_settingDialog;
   QAction* m_menuInvite;
   QAction* m_menuAlias;
-
-
   std::vector<ndn::Ptr<ContactItem> > m_contactList;
+
+  ndn::Ptr<ndn::security::Keychain> m_keychain;
+  ndn::Ptr<ndn::Wrapper> m_handler;
+
+  ndn::Name m_defaultIdentity;
+  ndn::Name m_localPrefix;
 
   std::string m_currentSelectedContactAlias;
   std::string m_currentSelectedContactNamespace;
+
+
 };
 
 #endif // CONTACTPANEL_H

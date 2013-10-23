@@ -13,14 +13,16 @@
 
 #include <ndn.cxx/security/policy/policy-manager.h>
 #include <ndn.cxx/security/policy/identity-policy-rule.h>
+#include <ndn.cxx/security/cache/certificate-cache.h>
 #include <map>
 
-class InvitationPolicyManager : ndn::security::PolicyManager
+#include "endorse-certificate.h"
+
+class InvitationPolicyManager : public ndn::security::PolicyManager
 {
 public:
   InvitationPolicyManager(const int & stepLimit,                        
-                          ndn::Ptr<ndn::security::CertificateCache> certificateCache,
-                          ndn::Name signingIdentity);
+                          ndn::Ptr<ndn::security::CertificateCache> certificateCache);
 
   ~InvitationPolicyManager()
   {}
@@ -49,7 +51,7 @@ public:
    * @param unverifiedCallback the callback function that will be called if the received data packet cannot be validated
    * @return the indication of next verification step, NULL if there is no further step
    */
-  Ptr<ValidationRequest>
+  ndn::Ptr<ndn::security::ValidationRequest>
   checkVerificationPolicy(ndn::Ptr<ndn::Data> data, 
                           const int & stepCount, 
                           const ndn::DataCallback& verifiedCallback,
@@ -70,12 +72,12 @@ public:
    * @param dataName, the name of data to be signed
    * @return the signing identity. 
    */
-  Name 
+  ndn::Name 
   inferSigningIdentity(const ndn::Name & dataName);
 
   
   void
-  addTrustAnchor(ndn::Ptr<ndn::security::IdentityCertificate> ksk);
+  addTrustAnchor(const EndorseCertificate& selfEndorseCertificate);
 
 private:
   void 
@@ -93,10 +95,11 @@ private:
   int m_stepLimit;
   ndn::Ptr<ndn::security::CertificateCache> m_certificateCache;
   ndn::Ptr<ndn::Regex> m_localPrefixRegex;
-  ndn::Ptr<ndn::IdentityPolicyRule> m_invitationDataRule;
-  ndn::Ptr<ndn::IdentityPolicyRule> m_dskRule;
+  ndn::Ptr<ndn::security::IdentityPolicyRule> m_invitationDataRule;
+  ndn::Ptr<ndn::security::IdentityPolicyRule> m_dskRule;
+  ndn::Ptr<ndn::Regex> m_keyNameRegex;
   ndn::Ptr<ndn::Regex> m_signingCertificateRegex;
-  std::map<ndn::Name, ndn::Ptr<ndn::security::IdentityCertificate> > m_trustAnchors;
+  std::map<ndn::Name, ndn::security::Publickey> m_trustAnchors;
   
 };
 

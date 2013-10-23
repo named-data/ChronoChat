@@ -13,6 +13,11 @@
 
 #include <QDialog>
 
+#ifndef Q_MOC_RUN
+#include <ndn.cxx/data.h>
+#include <ndn.cxx/security/certificate/identity-certificate.h>
+#endif
+
 namespace Ui {
 class InvitationDialog;
 }
@@ -32,9 +37,16 @@ public:
   setInterestName(const ndn::Name& interestName)
   { m_interestName = interestName; }
 
+  inline void
+  setIdentityCertificate(const ndn::Ptr<ndn::security::IdentityCertificate> identityCertificate)
+  { m_identityCertificate = identityCertificate; }
+
 signals:
   void
-  invitationAccepted(const ndn::Name& interestName);
+  invitationAccepted(const ndn::Name& interestName, 
+                     const ndn::security::IdentityCertificate& identityCertificate, 
+                     QString inviter, 
+                     QString chatroom);
   
   void
   invitationRejected(const ndn::Name& interestName);
@@ -49,7 +61,10 @@ private slots:
 
 private:
   Ui::InvitationDialog *ui;
+  std::string m_inviter;
+  std::string m_chatroom;
   ndn::Name m_interestName;
+  ndn::Ptr<ndn::security::IdentityCertificate> m_identityCertificate;
 };
 
 #endif // INVITATIONDIALOG_H

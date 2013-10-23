@@ -9,6 +9,10 @@
  */
 
 #include "invitation-policy-manager.h"
+
+#include <ndn.cxx/security/certificate/identity-certificate.h>
+#include <boost/bind.hpp>
+
 #include "logging.h"
 
 using namespace std;
@@ -18,19 +22,21 @@ using namespace ndn::security;
 INIT_LOGGER("InvitationPolicyManager");
 
 InvitationPolicyManager::InvitationPolicyManager(const int & stepLimit,
-						 Ptr<CertificateCache> certificateCache,
-						 Name signingIdentity)
+						 Ptr<CertificateCache> certificateCache)
   : m_stepLimit(stepLimit)
   , m_certificateCache(certificateCache)
   , m_localPrefixRegex(Ptr<Regex>(new Regex("^<local><ndn><prefix><><>$")))
 {
   m_invitationDataRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
-									"^([^<KEY>]*)<KEY><DSK-.*><ID-CERT>$", 
+									"^([^<KEY>]*)<KEY><DSK-.*><ID-CERT><>$", 
 									"==", "\\1", "\\1", true));
   
-  m_dskRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><DSK-.*><ID-CERT>$", 
-							     "^([^<KEY>]*)<KEY>(<>*)<KSK-.*><ID-CERT>$", 
+  m_dskRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><DSK-.*><ID-CERT><>$", 
+							     "^([^<KEY>]*)<KEY>(<>*)<KSK-.*><ID-CERT><>$", 
 							     "==", "\\1", "\\1\\2", true));
+
+  m_keyNameRegex = Ptr<Regex>(new Regex("^([^<KEY>]*)<KEY>(<>*<KSK-.*>)<ID-CERT><>$", "\\1\\2"));
+
   m_signingCertificateRegex = Ptr<Regex>(new Regex("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", "\\1"));
 }
 
@@ -121,22 +127,22 @@ InvitationPolicyManager::checkVerificationPolicy(Ptr<Data> data,
 
   if(m_dskRule->satisfy(*data))
     {
-      Ptr<IdentityCertificate> trustedCert;
-      if(m_trustAnchors.end() != m_trustAnchors.find(keyLocatorName))
-	trustedCert = m_trustAnchors[keyLocatorName];
-      else
-	{
-	  unverifiedCallback(data);
-	  return NULL;
-	}
+      m_keyNameRegex->match(keyLocatorName);
+      Name keyName = m_keyNameRegex->expand();
 
-      if(verifySignature(*data, trustedCert->getPublicKeyInfo()))
-	verifiedCallback(data);
+      if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
+        if(verifySignature(*data, m_trustAnchors[keyName]))
+          verifiedCallback(data);
+        else
+          unverifiedCallback(data);
       else
-	unverifiedCallback(data);
+        unverifiedCallback(data);
 
       return NULL;	
     }
+
+  unverifiedCallback(data);
+  return NULL;
 }
 
 void 
@@ -151,8 +157,6 @@ InvitationPolicyManager::onCertificateVerified(Ptr<Data> certData,
     verifiedCallback(originalData);
   else
     unverifiedCallback(originalData);
-
-  return NULL;
 }
 
 void
@@ -170,15 +174,12 @@ InvitationPolicyManager::checkSigningPolicy(const Name & dataName, const Name & 
 Name 
 InvitationPolicyManager::inferSigningIdentity(const Name & dataName)
 {
-  if(m_signingCertificateRegex->match(data))
+  if(m_signingCertificateRegex->match(dataName))
     return m_signingCertificateRegex->expand();
   else
     return Name();
 }
 
 void
-InvitationPolicyManager::addTrustAnchor(Ptr<IdentityCertificate> ksk)
-{
-  Name name = ksk->getName();    
-  m_cache.insert(pair <Name, Ptr<IdentityCertificate> > (name, ksk));
-}
+InvitationPolicyManager::addTrustAnchor(const EndorseCertificate& selfEndorseCertificate)
+{ m_trustAnchors.insert(pair <Name, Publickey > (selfEndorseCertificate.getPublicKeyName(), selfEndorseCertificate.getPublicKeyInfo())); }
