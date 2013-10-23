@@ -1,22 +1,44 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2013, Regents of the University of California
+ *                     Yingdi Yu
+ *
+ * BSD license, See the LICENSE file for more information
+ *
+ * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ */
+
 #ifndef SETTINGDIALOG_H
 #define SETTINGDIALOG_H
-#include "ui_settingdialog.h"
-#include <QKeyEvent>
 
-class SettingDialog : public QDialog, private Ui::SettingDialog
+#include <QDialog>
+
+namespace Ui {
+class SettingDialog;
+}
+
+class SettingDialog : public QDialog
 {
   Q_OBJECT
 
 public:
-  SettingDialog(QWidget *parent = 0, QString nick = QString("NULL"), QString chatroom = QString("NULL"), QString prefix = QString("NULL"));
-  virtual void keyPressEvent(QKeyEvent *e);
+  explicit SettingDialog(QWidget *parent = 0);
+  ~SettingDialog();
+
+  void
+  setIdentity(const std::string& identity);
+
+signals:
+  void
+  identitySet(const QString& identity);
 
 private slots:
-  void update();
-  
-signals:
-  void updated(QString, QString, QString);
+  void
+  onOkClicked();
 
+private:
+  Ui::SettingDialog *ui;
+  std::string m_identity;
 };
 
-#endif
+#endif // SETTINGDIALOG_H

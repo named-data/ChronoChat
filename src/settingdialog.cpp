@@ -1,55 +1,49 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2013, Regents of the University of California
+ *                     Yingdi Yu
+ *
+ * BSD license, See the LICENSE file for more information
+ *
+ * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ */
+
 #include "settingdialog.h"
-#include <QRegExp>
-#include <QValidator>
+#include "ui_settingdialog.h"
 
-SettingDialog::SettingDialog(QWidget *parent, QString nick, QString chatroom, QString prefix)
-  : QDialog(parent)
+using namespace std;
+
+SettingDialog::SettingDialog(QWidget *parent) :
+    QDialog(parent),
+    ui(new Ui::SettingDialog)
 {
-  setupUi(this);
+    ui->setupUi(this);
+}
 
-  QRegExp noWhiteSpace("^\\S+.*$");
-  QValidator *nwsValidator = new QRegExpValidator(noWhiteSpace, this);
-  nickEdit->setPlaceholderText(nick);
-  nickEdit->setValidator(nwsValidator);
-  roomEdit->setPlaceholderText(chatroom);
-  roomEdit->setValidator(nwsValidator);
-  prefixEdit->setPlaceholderText(prefix);
-
-  // simple validator for ccnx prefix
-  QRegExp rx("(^(/[^/]+)+$)|(^/$)");
-  QValidator *validator = new QRegExpValidator(rx, this);
-  prefixEdit->setValidator(validator);
-
-  if (nick.isEmpty())
-  {
-    prefixEdit->hide();
-    prefixLabel->hide();
-  }
-
-  okButton->setDefault(true);
-
-  connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
-  connect(okButton, SIGNAL(clicked()), this, SLOT(update()));
+SettingDialog::~SettingDialog()
+{
+    delete ui;
 }
 
 void
-SettingDialog::update() 
-{
-  emit updated(nickEdit->text(), roomEdit->text(), prefixEdit->text()); 
-  accept();
+setIdentity(const std::string& identity)
+{ 
+  m_identity = identity;
+  ui->identityLine->setText(QString::fromUtf8(m_identity.c_str()));
 }
 
 void
-SettingDialog::keyPressEvent(QKeyEvent *e)
+SettingDialog::onOkClicked()
 {
-  switch(e->key()) {
-    case Qt::Key_Enter:
-      update();
-      break;
-    default:
-      QDialog::keyPressEvent(e);
-  }
+  QString text = ui->identityLine->text();
+  string identity = text.toUtf8().constData();
+  if(identity != m_identity)
+    {
+      m_identity = identity;
+      emit identitySet(text);
+    }
 }
+
 
 #if WAF
 #include "settingdialog.moc"
