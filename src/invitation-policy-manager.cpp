@@ -27,9 +27,9 @@ InvitationPolicyManager::InvitationPolicyManager(const int & stepLimit,
   , m_certificateCache(certificateCache)
   , m_localPrefixRegex(Ptr<Regex>(new Regex("^<local><ndn><prefix><><>$")))
 {
-  m_invitationDataRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
-									"^([^<KEY>]*)<KEY><DSK-.*><ID-CERT><>$", 
-									"==", "\\1", "\\1", true));
+  // m_invitationDataRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
+  //       								"^([^<KEY>]*)<KEY><DSK-.*><ID-CERT><>$", 
+  //       								"==", "\\1", "\\1", true));
   
   m_dskRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><DSK-.*><ID-CERT><>$", 
 							     "^([^<KEY>]*)<KEY>(<>*)<KSK-.*><ID-CERT><>$", 
@@ -52,8 +52,8 @@ InvitationPolicyManager::skipVerifyAndTrust (const Data & data)
 bool
 InvitationPolicyManager::requireVerify (const Data & data)
 {
-  if(m_invitationDataRule->matchDataName(data))
-    return true;
+  // if(m_invitationDataRule->matchDataName(data))
+  //   return true;
 
   if(m_dskRule->matchDataName(data))
     return true;
@@ -84,46 +84,46 @@ InvitationPolicyManager::checkVerificationPolicy(Ptr<Data> data,
 
   const Name & keyLocatorName = sha256sig->getKeyLocator().getKeyName();
 
-  if(m_invitationDataRule->satisfy(*data))
-    {
-      Ptr<const IdentityCertificate> trustedCert = m_certificateCache->getCertificate(keyLocatorName);
+  // if(m_invitationDataRule->satisfy(*data))
+  //   {
+  //     Ptr<const IdentityCertificate> trustedCert = m_certificateCache->getCertificate(keyLocatorName);
       
-      if(NULL != trustedCert){
-	if(verifySignature(*data, trustedCert->getPublicKeyInfo()))
-	  verifiedCallback(data);
-	else
-	  unverifiedCallback(data);
+  //     if(NULL != trustedCert){
+  //       if(verifySignature(*data, trustedCert->getPublicKeyInfo()))
+  //         verifiedCallback(data);
+  //       else
+  //         unverifiedCallback(data);
 
-	return NULL;
-      }
-      else{
-	_LOG_DEBUG("KeyLocator has not been cached and validated!");
+  //       return NULL;
+  //     }
+  //     else{
+  //       _LOG_DEBUG("KeyLocator has not been cached and validated!");
 
-	DataCallback recursiveVerifiedCallback = boost::bind(&InvitationPolicyManager::onCertificateVerified, 
-							     this, 
-							     _1, 
-							     data, 
-							     verifiedCallback, 
-							     unverifiedCallback);
+  //       DataCallback recursiveVerifiedCallback = boost::bind(&InvitationPolicyManager::onCertificateVerified, 
+  //       						     this, 
+  //       						     _1, 
+  //       						     data, 
+  //       						     verifiedCallback, 
+  //       						     unverifiedCallback);
 
-	UnverifiedCallback recursiveUnverifiedCallback = boost::bind(&InvitationPolicyManager::onCertificateUnverified, 
-								     this, 
-								     _1, 
-								     data, 
-								     unverifiedCallback);
+  //       UnverifiedCallback recursiveUnverifiedCallback = boost::bind(&InvitationPolicyManager::onCertificateUnverified, 
+  //       							     this, 
+  //       							     _1, 
+  //       							     data, 
+  //       							     unverifiedCallback);
 
 
-	Ptr<Interest> interest = Ptr<Interest>(new Interest(sha256sig->getKeyLocator().getKeyName()));
+  //       Ptr<Interest> interest = Ptr<Interest>(new Interest(sha256sig->getKeyLocator().getKeyName()));
 	
-	Ptr<ValidationRequest> nextStep = Ptr<ValidationRequest>(new ValidationRequest(interest, 
-										       recursiveVerifiedCallback,
-										       recursiveUnverifiedCallback,
-										       0,
-										       stepCount + 1)
-								 );
-	return nextStep;
-      }
-    }
+  //       Ptr<ValidationRequest> nextStep = Ptr<ValidationRequest>(new ValidationRequest(interest, 
+  //       									       recursiveVerifiedCallback,
+  //       									       recursiveUnverifiedCallback,
+  //       									       0,
+  //       									       stepCount + 1)
+  //       							 );
+  //       return nextStep;
+  //     }
+  //   }
 
   if(m_dskRule->satisfy(*data))
     {
@@ -145,25 +145,25 @@ InvitationPolicyManager::checkVerificationPolicy(Ptr<Data> data,
   return NULL;
 }
 
-void 
-InvitationPolicyManager::onCertificateVerified(Ptr<Data> certData, 
-					       Ptr<Data> originalData,
-					       const DataCallback& verifiedCallback, 
-					       const UnverifiedCallback& unverifiedCallback)
-{
-  IdentityCertificate certificate(*certData);
+// void 
+// InvitationPolicyManager::onCertificateVerified(Ptr<Data> certData, 
+// 					       Ptr<Data> originalData,
+// 					       const DataCallback& verifiedCallback, 
+// 					       const UnverifiedCallback& unverifiedCallback)
+// {
+//   IdentityCertificate certificate(*certData);
 
-  if(verifySignature(*originalData, certificate.getPublicKeyInfo()))
-    verifiedCallback(originalData);
-  else
-    unverifiedCallback(originalData);
-}
+//   if(verifySignature(*originalData, certificate.getPublicKeyInfo()))
+//     verifiedCallback(originalData);
+//   else
+//     unverifiedCallback(originalData);
+// }
 
-void
-InvitationPolicyManager::onCertificateUnverified(Ptr<Data> certData, 
-						 Ptr<Data> originalData,
-						 const UnverifiedCallback& unverifiedCallback)
-{ unverifiedCallback(originalData); }
+// void
+// InvitationPolicyManager::onCertificateUnverified(Ptr<Data> certData, 
+// 						 Ptr<Data> originalData,
+// 						 const UnverifiedCallback& unverifiedCallback)
+// { unverifiedCallback(originalData); }
 
 bool 
 InvitationPolicyManager::checkSigningPolicy(const Name & dataName, const Name & certificateName)
