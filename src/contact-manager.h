@@ -46,6 +46,9 @@ public:
   getContactStorage()
   { return m_contactStorage; }
 
+  ndn::Ptr<ContactItem>
+  getContact(const ndn::Name& contactNamespace);
+
   inline ndn::Ptr<DnsStorage>
   getDnsStorage()
   { return m_dnsStorage; }

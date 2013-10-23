@@ -366,6 +366,53 @@ ContactStorage::getAllNormalContacts() const
   return normalContacts;
 }
 
+Ptr<ContactItem>
+ContactStorage::getNormalContact(const Name& name)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, 
+                      "SELECT contact_alias, self_certificate FROM NormalContact where contact_namespace=?", 
+                      -1, 
+                      &stmt, 
+                      0);
+  sqlite3_bind_text (stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
+  
+  if( sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      string alias(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      Ptr<Blob> certBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1)));
+      Ptr<Data> certData = Data::decodeFromWire(certBlob);
+      EndorseCertificate endorseCertificate(*certData);
+
+      return Ptr<ContactItem>(new ContactItem(endorseCertificate, alias));      
+    } 
+  return NULL;
+}
+
+Ptr<TrustedContact>
+ContactStorage::getTrustedContact(const Name& name)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, 
+                      "SELECT contact_alias, self_certificate, trust_scope FROM TrustedContact where contact_namespace=?", 
+                      -1, 
+                      &stmt, 
+                      0);
+  sqlite3_bind_text (stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
+  
+  if( sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      string alias(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      Ptr<Blob> certBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1)));
+      Ptr<Data> certData = Data::decodeFromWire(certBlob);
+      EndorseCertificate endorseCertificate(*certData);
+      string trustScope(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2)), sqlite3_column_bytes (stmt, 2));
+
+      return Ptr<TrustedContact>(new TrustedContact(endorseCertificate, trustScope, alias));      
+    }
+  return NULL;
+}
+
 Ptr<Profile>
 ContactStorage::getSelfProfile(const Name& identity) const
 {  

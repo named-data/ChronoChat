@@ -48,6 +48,12 @@ public:
 
   std::vector<ndn::Ptr<ContactItem> >
   getAllNormalContacts() const;
+
+  ndn::Ptr<ContactItem>
+  getNormalContact(const ndn::Name& name);
+
+  ndn::Ptr<TrustedContact>
+  getTrustedContact(const ndn::Name& name);
     
   ndn::Ptr<Profile>
   getSelfProfile(const ndn::Name& identity) const;
