@@ -171,6 +171,20 @@ ContactManager::getContactItemList()
   return result;
 }
 
+Ptr<ContactItem>
+ContactManager::getContact(const ndn::Name& contactNamespace)
+{
+  Ptr<ContactItem> contactItem = m_contactStorage->getNormalContact(contactNamespace);
+  if(NULL != contactItem)
+    return contactItem;
+  
+  contactItem = m_contactStorage->getTrustedContact(contactNamespace);
+  if(NULL != contactItem)
+    return contactItem;
+  
+  return NULL;
+}
+
 Ptr<EndorseCertificate>
 ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
                                                 const Profile& profile)
