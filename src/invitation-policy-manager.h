@@ -21,8 +21,8 @@
 class InvitationPolicyManager : public ndn::security::PolicyManager
 {
 public:
-  InvitationPolicyManager(const int & stepLimit,                        
-                          ndn::Ptr<ndn::security::CertificateCache> certificateCache);
+  InvitationPolicyManager(const int & stepLimit = 10,                        
+                          ndn::Ptr<ndn::security::CertificateCache> certificateCache = NULL);
 
   ~InvitationPolicyManager()
   {}
@@ -79,17 +79,17 @@ public:
   void
   addTrustAnchor(const EndorseCertificate& selfEndorseCertificate);
 
-private:
-  void 
-  onCertificateVerified(ndn::Ptr<ndn::Data> certData, 
-                        ndn::Ptr<ndn::Data> originalData,
-                        const ndn::DataCallback& verifiedCallback, 
-                        const ndn::UnverifiedCallback& unverifiedCallback);
+// private:
+//   void 
+//   onCertificateVerified(ndn::Ptr<ndn::Data> certData, 
+//                         ndn::Ptr<ndn::Data> originalData,
+//                         const ndn::DataCallback& verifiedCallback, 
+//                         const ndn::UnverifiedCallback& unverifiedCallback);
 
-  void
-  onCertificateUnverified(ndn::Ptr<ndn::Data> certData, 
-                          ndn::Ptr<ndn::Data> originalData,
-                          const ndn::UnverifiedCallback& unverifiedCallback);
+//   void
+//   onCertificateUnverified(ndn::Ptr<ndn::Data> certData, 
+//                           ndn::Ptr<ndn::Data> originalData,
+//                           const ndn::UnverifiedCallback& unverifiedCallback);
 
 private:
   int m_stepLimit;
