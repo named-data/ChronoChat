@@ -13,6 +13,7 @@
 #include "ui_invitationdialog.h"
 
 using namespace std;
+using namespace ndn;
 
 InvitationDialog::InvitationDialog(QWidget *parent) :
     QDialog(parent),
@@ -29,6 +30,8 @@ InvitationDialog::~InvitationDialog()
 void
 InvitationDialog::setMsg(const string& inviter, const string& chatroom)
 {
+  m_inviter = inviter;
+  m_chatroom = chatroom;
   string msg = inviter;
   msg.append(" invites you to join the chat room: ");
   
@@ -38,7 +41,11 @@ InvitationDialog::setMsg(const string& inviter, const string& chatroom)
 
 void
 InvitationDialog::onOkClicked()
-{ emit invitationAccepted(m_interestName); }
+{ 
+  QString inviter = QString::fromUtf8(m_inviter.c_str());
+  QString chatroom = QString::fromUtf8(m_chatroom.c_str());
+  emit invitationAccepted(m_interestName, *m_identityCertificate, inviter, chatroom); 
+}
   
 void
 InvitationDialog::onCancelClicked()
@@ -46,6 +53,8 @@ InvitationDialog::onCancelClicked()
   ui->msgLabel->clear();
   ui->chatroomLine->clear();
   m_interestName = Name();
+  m_inviter.clear();
+  m_chatroom.clear();
   emit invitationRejected(m_interestName); 
 }
 

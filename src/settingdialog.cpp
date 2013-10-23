@@ -18,6 +18,9 @@ SettingDialog::SettingDialog(QWidget *parent) :
     ui(new Ui::SettingDialog)
 {
     ui->setupUi(this);
+
+    connect(ui->okButton, SIGNAL(clicked()),
+            this, SLOT(onOkClicked()));
 }
 
 SettingDialog::~SettingDialog()
@@ -26,7 +29,7 @@ SettingDialog::~SettingDialog()
 }
 
 void
-setIdentity(const std::string& identity)
+SettingDialog::setIdentity(const std::string& identity)
 { 
   m_identity = identity;
   ui->identityLine->setText(QString::fromUtf8(m_identity.c_str()));
@@ -42,6 +45,7 @@ SettingDialog::onOkClicked()
       m_identity = identity;
       emit identitySet(text);
     }
+  this->close();
 }
 
 
