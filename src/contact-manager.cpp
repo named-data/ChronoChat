@@ -301,7 +301,7 @@ ContactManager::publishSelfEndorseCertificateInDNS(Ptr<EndorseCertificate> selfE
   
   Ptr<Blob> dnsBlob = data->encodeToWire();
 
-  m_wrapper->putToCcnd(*dnsBlob);
+  m_wrapper->putToNdnd(*dnsBlob);
 }
 
 

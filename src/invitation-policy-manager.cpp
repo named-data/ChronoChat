@@ -27,9 +27,9 @@ InvitationPolicyManager::InvitationPolicyManager(const int & stepLimit,
   , m_certificateCache(certificateCache)
   , m_localPrefixRegex(Ptr<Regex>(new Regex("^<local><ndn><prefix><><>$")))
 {
-  // m_invitationDataRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
-  //       								"^([^<KEY>]*)<KEY><DSK-.*><ID-CERT><>$", 
-  //       								"==", "\\1", "\\1", true));
+  m_invitationDataRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
+        								"^([^<KEY>]*)<KEY><DSK-.*><ID-CERT><>$", 
+        								"==", "\\1", "\\1", true));
   
   m_dskRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><DSK-.*><ID-CERT><>$", 
 							     "^([^<KEY>]*)<KEY>(<>*)<KSK-.*><ID-CERT><>$", 
