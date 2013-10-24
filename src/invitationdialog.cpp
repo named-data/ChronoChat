@@ -20,6 +20,11 @@ InvitationDialog::InvitationDialog(QWidget *parent) :
     ui(new Ui::InvitationDialog)
 {
     ui->setupUi(this);
+    
+    connect(ui->okButton, SIGNAL(clicked()),
+            this, SLOT(onOkClicked()));
+    connect(ui->cancelButton, SIGNAL(clicked()),
+            this, SLOT(onCancelClicked()));
 }
 
 InvitationDialog::~InvitationDialog()
@@ -36,7 +41,7 @@ InvitationDialog::setMsg(const string& inviter, const string& chatroom)
   msg.append(" invites you to join the chat room: ");
   
   ui->msgLabel->setText(QString::fromUtf8(msg.c_str()));
-  ui->chatroomLine->setText(QString::fromUtf8(msg.c_str()));
+  ui->chatroomLine->setText(QString::fromUtf8(chatroom.c_str()));
 }
 
 void
@@ -45,6 +50,7 @@ InvitationDialog::onOkClicked()
   QString inviter = QString::fromUtf8(m_inviter.c_str());
   QString chatroom = QString::fromUtf8(m_chatroom.c_str());
   emit invitationAccepted(m_interestName, *m_identityCertificate, inviter, chatroom); 
+  this->close();
 }
   
 void
@@ -56,6 +62,7 @@ InvitationDialog::onCancelClicked()
   m_inviter.clear();
   m_chatroom.clear();
   emit invitationRejected(m_interestName); 
+  this->close();
 }
 
 #if WAF

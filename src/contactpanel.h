@@ -22,6 +22,7 @@
 #include "startchatdialog.h"
 #include "invitationdialog.h"
 #include "settingdialog.h"
+#include "chatdialog.h"
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
@@ -34,7 +35,7 @@ class ContactPanel;
 
 class ContactPanel : public QDialog
 {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
   explicit ContactPanel(ndn::Ptr<ContactManager> contactManager, QWidget *parent = 0);
@@ -83,6 +84,10 @@ private:
                     const ndn::Name& inviterNameSpace,
                     ndn::Ptr<ndn::security::IdentityCertificate> certificate);
 
+signals:
+  void
+  newInvitationReady();
+
 private slots:
   void
   updateSelection(const QItemSelection &selected,
@@ -105,6 +110,9 @@ private slots:
 
   void
   openSettingDialog();
+
+  void
+  openInvitationDialog();
 
   void
   refreshContactList();
@@ -137,6 +145,7 @@ private:
   StartChatDialog* m_startChatDialog;
   InvitationDialog* m_invitationDialog;
   SettingDialog* m_settingDialog;
+  std::map<ndn::Name, ChatDialog*> m_chatDialogs;
   QAction* m_menuInvite;
   QAction* m_menuAlias;
   std::vector<ndn::Ptr<ContactItem> > m_contactList;
@@ -146,6 +155,7 @@ private:
 
   ndn::Name m_defaultIdentity;
   ndn::Name m_localPrefix;
+  ndn::Name m_inviteListenPrefix;
 
   std::string m_currentSelectedContactAlias;
   std::string m_currentSelectedContactNamespace;

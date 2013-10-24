@@ -58,56 +58,59 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
 {
   qRegisterMetaType<ndn::security::IdentityCertificate>("IdentityCertificate");
   
-   ui->setupUi(this);
-   refreshContactList();
+  ui->setupUi(this);
+  refreshContactList();
 
-   openDB();    
+  openDB();    
 
-   setKeychain();
-   m_handler = Ptr<Wrapper>(new Wrapper(m_keychain));
+  setKeychain();
+  m_handler = Ptr<Wrapper>(new Wrapper(m_keychain));
    
-   setLocalPrefix();
+  setLocalPrefix();
     
-   // Set Identity, TODO: through user interface
-   m_defaultIdentity = m_keychain->getDefaultIdentity();
-   m_settingDialog->setIdentity(m_defaultIdentity.toUri());
-   setInvitationListener();
+  // Set Identity, TODO: through user interface
+  m_defaultIdentity = m_keychain->getDefaultIdentity();
+  m_settingDialog->setIdentity(m_defaultIdentity.toUri());
+  setInvitationListener();
+  
+  ui->ContactList->setModel(m_contactListModel);
+  
+  QItemSelectionModel* selectionModel = ui->ContactList->selectionModel();
 
-   ui->ContactList->setModel(m_contactListModel);
+  connect(selectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
+          this, SLOT(updateSelection(const QItemSelection &, const QItemSelection &)));
 
-   QItemSelectionModel* selectionModel = ui->ContactList->selectionModel();
+  connect(ui->ContactList, SIGNAL(customContextMenuRequested(const QPoint&)),
+          this, SLOT(showContextMenu(const QPoint&)));
 
-   connect(selectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
-           this, SLOT(updateSelection(const QItemSelection &, const QItemSelection &)));
+  connect(ui->EditProfileButton, SIGNAL(clicked()), 
+          this, SLOT(openProfileEditor()));
 
-   connect(ui->ContactList, SIGNAL(customContextMenuRequested(const QPoint&)),
-           this, SLOT(showContextMenu(const QPoint&)));
-
-   connect(ui->EditProfileButton, SIGNAL(clicked()), 
-           this, SLOT(openProfileEditor()));
-
-   connect(ui->AddContactButton, SIGNAL(clicked()),
-           this, SLOT(openAddContactPanel()));
+  connect(ui->AddContactButton, SIGNAL(clicked()),
+          this, SLOT(openAddContactPanel()));
    
-   connect(ui->settingButton, SIGNAL(clicked()),
-           this, SLOT(openSettingDialog()));
+  connect(ui->settingButton, SIGNAL(clicked()),
+          this, SLOT(openSettingDialog()));
    
-   connect(m_addContactPanel, SIGNAL(newContactAdded()),
-           this, SLOT(refreshContactList()));
+  connect(m_addContactPanel, SIGNAL(newContactAdded()),
+          this, SLOT(refreshContactList()));
 
-   connect(m_setAliasDialog, SIGNAL(aliasChanged()),
-           this, SLOT(refreshContactList()));
+  connect(m_setAliasDialog, SIGNAL(aliasChanged()),
+          this, SLOT(refreshContactList()));
 
-   connect(m_startChatDialog, SIGNAL(chatroomConfirmed(const QString&, const QString&, bool)),
-           this, SLOT(startChatroom(const QString&, const QString&, bool)));
+  connect(m_startChatDialog, SIGNAL(chatroomConfirmed(const QString&, const QString&, bool)),
+          this, SLOT(startChatroom(const QString&, const QString&, bool)));
 
-   connect(m_invitationDialog, SIGNAL(invitationAccepted(const ndn::Name&, const ndn::security::IdentityCertificate&, QString, QString)),
-           this, SLOT(acceptInvitation(const ndn::Name&, const ndn::security::IdentityCertificate&, QString, QString)));
-   connect(m_invitationDialog, SIGNAL(invitationRejected(const ndn::Name&)),
-           this, SLOT(rejectInvitation(const ndn::Name&)));
+  connect(m_invitationDialog, SIGNAL(invitationAccepted(const ndn::Name&, const ndn::security::IdentityCertificate&, QString, QString)),
+          this, SLOT(acceptInvitation(const ndn::Name&, const ndn::security::IdentityCertificate&, QString, QString)));
+  connect(m_invitationDialog, SIGNAL(invitationRejected(const ndn::Name&)),
+          this, SLOT(rejectInvitation(const ndn::Name&)));
 
-   connect(m_settingDialog, SIGNAL(identitySet(const QString&)),
-           this, SLOT(updateDefaultIdentity(const QString&)));
+  connect(m_settingDialog, SIGNAL(identitySet(const QString&)),
+          this, SLOT(updateDefaultIdentity(const QString&)));
+
+  connect(this, SIGNAL(newInvitationReady()),
+          this, SLOT(openInvitationDialog()));
 
 
 
@@ -115,12 +118,16 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
 
 ContactPanel::~ContactPanel()
 {
-    delete ui;
-    delete m_contactListModel;
-    delete m_profileEditor;
-    delete m_addContactPanel;
+  delete ui;
+  delete m_contactListModel;
+  delete m_profileEditor;
+  delete m_addContactPanel;
 
-    delete m_menuInvite;
+  delete m_menuInvite;
+
+  map<Name, ChatDialog*>::iterator it = m_chatDialogs.begin();
+  for(; it != m_chatDialogs.end(); it++)
+    delete it->second;
 }
 
 void
@@ -175,9 +182,8 @@ ContactPanel::onLocalPrefixVerified(Ptr<Data> data)
   string originPrefix(data->content().buf(), data->content().size());
   string prefix = QString::fromStdString (originPrefix).trimmed ().toUtf8().constData();
   string randomSuffix = getRandomString();
-  _LOG_DEBUG("prefix: " << prefix);
-  _LOG_DEBUG("randomSuffix: " << randomSuffix);
   m_localPrefix = Name(prefix);
+  m_localPrefix.append(randomSuffix);
 }
 
 void
@@ -230,11 +236,10 @@ ContactPanel::popChatInvitation(const Name& interestName,
 
   string chatroom = interestName.get(i+1).toUri();
   string inviter = inviterNameSpace.toUri();
-  
   m_invitationDialog->setMsg(inviter, chatroom);
   m_invitationDialog->setIdentityCertificate(certificate);
   m_invitationDialog->setInterestName(interestName);
-  m_invitationDialog->show();
+  emit newInvitationReady();
 }
 
 static std::string chars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789");
@@ -258,6 +263,8 @@ ContactPanel::setInvitationListener()
 {
   Name prefix("/ndn/broadcast/chronos/invitation");
   prefix.append(m_defaultIdentity);
+  _LOG_DEBUG("prefix: " << prefix.toUri());
+  m_inviteListenPrefix = prefix;
   m_handler->setInterestFilter (prefix, 
                                 boost::bind(&ContactPanel::onInvitation, 
                                             this,
@@ -268,6 +275,7 @@ ContactPanel::setInvitationListener()
 void
 ContactPanel::onInvitation(Ptr<Interest> interest)
 {
+  _LOG_DEBUG("receive interest!" << interest->getName().toUri());
   const Name& interestName = interest->getName();
   const int end = interestName.size();
   
@@ -350,7 +358,20 @@ ContactPanel::updateSelection(const QItemSelection &selected,
 
 void
 ContactPanel::updateDefaultIdentity(const QString& identity)
-{ m_defaultIdentity = Name(identity.toUtf8().constData()); }
+{ 
+  m_defaultIdentity = Name(identity.toUtf8().constData()); 
+  Name prefix("/ndn/broadcast/chronos/invitation");
+  prefix.append(m_defaultIdentity);
+
+  _LOG_DEBUG("reset invite listen prefix: " << prefix.toUri());
+  
+  m_handler->clearInterestFilter(m_inviteListenPrefix);
+  m_handler->setInterestFilter(prefix,
+                               boost::bind(&ContactPanel::onInvitation, 
+                                           this,
+                                           _1));
+  m_inviteListenPrefix = prefix;
+}
 
 void
 ContactPanel::openProfileEditor()
@@ -359,6 +380,10 @@ ContactPanel::openProfileEditor()
 void
 ContactPanel::openAddContactPanel()
 { m_addContactPanel->show(); }
+
+void
+ContactPanel::openInvitationDialog()
+{ m_invitationDialog->show(); }
 
 void
 ContactPanel::refreshContactList()
@@ -419,6 +444,20 @@ ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, boo
   _LOG_DEBUG("room: " << chatroom.toUtf8().constData());
   _LOG_DEBUG("invitee: " << invitee.toUtf8().constData());
   _LOG_DEBUG("introducer: " << std::boolalpha << isIntroducer);
+
+  Name chatroomName("/ndn/broadcast/chronos");
+  chatroomName.append(chatroom.toUtf8().constData());
+  
+  ChatDialog* chatDialog = new ChatDialog(chatroomName, m_localPrefix, m_defaultIdentity);
+  m_chatDialogs.insert(pair <Name, ChatDialog*> (chatroomName, chatDialog));
+  
+  //TODO: send invitation
+  Name inviteeNamespace(invitee.toUtf8().constData());
+  Ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
+
+  chatDialog->sendInvitation(inviteeItem); 
+  
+  chatDialog->show();
 }
 
 void
@@ -435,8 +474,11 @@ ContactPanel::acceptInvitation(const Name& interestName,
                                QString chatroom)
 {
   string prefix = m_localPrefix.toUri();
+  _LOG_DEBUG("interestName " << interestName);
+  _LOG_DEBUG("prefix " << prefix);
   m_handler->publishDataByIdentity (interestName, prefix);
   //TODO:: open chat dialog
+  _LOG_DEBUG("ok");
   startChatroom2(chatroom, inviter);
 }
 
