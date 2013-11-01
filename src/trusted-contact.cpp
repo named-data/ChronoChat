@@ -9,7 +9,9 @@
  */
 
 #include "trusted-contact.h"
-#include <tinyxml.h>
+#include <boost/tokenizer.hpp>
+using boost::tokenizer;
+using boost::escaped_list_separator;
 
 using namespace std;
 using namespace ndn;
@@ -19,14 +21,15 @@ TrustedContact::TrustedContact(const EndorseCertificate& selfEndorseCertificate,
 			       const string& alias)
   : ContactItem(selfEndorseCertificate, alias)
 {
-  TiXmlDocument xmlDoc;
-  xmlDoc.Parse(trustScope.c_str());
-  
-  TiXmlNode * it = xmlDoc.FirstChild();    
-  while(it != NULL)
+  tokenizer<escaped_list_separator<char> > trustScopeItems(trustScope, escaped_list_separator<char> ("\\", " \t", "'\""));
+
+  tokenizer<escaped_list_separator<char> >::iterator it = trustScopeItems.begin();
+
+  while (it != trustScopeItems.end())
     {
-      m_trustScope.push_back(Regex::fromXmlElement(dynamic_cast<TiXmlElement *>(it)));
-      it = it->NextSibling();
+      m_trustScope.push_back(Regex::fromName(Name(*it)));
+      m_trustScopeName.push_back(Name(*it));
+      it++;
     }
 }
 
@@ -45,12 +48,12 @@ Ptr<Blob>
 TrustedContact::getTrustScopeBlob() const
 {
   ostringstream oss;
-  TiXmlDocument * xmlDoc = new TiXmlDocument();
 
-  vector<Ptr<Regex> >::const_iterator it = m_trustScope.begin();
-  for(; it != m_trustScope.end(); it++)
-      xmlDoc->LinkEndChild((*it)->toXmlElement());
+  vector<Name>::const_iterator it = m_trustScopeName.begin();
+  if(it != m_trustScopeName.end())
+    oss << it->toUri();
+  for(; it != m_trustScopeName.end(); it++)
+    oss << " " << it->toUri();
 
-  oss << *xmlDoc;
   return Ptr<Blob>(new Blob(oss.str().c_str(), oss.str().size()));
 }

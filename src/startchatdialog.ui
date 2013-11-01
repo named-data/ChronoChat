@@ -80,6 +80,9 @@
    <property name="text">
     <string>Set invitee as introducer</string>
    </property>
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
   </widget>
  </widget>
  <resources/>

@@ -26,11 +26,8 @@ ProfileData::ProfileData(const Name& identity,
   , m_profile(profile)
 {
   Name dataName = identity;
-  TimeInterval ti = time::NowUnixTimestamp();
-  ostringstream oss;
-  oss << ti.total_seconds();
 
-  dataName.append("PROFILE").append(oss.str());
+  dataName.append("PROFILE").appendVersion();
   setName(dataName);
   Ptr<Blob> profileBlob = profile.toDerBlob();
   setContent(Content(profileBlob->buf(), profileBlob->size()));

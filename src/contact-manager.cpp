@@ -58,13 +58,13 @@ ContactManager::setKeychain()
                                                                                           "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT>",
                                                                                           "==", "\\1", "\\1\\2", true)));
   policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<PROFILE-CERT>]*)<PROFILE-CERT>",
-											  "^([^<KEY>]*)<KEY>(<>*<KSK-.*>)<ID-CERT>", 
+											  "^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>", 
 											  "==", "\\1", "\\1\\2", true)));
-  policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY>(<>*)<KSK-.*><ID-CERT>",
-											  "^([^<KEY>]*)<KEY><DSK-.*><ID-CERT>",
+  policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>",
+											  "^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>",
 											  ">", "\\1\\2", "\\1", true)));
-  policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><DSK-.*><ID-CERT>",
-											  "^([^<KEY>]*)<KEY>(<>*)<KSK-.*><ID-CERT>",
+  policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>",
+											  "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>",
 											  "==", "\\1", "\\1\\2", true)));
 
   policyManager->addSigningPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<DNS>]*)<DNS><PROFILE>",
@@ -97,6 +97,7 @@ ContactManager::fetchSelfEndorseCertificate(const ndn::Name& identity)
   interestName.append("DNS").append("PROFILE");
   
   Ptr<Interest> interestPtr = Ptr<Interest>(new Interest(interestName));
+  interestPtr->setChildSelector(Interest::CHILD_RIGHT);
   Ptr<Closure> closure = Ptr<Closure> (new Closure(boost::bind(&ContactManager::onDnsSelfEndorseCertificateVerified, 
                                                                this,
                                                                _1,
@@ -200,7 +201,12 @@ ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
   Ptr<security::IdentityCertificate> dskCert = identityManager->getCertificate(certificateName);
   Ptr<const signature::Sha256WithRsa> dskCertSig = DynamicCast<const signature::Sha256WithRsa>(dskCert->getSignature());
   // HACK! KSK certificate should be retrieved from network.
-  Ptr<security::IdentityCertificate> kskCert = identityManager->getCertificate(dskCertSig->getKeyLocator().getKeyName());
+  _LOG_DEBUG("keyLocator: " << dskCertSig->getKeyLocator().getKeyName());
+  Name keyName = security::IdentityCertificate::certificateNameToPublicKeyName(dskCertSig->getKeyLocator().getKeyName());
+  _LOG_DEBUG("keyName: " << keyName.toUri());
+  Name kskCertName = identityManager->getPublicStorage()->getDefaultCertificateNameForKey(keyName);
+  _LOG_DEBUG("ksk cert name: " << kskCertName);
+  Ptr<security::IdentityCertificate> kskCert = identityManager->getCertificate(kskCertName);
 
   vector<string> endorseList;
   Profile::const_iterator it = profile.begin();
@@ -277,12 +283,9 @@ ContactManager::publishSelfEndorseCertificateInDNS(Ptr<EndorseCertificate> selfE
   Name keyName = selfEndorseCertificate->getPublicKeyName();
   Name identity = keyName.getSubName(0, keyName.size()-1);
 
-  TimeInterval ti = time::NowUnixTimestamp();
-  ostringstream oss;
-  oss << ti.total_seconds();
 
   Name dnsName = identity;
-  dnsName.append("DNS").append("PROFILE").append(oss.str());
+  dnsName.append("DNS").append("PROFILE").appendVersion();
   
   data->setName(dnsName);
   Ptr<Blob> blob = selfEndorseCertificate->encodeToWire();

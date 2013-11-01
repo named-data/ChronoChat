@@ -14,93 +14,80 @@
 #include <ndn.cxx/security/policy/policy-manager.h>
 #include <ndn.cxx/security/policy/identity-policy-rule.h>
 #include <ndn.cxx/security/cache/certificate-cache.h>
+#include <ndn.cxx/regex/regex.h>
 #include <map>
 
 #include "endorse-certificate.h"
+#include "chat-policy-rule.h"
 
 class InvitationPolicyManager : public ndn::security::PolicyManager
 {
 public:
-  InvitationPolicyManager(const int & stepLimit = 10,                        
-                          ndn::Ptr<ndn::security::CertificateCache> certificateCache = NULL);
+  InvitationPolicyManager(const std::string& chatroomName,
+                        int stepLimit = 10,
+                        ndn::Ptr<ndn::security::CertificateCache> certificateCache = NULL);
+  
+  virtual
+  ~InvitationPolicyManager();
 
-  ~InvitationPolicyManager()
-  {}
-
-  /**
-   * @brief check if the received data packet can escape from verification
-   * @param data the received data packet
-   * @return true if the data does not need to be verified, otherwise false
-   */
   bool 
-  skipVerifyAndTrust (const ndn::Data & data);
+  skipVerifyAndTrust (const ndn::Data& data);
 
-  /**
-   * @brief check if PolicyManager has the verification rule for the received data
-   * @param data the received data packet
-   * @return true if the data must be verified, otherwise false
-   */
   bool
-  requireVerify (const ndn::Data & data);
+  requireVerify (const ndn::Data& data);
 
-  /**
-   * @brief check whether received data packet complies with the verification policy, and get the indication of next verification step
-   * @param data the received data packet
-   * @param stepCount the number of verification steps that have been done, used to track the verification progress
-   * @param verifiedCallback the callback function that will be called if the received data packet has been validated
-   * @param unverifiedCallback the callback function that will be called if the received data packet cannot be validated
-   * @return the indication of next verification step, NULL if there is no further step
-   */
   ndn::Ptr<ndn::security::ValidationRequest>
   checkVerificationPolicy(ndn::Ptr<ndn::Data> data, 
-                          const int & stepCount, 
+                          const int& stepCount, 
                           const ndn::DataCallback& verifiedCallback,
                           const ndn::UnverifiedCallback& unverifiedCallback);
 
-    
-  /**
-   * @brief check if the signing certificate name and data name satify the signing policy 
-   * @param dataName the name of data to be signed
-   * @param certificateName the name of signing certificate
-   * @return true if the signing certificate can be used to sign the data, otherwise false
-   */
   bool 
-  checkSigningPolicy(const ndn::Name & dataName, const ndn::Name & certificateName);
-  
-  /**
-   * @brief Infer signing identity name according to policy, if the signing identity cannot be inferred, it should return empty name
-   * @param dataName, the name of data to be signed
-   * @return the signing identity. 
-   */
+  checkSigningPolicy(const ndn::Name& dataName, 
+                     const ndn::Name& certificateName);
+    
   ndn::Name 
-  inferSigningIdentity(const ndn::Name & dataName);
+  inferSigningIdentity(const ndn::Name& dataName);
 
-  
   void
   addTrustAnchor(const EndorseCertificate& selfEndorseCertificate);
+  
+  // void 
+  // addChatDataRule(const ndn::Name& prefix, 
+  //                 const ndn::security::IdentityCertificate identityCertificate);
 
-// private:
-//   void 
-//   onCertificateVerified(ndn::Ptr<ndn::Data> certData, 
-//                         ndn::Ptr<ndn::Data> originalData,
-//                         const ndn::DataCallback& verifiedCallback, 
-//                         const ndn::UnverifiedCallback& unverifiedCallback);
-
-//   void
-//   onCertificateUnverified(ndn::Ptr<ndn::Data> certData, 
-//                           ndn::Ptr<ndn::Data> originalData,
-//                           const ndn::UnverifiedCallback& unverifiedCallback);
+  ndn::Ptr<ndn::security::IdentityCertificate> 
+  getValidatedDskCertificate(const ndn::Name& certName);
 
 private:
+  void 
+  onDskCertificateVerified(ndn::Ptr<ndn::Data> certData, 
+                        ndn::Ptr<ndn::Data> originalData,
+                        const ndn::DataCallback& verifiedCallback, 
+                        const ndn::UnverifiedCallback& unverifiedCallback);
+
+  void
+  onDskCertificateUnverified(ndn::Ptr<ndn::Data> certData, 
+                          ndn::Ptr<ndn::Data> originalData,
+                          const ndn::UnverifiedCallback& unverifiedCallback);
+
+private:
+  std::string m_chatroomName;
+
   int m_stepLimit;
+
   ndn::Ptr<ndn::security::CertificateCache> m_certificateCache;
-  ndn::Ptr<ndn::Regex> m_localPrefixRegex;
-  ndn::Ptr<ndn::security::IdentityPolicyRule> m_invitationDataRule;
+
+  ndn::Ptr<ndn::security::IdentityPolicyRule> m_invitationPolicyRule;
   ndn::Ptr<ndn::security::IdentityPolicyRule> m_dskRule;
+  std::map<ndn::Name, ChatPolicyRule> m_chatDataRules;
+
   ndn::Ptr<ndn::Regex> m_keyNameRegex;
-  ndn::Ptr<ndn::Regex> m_signingCertificateRegex;
+
   std::map<ndn::Name, ndn::security::Publickey> m_trustAnchors;
-  
+
+  std::map<ndn::Name, ndn::Ptr<ndn::security::IdentityCertificate> > m_dskCertificates;
+
 };
 
-#endif
+#endif //CHATROOM_POLICY_MANAGER_H

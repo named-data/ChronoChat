@@ -22,9 +22,31 @@
 
 using namespace ndn;
 
+class NewApp : public QApplication
+{
+public:
+  NewApp(int & argc, char ** argv)
+    : QApplication(argc, argv)
+  {}
+
+  bool notify(QObject * receiver, QEvent * event) 
+  {
+    try 
+      {
+        return QApplication::notify(receiver, event);
+      } 
+    catch(std::exception& e) 
+      {
+        std::cerr << "Exception thrown:" << e.what() << endl;
+        return false;
+      }
+    
+  }
+};
+
 int main(int argc, char *argv[])
 {
-  QApplication app(argc, argv);
+  NewApp app(argc, argv);
 
 
 //   app.setWindowIcon(QIcon("/Users/yuyingdi/Develop/QT/demo.icns"));

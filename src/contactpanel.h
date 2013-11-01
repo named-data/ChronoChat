@@ -26,6 +26,7 @@
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
+#include "chronos-invitation.h"
 #endif
 
 
@@ -79,7 +80,7 @@ private:
   getRandomString();
 
   void
-  popChatInvitation(const ndn::Name& interestName,
+  popChatInvitation(ndn::Ptr<ChronosInvitation> invitation,
                     int inviterIndex,
                     const ndn::Name& inviterNameSpace,
                     ndn::Ptr<ndn::security::IdentityCertificate> certificate);
@@ -124,16 +125,15 @@ private slots:
   startChatroom(const QString& chatroom, const QString& invitee, bool isIntroducer);
 
   void 
-  startChatroom2(const QString& chatroom, const QString& inviter);
+  startChatroom2(const ChronosInvitation& invitation, 
+                 const ndn::security::IdentityCertificate& identityCertificate);
 
   void
-  acceptInvitation(const ndn::Name& interestName, 
-                   const ndn::security::IdentityCertificate& identityCertificate, 
-                   QString inviter, 
-                   QString chatroom);
+  acceptInvitation(const ChronosInvitation& invitation, 
+                   const ndn::security::IdentityCertificate& identityCertificate);
 
   void
-  rejectInvitation(const ndn::Name& interestName);
+  rejectInvitation(const ChronosInvitation& invitation);
 
 private:
   Ui::ContactPanel *ui;

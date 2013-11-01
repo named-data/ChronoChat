@@ -33,23 +33,25 @@ InvitationDialog::~InvitationDialog()
 }
 
 void
-InvitationDialog::setMsg(const string& inviter, const string& chatroom)
+InvitationDialog::setInvitation(const string& alias,
+                                Ptr<ChronosInvitation> invitation, 
+                                Ptr<security::IdentityCertificate> identityCertificate)
 {
-  m_inviter = inviter;
-  m_chatroom = chatroom;
-  string msg = inviter;
+  m_inviterAlias = alias;
+  string msg = alias;
   msg.append(" invites you to join the chat room: ");
-  
   ui->msgLabel->setText(QString::fromUtf8(msg.c_str()));
-  ui->chatroomLine->setText(QString::fromUtf8(chatroom.c_str()));
+
+  m_invitation = invitation;
+  ui->chatroomLine->setText(QString::fromUtf8(invitation->getChatroom().get(0).toUri().c_str()));
+
+  m_identityCertificate = identityCertificate;
 }
 
 void
 InvitationDialog::onOkClicked()
 { 
-  QString inviter = QString::fromUtf8(m_inviter.c_str());
-  QString chatroom = QString::fromUtf8(m_chatroom.c_str());
-  emit invitationAccepted(m_interestName, *m_identityCertificate, inviter, chatroom); 
+  emit invitationAccepted(*m_invitation, *m_identityCertificate); 
   this->close();
 }
   
@@ -58,10 +60,12 @@ InvitationDialog::onCancelClicked()
 { 
   ui->msgLabel->clear();
   ui->chatroomLine->clear();
-  m_interestName = Name();
-  m_inviter.clear();
-  m_chatroom.clear();
-  emit invitationRejected(m_interestName); 
+
+  m_invitation = NULL;
+  m_identityCertificate = NULL;
+  m_inviterAlias.clear();
+
+  emit invitationRejected(*m_invitation); 
   this->close();
 }
 

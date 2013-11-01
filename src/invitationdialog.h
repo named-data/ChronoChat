@@ -16,6 +16,7 @@
 #ifndef Q_MOC_RUN
 #include <ndn.cxx/data.h>
 #include <ndn.cxx/security/certificate/identity-certificate.h>
+#include "chronos-invitation.h"
 #endif
 
 namespace Ui {
@@ -31,25 +32,17 @@ public:
   ~InvitationDialog();
 
   void
-  setMsg(const std::string& inviter, const std::string& chatroom);
-
-  inline void
-  setInterestName(const ndn::Name& interestName)
-  { m_interestName = interestName; }
-
-  inline void
-  setIdentityCertificate(const ndn::Ptr<ndn::security::IdentityCertificate> identityCertificate)
-  { m_identityCertificate = identityCertificate; }
+  setInvitation(const std::string& alias,
+                ndn::Ptr<ChronosInvitation> invitation, 
+                ndn::Ptr<ndn::security::IdentityCertificate> identityCertificate);
 
 signals:
   void
-  invitationAccepted(const ndn::Name& interestName, 
-                     const ndn::security::IdentityCertificate& identityCertificate, 
-                     QString inviter, 
-                     QString chatroom);
+  invitationAccepted(const ChronosInvitation& invitation, 
+                     const ndn::security::IdentityCertificate& identityCertificate);
   
   void
-  invitationRejected(const ndn::Name& interestName);
+  invitationRejected(const ChronosInvitation& invitation);
 
 private slots:
   void
@@ -61,9 +54,8 @@ private slots:
 
 private:
   Ui::InvitationDialog *ui;
-  std::string m_inviter;
-  std::string m_chatroom;
-  ndn::Name m_interestName;
+  std::string m_inviterAlias;
+  ndn::Ptr<ChronosInvitation> m_invitation;
   ndn::Ptr<ndn::security::IdentityCertificate> m_identityCertificate;
 };
 
