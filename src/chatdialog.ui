@@ -63,6 +63,16 @@
         <enum>QLayout::SetFixedSize</enum>
        </property>
        <item>
+        <widget class="QPushButton" name="inviteButton">
+         <property name="text">
+          <string>Invite</string>
+         </property>
+         <property name="autoDefault">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="treeButton">
          <property name="enabled">
           <bool>false</bool>

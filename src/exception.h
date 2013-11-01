@@ -22,9 +22,10 @@ public:
   ~LnException() throw()
   {}
   
-  inline const std::string& 
-  msg() const 
-  {return m_errMsg;}
+  const char* what() const throw()
+  {
+    return m_errMsg.c_str();
+  }
   
 private:
   const std::string m_errMsg;

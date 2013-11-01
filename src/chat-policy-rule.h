@@ -12,36 +12,35 @@
 #define CHAT_POLICY_RULE_H
 
 #include <ndn.cxx/security/policy/policy-rule.h>
+#include <ndn.cxx/regex/regex.h>
 
 class ChatPolicyRule : public ndn::security::PolicyRule
 {
   
 public:
-  ChatPolicyRule();
+  ChatPolicyRule(ndn::Ptr<ndn::Regex> dataRegex,
+                 ndn::Ptr<ndn::Regex> signerRegex);
+
+  ChatPolicyRule(const ChatPolicyRule& rule);
 
   virtual
-  ~ChatPolicyRyle() {};
+  ~ChatPolicyRule() {};
 
   bool 
-  matchDataName(const Data & data);
+  matchDataName(const ndn::Data & data);
 
   bool 
-  matchSignerName(const Data & data);
+  matchSignerName(const ndn::Data & data);
 
   bool
-  satisfy(const Data & data);
+  satisfy(const ndn::Data & data);
 
   bool
-  satisfy(const Name & dataName, const Name & signerName);
+  satisfy(const ndn::Name & dataName, const ndn::Name & signerName);
   
-  TiXmlElement *
-  toXmlElement();
-
 private:
   ndn::Ptr<ndn::Regex> m_dataRegex;
   ndn::Ptr<ndn::Regex> m_signerRegex;
-  ndn::Name m_dataRef;
-  ndn::Name m_signerRef;
 };
 
 #endif //CHAT_POLICY_RULE_H

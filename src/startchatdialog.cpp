@@ -41,7 +41,8 @@ StartChatDialog::onOkClicked()
 {
   QString chatroom = ui->chatroomInput->text();
   QString invitee = QString::fromUtf8(m_invitee.c_str());
-  bool isIntroducer = ui->introCheckBox->isChecked();
+  // bool isIntroducer = ui->introCheckBox->isChecked();
+  bool isIntroducer = true;
   emit chatroomConfirmed(chatroom, invitee, isIntroducer);
   this->close();
 }

@@ -10,8 +10,7 @@
 
 #include "invitation-policy-manager.h"
 
-#include <ndn.cxx/security/certificate/identity-certificate.h>
-#include <boost/bind.hpp>
+#include <ndn.cxx/security/cache/ttl-certificate-cache.h>
 
 #include "logging.h"
 
@@ -21,51 +20,43 @@ using namespace ndn::security;
 
 INIT_LOGGER("InvitationPolicyManager");
 
-InvitationPolicyManager::InvitationPolicyManager(const int & stepLimit,
-						 Ptr<CertificateCache> certificateCache)
-  : m_stepLimit(stepLimit)
+InvitationPolicyManager::InvitationPolicyManager(const string& chatroomName,
+                                             int stepLimit,
+					     Ptr<CertificateCache> certificateCache)
+  : m_chatroomName(chatroomName)
+  , m_stepLimit(stepLimit)
   , m_certificateCache(certificateCache)
-  , m_localPrefixRegex(Ptr<Regex>(new Regex("^<local><ndn><prefix><><>$")))
 {
-  m_invitationDataRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
-        								"^([^<KEY>]*)<KEY><DSK-.*><ID-CERT><>$", 
-        								"==", "\\1", "\\1", true));
-  
-  m_dskRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><DSK-.*><ID-CERT><>$", 
-							     "^([^<KEY>]*)<KEY>(<>*)<KSK-.*><ID-CERT><>$", 
+  if(m_certificateCache == NULL)
+    m_certificateCache = Ptr<TTLCertificateCache>(new TTLCertificateCache());
+
+  m_invitationPolicyRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
+									  "^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>$", 
+									  "==", "\\1", "\\1", true));
+
+  m_dskRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
+							     "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
 							     "==", "\\1", "\\1\\2", true));
 
-  m_keyNameRegex = Ptr<Regex>(new Regex("^([^<KEY>]*)<KEY>(<>*<KSK-.*>)<ID-CERT><>$", "\\1\\2"));
+  m_keyNameRegex = Ptr<Regex>(new Regex("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>$", "\\1\\2"));
+} 
 
-  m_signingCertificateRegex = Ptr<Regex>(new Regex("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", "\\1"));
-}
+InvitationPolicyManager::~InvitationPolicyManager()
+{}
 
 bool 
-InvitationPolicyManager::skipVerifyAndTrust (const Data & data)
-{
-  if(m_localPrefixRegex->match(data.getName()))
-    return true;
-  
-  return false;
-}
+InvitationPolicyManager::skipVerifyAndTrust (const Data& data)
+{ return false; }
 
 bool
-InvitationPolicyManager::requireVerify (const Data & data)
-{
-  // if(m_invitationDataRule->matchDataName(data))
-  //   return true;
-
-  if(m_dskRule->matchDataName(data))
-    return true;
-
-  return false;
-}
+InvitationPolicyManager::requireVerify (const Data& data)
+{ return true; }
 
 Ptr<ValidationRequest>
 InvitationPolicyManager::checkVerificationPolicy(Ptr<Data> data, 
-						 const int & stepCount, 
-						 const DataCallback& verifiedCallback,
-						 const UnverifiedCallback& unverifiedCallback)
+					       const int& stepCount, 
+					       const DataCallback& verifiedCallback,
+					       const UnverifiedCallback& unverifiedCallback)
 {
   if(m_stepLimit == stepCount)
     {
@@ -84,46 +75,46 @@ InvitationPolicyManager::checkVerificationPolicy(Ptr<Data> data,
 
   const Name & keyLocatorName = sha256sig->getKeyLocator().getKeyName();
 
-  // if(m_invitationDataRule->satisfy(*data))
-  //   {
-  //     Ptr<const IdentityCertificate> trustedCert = m_certificateCache->getCertificate(keyLocatorName);
+  if(m_invitationPolicyRule->satisfy(*data))
+    {
+      Ptr<const IdentityCertificate> trustedCert = m_certificateCache->getCertificate(keyLocatorName);
       
-  //     if(NULL != trustedCert){
-  //       if(verifySignature(*data, trustedCert->getPublicKeyInfo()))
-  //         verifiedCallback(data);
-  //       else
-  //         unverifiedCallback(data);
+      if(NULL != trustedCert){
+	if(verifySignature(*data, trustedCert->getPublicKeyInfo()))
+	  verifiedCallback(data);
+	else
+	  unverifiedCallback(data);
 
-  //       return NULL;
-  //     }
-  //     else{
-  //       _LOG_DEBUG("KeyLocator has not been cached and validated!");
+	return NULL;
+      }
+      else{
+	_LOG_DEBUG("KeyLocator has not been cached and validated!");
 
-  //       DataCallback recursiveVerifiedCallback = boost::bind(&InvitationPolicyManager::onCertificateVerified, 
-  //       						     this, 
-  //       						     _1, 
-  //       						     data, 
-  //       						     verifiedCallback, 
-  //       						     unverifiedCallback);
+	DataCallback recursiveVerifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateVerified, 
+							     this, 
+							     _1, 
+							     data, 
+							     verifiedCallback, 
+							     unverifiedCallback);
 
-  //       UnverifiedCallback recursiveUnverifiedCallback = boost::bind(&InvitationPolicyManager::onCertificateUnverified, 
-  //       							     this, 
-  //       							     _1, 
-  //       							     data, 
-  //       							     unverifiedCallback);
+	UnverifiedCallback recursiveUnverifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateUnverified, 
+								     this, 
+								     _1, 
+								     data, 
+								     unverifiedCallback);
 
 
-  //       Ptr<Interest> interest = Ptr<Interest>(new Interest(sha256sig->getKeyLocator().getKeyName()));
+	Ptr<Interest> interest = Ptr<Interest>(new Interest(keyLocatorName));
 	
-  //       Ptr<ValidationRequest> nextStep = Ptr<ValidationRequest>(new ValidationRequest(interest, 
-  //       									       recursiveVerifiedCallback,
-  //       									       recursiveUnverifiedCallback,
-  //       									       0,
-  //       									       stepCount + 1)
-  //       							 );
-  //       return nextStep;
-  //     }
-  //   }
+	Ptr<ValidationRequest> nextStep = Ptr<ValidationRequest>(new ValidationRequest(interest, 
+										       recursiveVerifiedCallback,
+										       recursiveUnverifiedCallback,
+										       0,
+										       stepCount + 1)
+								 );
+	return nextStep;
+      }
+    }
 
   if(m_dskRule->satisfy(*data))
     {
@@ -145,41 +136,86 @@ InvitationPolicyManager::checkVerificationPolicy(Ptr<Data> data,
   return NULL;
 }
 
-// void 
-// InvitationPolicyManager::onCertificateVerified(Ptr<Data> certData, 
-// 					       Ptr<Data> originalData,
-// 					       const DataCallback& verifiedCallback, 
-// 					       const UnverifiedCallback& unverifiedCallback)
-// {
-//   IdentityCertificate certificate(*certData);
-
-//   if(verifySignature(*originalData, certificate.getPublicKeyInfo()))
-//     verifiedCallback(originalData);
-//   else
-//     unverifiedCallback(originalData);
-// }
-
-// void
-// InvitationPolicyManager::onCertificateUnverified(Ptr<Data> certData, 
-// 						 Ptr<Data> originalData,
-// 						 const UnverifiedCallback& unverifiedCallback)
-// { unverifiedCallback(originalData); }
-
 bool 
-InvitationPolicyManager::checkSigningPolicy(const Name & dataName, const Name & certificateName)
+InvitationPolicyManager::checkSigningPolicy(const Name& dataName, 
+					  const Name& certificateName)
 {
-  return m_invitationDataRule->satisfy(dataName, certificateName);
+  //TODO:
+  return true;
 }
-
+    
 Name 
-InvitationPolicyManager::inferSigningIdentity(const Name & dataName)
+InvitationPolicyManager::inferSigningIdentity(const Name& dataName)
 {
-  if(m_signingCertificateRegex->match(dataName))
-    return m_signingCertificateRegex->expand();
-  else
-    return Name();
+  //TODO:
+  return Name();
 }
 
 void
 InvitationPolicyManager::addTrustAnchor(const EndorseCertificate& selfEndorseCertificate)
 { m_trustAnchors.insert(pair <Name, Publickey > (selfEndorseCertificate.getPublicKeyName(), selfEndorseCertificate.getPublicKeyInfo())); }
+
+
+// void
+// InvitationPolicyManager::addChatDataRule(const Name& prefix, 
+//                                        const IdentityCertificate identityCertificate)
+// {
+//   Name dataPrefix = prefix;
+//   dataPrefix.append("chronos").append(m_chatroomName);
+//   Ptr<Regex> dataRegex = Regex::fromName(prefix);
+//   Name certName = identityCertificate.getName();
+//   Name signerName = certName.getPrefix(certName.size()-1);
+//   Ptr<Regex> signerRegex = Regex::fromName(signerName, true);
+  
+//   ChatPolicyRule rule(dataRegex, signerRegex);
+//   map<Name, ChatPolicyRule>::iterator it = m_chatDataRules.find(dataPrefix);
+//   if(it != m_chatDataRules.end())
+//     it->second = rule;
+//   else
+//     m_chatDataRules.insert(pair <Name, ChatPolicyRule > (dataPrefix, rule));
+// }
+
+
+void 
+InvitationPolicyManager::onDskCertificateVerified(Ptr<Data> certData, 
+					     Ptr<Data> originalData,
+					     const DataCallback& verifiedCallback, 
+					     const UnverifiedCallback& unverifiedCallback)
+{
+  Ptr<IdentityCertificate> certificate = Ptr<IdentityCertificate>(new IdentityCertificate(*certData));
+
+  if(!certificate->isTooLate() && !certificate->isTooEarly())
+    {
+      Name certName = certificate->getName().getPrefix(certificate->getName().size()-1);
+      map<Name, Ptr<IdentityCertificate> >::iterator it = m_dskCertificates.find(certName);
+      if(it == m_dskCertificates.end())
+        m_dskCertificates.insert(pair <Name, Ptr<IdentityCertificate> > (certName, certificate));
+
+      if(verifySignature(*originalData, certificate->getPublicKeyInfo()))
+        {
+          verifiedCallback(originalData);
+          return;
+        }
+    }
+  else
+    {
+      unverifiedCallback(originalData);
+      return;
+    }
+}
+
+void
+InvitationPolicyManager::onDskCertificateUnverified(Ptr<Data> certData, 
+                                                  Ptr<Data> originalData,
+                                                  const UnverifiedCallback& unverifiedCallback)
+{ unverifiedCallback(originalData); }
+
+Ptr<IdentityCertificate> 
+InvitationPolicyManager::getValidatedDskCertificate(const ndn::Name& certName)
+{
+  map<Name, Ptr<IdentityCertificate> >::iterator it = m_dskCertificates.find(certName);
+  if(m_dskCertificates.end() != it)
+    return it->second;
+  else
+    return NULL;
+}

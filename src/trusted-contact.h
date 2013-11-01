@@ -35,6 +35,7 @@ public:
 
 private:
   std::vector<ndn::Ptr<ndn::Regex> > m_trustScope;
+  std::vector<ndn::Name> m_trustScopeName;
 };
 
 #endif

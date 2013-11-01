@@ -94,6 +94,7 @@ ProfileEditor::onGetClicked()
   m_currentIdentity = Name(inputIdentity.toUtf8().constData());
   string filter("profile_identity = '");
   filter.append(m_currentIdentity.toUri()).append("'");
+  _LOG_DEBUG("filter: " << filter);
 
   m_tableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
   m_tableModel->setTable("SelfProfile");
@@ -102,6 +103,8 @@ ProfileEditor::onGetClicked()
   m_tableModel->setHeaderData(0, Qt::Horizontal, QObject::tr("Identity"));
   m_tableModel->setHeaderData(1, Qt::Horizontal, QObject::tr("Type"));
   m_tableModel->setHeaderData(2, Qt::Horizontal, QObject::tr("Value"));
+
+  _LOG_DEBUG("row count: " << m_tableModel->rowCount());
 
   ui->profileTable->setModel(m_tableModel);
   ui->profileTable->setColumnHidden(0, true);

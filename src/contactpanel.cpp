@@ -28,7 +28,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
-#include "invitation-policy-manager.h"
+#include "panel-policy-manager.h"
 #include "logging.h"
 #include "exception.h"
 #endif
@@ -41,15 +41,12 @@ using namespace std;
 INIT_LOGGER("ContactPanel");
 
 Q_DECLARE_METATYPE(ndn::security::IdentityCertificate)
+Q_DECLARE_METATYPE(ChronosInvitation)
 
 ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent) 
     : QDialog(parent)
     , ui(new Ui::ContactPanel)
-    , m_contactManager(contactManager)
     , m_contactListModel(new QStringListModel)
-    , m_profileEditor(new ProfileEditor(m_contactManager))
-    , m_addContactPanel(new AddContactPanel(contactManager))
-    , m_setAliasDialog(new SetAliasDialog(contactManager))
     , m_startChatDialog(new StartChatDialog)
     , m_invitationDialog(new InvitationDialog)
     , m_settingDialog(new SettingDialog)
@@ -57,11 +54,17 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
     , m_menuAlias(new QAction("&Set Alias", this))
 {
   qRegisterMetaType<ndn::security::IdentityCertificate>("IdentityCertificate");
+  qRegisterMetaType<ChronosInvitation>("ChronosInvitation");
   
+  openDB();    
+
+  m_contactManager = contactManager;
+  m_profileEditor = new ProfileEditor(m_contactManager);
+  m_addContactPanel = new AddContactPanel(contactManager);
+  m_setAliasDialog = new SetAliasDialog(contactManager);
+ 
   ui->setupUi(this);
   refreshContactList();
-
-  openDB();    
 
   setKeychain();
   m_handler = Ptr<Wrapper>(new Wrapper(m_keychain));
@@ -101,10 +104,10 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   connect(m_startChatDialog, SIGNAL(chatroomConfirmed(const QString&, const QString&, bool)),
           this, SLOT(startChatroom(const QString&, const QString&, bool)));
 
-  connect(m_invitationDialog, SIGNAL(invitationAccepted(const ndn::Name&, const ndn::security::IdentityCertificate&, QString, QString)),
-          this, SLOT(acceptInvitation(const ndn::Name&, const ndn::security::IdentityCertificate&, QString, QString)));
-  connect(m_invitationDialog, SIGNAL(invitationRejected(const ndn::Name&)),
-          this, SLOT(rejectInvitation(const ndn::Name&)));
+  connect(m_invitationDialog, SIGNAL(invitationAccepted(const ChronosInvitation&, const ndn::security::IdentityCertificate&)),
+          this, SLOT(acceptInvitation(const ChronosInvitation&, const ndn::security::IdentityCertificate&)));
+  connect(m_invitationDialog, SIGNAL(invitationRejected(const ChronosInvitation&)),
+          this, SLOT(rejectInvitation(const ChronosInvitation&)));
 
   connect(m_settingDialog, SIGNAL(identitySet(const QString&)),
           this, SLOT(updateDefaultIdentity(const QString&)));
@@ -138,22 +141,22 @@ ContactPanel::openDB()
   path.append(QDir::separator()).append(".chronos").append(QDir::separator()).append("chronos.db");
   db.setDatabaseName(path);
   bool ok = db.open();
+  _LOG_DEBUG("db opened: " << std::boolalpha << ok );
 }
 
 void 
 ContactPanel::setKeychain()
 {
-  Ptr<security::OSXPrivatekeyStorage> privateStorage = Ptr<security::OSXPrivatekeyStorage>::Create();
-  Ptr<security::IdentityManager> identityManager = Ptr<security::IdentityManager>(new security::IdentityManager(Ptr<security::BasicIdentityStorage>::Create(), privateStorage));
+  Ptr<security::IdentityManager> identityManager = Ptr<security::IdentityManager>::Create();
   Ptr<security::CertificateCache> certificateCache = Ptr<security::CertificateCache>(new security::TTLCertificateCache());
-  Ptr<InvitationPolicyManager> policyManager = Ptr<InvitationPolicyManager>(new InvitationPolicyManager(10, certificateCache));
-  Ptr<security::EncryptionManager> encryptionManager = Ptr<security::EncryptionManager>(new security::BasicEncryptionManager(privateStorage, "/tmp/encryption.db"));
+  Ptr<PanelPolicyManager> policyManager = Ptr<PanelPolicyManager>(new PanelPolicyManager(10, certificateCache));
+  // Ptr<security::EncryptionManager> encryptionManager = Ptr<security::EncryptionManager>(new security::BasicEncryptionManager(privateStorage, "/tmp/encryption.db"));
 
   vector<Ptr<ContactItem> >::const_iterator it = m_contactList.begin();
   for(; it != m_contactList.end(); it++)
       policyManager->addTrustAnchor((*it)->getSelfEndorseCertificate());
 
-  m_keychain = Ptr<security::Keychain>(new security::Keychain(identityManager, policyManager, encryptionManager));
+  m_keychain = Ptr<security::Keychain>(new security::Keychain(identityManager, policyManager, NULL));
 }
 
 void
@@ -188,7 +191,11 @@ ContactPanel::onLocalPrefixVerified(Ptr<Data> data)
 
 void
 ContactPanel::onLocalPrefixTimeout(Ptr<Closure> closure, Ptr<Interest> interest)
-{ throw LnException("No local prefix is found!"); }
+{ 
+  string randomSuffix = getRandomString();
+  m_localPrefix = Name("/private/local"); 
+  m_localPrefix.append(randomSuffix);
+}
 
 void
 ContactPanel::onUnverified(Ptr<Data> data)
@@ -204,41 +211,35 @@ ContactPanel::onInvitationCertVerified(Ptr<Data> data,
                                        int inviterIndex)
 {
   Ptr<security::IdentityCertificate> certificate = Ptr<security::IdentityCertificate>(new security::IdentityCertificate(*data));
-
-  const int end = interestName.size();
-
-  string signature = interestName.get(end-1).toBlob();
-  Blob signatureBlob(signature.c_str(), signature.size());
-  string signedName = interestName.getSubName(0, end - 1).toUri();
-  Blob signedBlob(signedName.c_str(), signedName.size());
-
-  if(security::PolicyManager::verifySignature(signedBlob, signatureBlob, certificate->getPublicKeyInfo()))
+  Ptr<ChronosInvitation> invitation = Ptr<ChronosInvitation>(new ChronosInvitation(interestName));
+  
+  if(security::PolicyManager::verifySignature(invitation->getSignedBlob(), invitation->getSignatureBits(), certificate->getPublicKeyInfo()))
     {
       Name keyName = certificate->getPublicKeyName();
       Name inviterNameSpace = keyName.getSubName(0, keyName.size() - 1);
-      popChatInvitation(interestName, inviterIndex, inviterNameSpace, certificate);
+      popChatInvitation(invitation, inviterIndex, inviterNameSpace, certificate);
     }
 }
 
 void
-ContactPanel::popChatInvitation(const Name& interestName,
+ContactPanel::popChatInvitation(Ptr<ChronosInvitation> invitation,
                                 int inviterIndex,
                                 const Name& inviterNameSpace,
                                 Ptr<security::IdentityCertificate> certificate)
 {
-  string chatroomTag("chatroom");
-  int i = 0;
-  for(; i < inviterIndex; i++)
-    if(interestName.get(i).toUri() == chatroomTag)
-      break;
-  if(i+1 >= inviterIndex)
+  string chatroom = invitation->getChatroom().get(0).toUri();
+  string inviter = inviterNameSpace.toUri();
+
+  string alias;
+  vector<Ptr<ContactItem> >::iterator it = m_contactList.begin();
+  for(; it != m_contactList.end(); it++)
+    if((*it)->getNameSpace() == inviterNameSpace)
+      alias = (*it)->getAlias();
+
+  if(it != m_contactList.end())
     return;
 
-  string chatroom = interestName.get(i+1).toUri();
-  string inviter = inviterNameSpace.toUri();
-  m_invitationDialog->setMsg(inviter, chatroom);
-  m_invitationDialog->setIdentityCertificate(certificate);
-  m_invitationDialog->setInterestName(interestName);
+  m_invitationDialog->setInvitation(alias, invitation, certificate);
   emit newInvitationReady();
 }
 
@@ -427,17 +428,18 @@ ContactPanel::openSettingDialog()
 void
 ContactPanel::openStartChatDialog()
 {
-  TimeInterval ti = time::NowUnixTimestamp();
-  ostringstream oss;
-  oss << ti.total_seconds();
+  // TimeInterval ti = time::NowUnixTimestamp();
+  // ostringstream oss;
+  // oss << ti.total_seconds();
 
   Name chatroom("/ndn/broadcast/chronos");
-  chatroom.append(string("chatroom-") + oss.str());
+  chatroom.append(string("chatroom-") + getRandomString());
 
   m_startChatDialog->setInvitee(m_currentSelectedContactNamespace, chatroom.toUri());
   m_startChatDialog->show();
 }
 
+// For inviter
 void
 ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, bool isIntroducer)
 {
@@ -445,48 +447,59 @@ ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, boo
   _LOG_DEBUG("invitee: " << invitee.toUtf8().constData());
   _LOG_DEBUG("introducer: " << std::boolalpha << isIntroducer);
 
-  Name chatroomName("/ndn/broadcast/chronos");
-  chatroomName.append(chatroom.toUtf8().constData());
+  Name chatroomName(chatroom.toUtf8().constData());
   
-  ChatDialog* chatDialog = new ChatDialog(chatroomName, m_localPrefix, m_defaultIdentity);
+  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity);
   m_chatDialogs.insert(pair <Name, ChatDialog*> (chatroomName, chatDialog));
   
   //TODO: send invitation
   Name inviteeNamespace(invitee.toUtf8().constData());
   Ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
 
-  chatDialog->sendInvitation(inviteeItem); 
+  chatDialog->sendInvitation(inviteeItem, isIntroducer); 
   
   chatDialog->show();
 }
 
+// For Invitee
 void
-ContactPanel::startChatroom2(const QString& chatroom, const QString& inviter)
+ContactPanel::startChatroom2(const ChronosInvitation& invitation, 
+                             const security::IdentityCertificate& identityCertificate)
 {
-  _LOG_DEBUG("room: " << chatroom.toUtf8().constData());
-  _LOG_DEBUG("inviter: " << inviter.toUtf8().constData());
+  _LOG_DEBUG("room: " << invitation.getChatroom().toUri());
+  _LOG_DEBUG("inviter: " << invitation.getInviterNameSpace().toUri());
+
+  Name chatroomName("/ndn/broadcast/chronos");
+  chatroomName.append(invitation.getChatroom());
+
+  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity);
+  chatDialog->addChatDataRule(invitation.getInviterPrefix(), identityCertificate, true);
+
+  Ptr<ContactItem> inviterItem = m_contactManager->getContact(invitation.getInviterNameSpace());
+  chatDialog->addTrustAnchor(inviterItem->getSelfEndorseCertificate());
+  
+  m_chatDialogs.insert(pair <Name, ChatDialog*> (chatroomName, chatDialog));
+
+  chatDialog->show();
 }
 
 void
-ContactPanel::acceptInvitation(const Name& interestName, 
-                               const security::IdentityCertificate& identityCertificate, 
-                               QString inviter, 
-                               QString chatroom)
+ContactPanel::acceptInvitation(const ChronosInvitation& invitation, 
+                               const security::IdentityCertificate& identityCertificate)
 {
   string prefix = m_localPrefix.toUri();
-  _LOG_DEBUG("interestName " << interestName);
-  _LOG_DEBUG("prefix " << prefix);
-  m_handler->publishDataByIdentity (interestName, prefix);
+
+  m_handler->publishDataByIdentity (invitation.getInterestName(), prefix);
   //TODO:: open chat dialog
-  _LOG_DEBUG("ok");
-  startChatroom2(chatroom, inviter);
+  _LOG_DEBUG("TO open chat dialog");
+  startChatroom2(invitation, identityCertificate);
 }
 
 void
-ContactPanel::rejectInvitation(const ndn::Name& interestName)
+ContactPanel::rejectInvitation(const ChronosInvitation& invitation)
 {
   string empty;
-  m_handler->publishDataByIdentity (interestName, empty);
+  m_handler->publishDataByIdentity (invitation.getInterestName(), empty);
 }
 
 
