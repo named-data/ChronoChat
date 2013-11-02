@@ -11,6 +11,7 @@
 #include "panel-policy-manager.h"
 
 #include <ndn.cxx/security/certificate/identity-certificate.h>
+#include <ndn.cxx/security/cache/ttl-certificate-cache.h>
 #include <boost/bind.hpp>
 
 #include "logging.h"
@@ -22,18 +23,22 @@ using namespace ndn::security;
 INIT_LOGGER("PanelPolicyManager");
 
 PanelPolicyManager::PanelPolicyManager(const int & stepLimit,
-						 Ptr<CertificateCache> certificateCache)
+                                       Ptr<CertificateCache> certificateCache)
   : m_stepLimit(stepLimit)
   , m_certificateCache(certificateCache)
   , m_localPrefixRegex(Ptr<Regex>(new Regex("^<local><ndn><prefix><><>$")))
 {
+  if(NULL == m_certificateCache)
+    m_certificateCache = Ptr<security::CertificateCache>(new security::TTLCertificateCache());
+
   m_invitationDataSigningRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
-        								"^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
-        								"==", "\\1", "\\1", true));
+                                                                               "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT><>$", 
+                                                                               "==", "\\1", "\\1\\2", true));
   
   m_dskRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
 							     "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
 							     "==", "\\1", "\\1\\2", true));
+  m_kskRegex = Ptr<Regex>(new Regex("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT><>$", "\\1\\2"));
 
   m_keyNameRegex = Ptr<Regex>(new Regex("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>$", "\\1\\2"));
 
@@ -55,6 +60,8 @@ PanelPolicyManager::requireVerify (const Data & data)
   // if(m_invitationDataRule->matchDataName(data))
   //   return true;
 
+  if(m_kskRegex->match(data.getName()))
+     return true;
   if(m_dskRule->matchDataName(data))
     return true;
 
@@ -85,52 +92,34 @@ PanelPolicyManager::checkVerificationPolicy(Ptr<Data> data,
 
   const Name & keyLocatorName = sha256sig->getKeyLocator().getKeyName();
 
-  // if(m_invitationDataRule->satisfy(*data))
-  //   {
-  //     Ptr<const IdentityCertificate> trustedCert = m_certificateCache->getCertificate(keyLocatorName);
-      
-  //     if(NULL != trustedCert){
-  //       if(verifySignature(*data, trustedCert->getPublicKeyInfo()))
-  //         verifiedCallback(data);
-  //       else
-  //         unverifiedCallback(data);
+  if(m_kskRegex->match(data->getName()))
+    {
+      _LOG_DEBUG("is ksk");
+      Name keyName = m_kskRegex->expand();
+      _LOG_DEBUG("ksk name: " << keyName.toUri());
+      map<Name, Publickey>::iterator it = m_trustAnchors.find(keyName);
+      if(m_trustAnchors.end() != it)
+        {
+          _LOG_DEBUG("found key!");
+          Ptr<IdentityCertificate> identityCertificate = Ptr<IdentityCertificate>(new IdentityCertificate(*data));
+          if(it->second.getKeyBlob() == identityCertificate->getPublicKeyInfo().getKeyBlob())
+            {
+              _LOG_DEBUG("same key!");
+              verifiedCallback(data);
+            }
+          else
+            unverifiedCallback(data);
+        }
+      else
+        unverifiedCallback(data);
 
-  //       return NULL;
-  //     }
-  //     else{
-  //       _LOG_DEBUG("KeyLocator has not been cached and validated!");
-
-  //       DataCallback recursiveVerifiedCallback = boost::bind(&PanelPolicyManager::onCertificateVerified, 
-  //       						     this, 
-  //       						     _1, 
-  //       						     data, 
-  //       						     verifiedCallback, 
-  //       						     unverifiedCallback);
-
-  //       UnverifiedCallback recursiveUnverifiedCallback = boost::bind(&PanelPolicyManager::onCertificateUnverified, 
-  //       							     this, 
-  //       							     _1, 
-  //       							     data, 
-  //       							     unverifiedCallback);
-
-
-  //       Ptr<Interest> interest = Ptr<Interest>(new Interest(sha256sig->getKeyLocator().getKeyName()));
-	
-  //       Ptr<ValidationRequest> nextStep = Ptr<ValidationRequest>(new ValidationRequest(interest, 
-  //       									       recursiveVerifiedCallback,
-  //       									       recursiveUnverifiedCallback,
-  //       									       0,
-  //       									       stepCount + 1)
-  //       							 );
-  //       return nextStep;
-  //     }
-  //   }
+      return NULL;
+    }
 
   if(m_dskRule->satisfy(*data))
     {
       m_keyNameRegex->match(keyLocatorName);
       Name keyName = m_keyNameRegex->expand();
-      _LOG_DEBUG(keyName.toUri());
 
       if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
         if(verifySignature(*data, m_trustAnchors[keyName]))

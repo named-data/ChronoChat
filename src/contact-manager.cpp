@@ -55,16 +55,16 @@ ContactManager::setKeychain()
   Ptr<Keychain> keychain = Ptr<Keychain>(new Keychain(identityManager, policyManager, encryptionManager));
 
   policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<DNS>]*)<DNS><PROFILE>",
-                                                                                          "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT>",
+                                                                                          "^([^<KEY>]*)<KEY>(<>*)[<ksk-.*><dsk-.*>]<ID-CERT>$",
                                                                                           "==", "\\1", "\\1\\2", true)));
   policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<PROFILE-CERT>]*)<PROFILE-CERT>",
-											  "^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>", 
+											  "^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>$", 
 											  "==", "\\1", "\\1\\2", true)));
   policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>",
-											  "^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>",
+											  "^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>$",
 											  ">", "\\1\\2", "\\1", true)));
   policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>",
-											  "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>",
+											  "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$",
 											  "==", "\\1", "\\1\\2", true)));
 
   policyManager->addSigningPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<DNS>]*)<DNS><PROFILE>",
@@ -118,6 +118,7 @@ ContactManager::fetchSelfEndorseCertificate(const ndn::Name& identity)
 void
 ContactManager::updateProfileData(const Name& identity)
 {
+  _LOG_DEBUG("updateProfileData: " << identity.toUri());
   // Get current profile;
   Ptr<Profile> newProfile = m_contactStorage->getSelfProfile(identity);
   if(NULL == newProfile)
@@ -198,15 +199,27 @@ ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
   Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(identity, profile));
   identityManager->signByCertificate(*profileData, certificateName);
 
-  Ptr<security::IdentityCertificate> dskCert = identityManager->getCertificate(certificateName);
-  Ptr<const signature::Sha256WithRsa> dskCertSig = DynamicCast<const signature::Sha256WithRsa>(dskCert->getSignature());
-  // HACK! KSK certificate should be retrieved from network.
-  _LOG_DEBUG("keyLocator: " << dskCertSig->getKeyLocator().getKeyName());
-  Name keyName = security::IdentityCertificate::certificateNameToPublicKeyName(dskCertSig->getKeyLocator().getKeyName());
-  _LOG_DEBUG("keyName: " << keyName.toUri());
-  Name kskCertName = identityManager->getPublicStorage()->getDefaultCertificateNameForKey(keyName);
-  _LOG_DEBUG("ksk cert name: " << kskCertName);
-  Ptr<security::IdentityCertificate> kskCert = identityManager->getCertificate(kskCertName);
+  Ptr<security::IdentityCertificate> signingCert = identityManager->getCertificate(certificateName);
+  Name signingKeyName = security::IdentityCertificate::certificateNameToPublicKeyName(signingCert->getName(), true);
+
+  Ptr<security::IdentityCertificate> kskCert;
+  if(signingKeyName.get(-1).toUri().substr(0,4) == string("dsk-"))
+    {
+      Ptr<const signature::Sha256WithRsa> dskCertSig = DynamicCast<const signature::Sha256WithRsa>(signingCert->getSignature());
+      // HACK! KSK certificate should be retrieved from network.
+      _LOG_DEBUG("keyLocator: " << dskCertSig->getKeyLocator().getKeyName());
+      Name keyName = security::IdentityCertificate::certificateNameToPublicKeyName(dskCertSig->getKeyLocator().getKeyName());
+      _LOG_DEBUG("keyName: " << keyName.toUri());
+      Name kskCertName = identityManager->getPublicStorage()->getDefaultCertificateNameForKey(keyName);
+      _LOG_DEBUG("ksk cert name: " << kskCertName);
+      kskCert = identityManager->getCertificate(kskCertName);
+
+    }
+  else
+    {
+      kskCert = signingCert;
+      _LOG_DEBUG("ksk cert name: " << kskCert->getName().toUri());
+    }
 
   vector<string> endorseList;
   Profile::const_iterator it = profile.begin();

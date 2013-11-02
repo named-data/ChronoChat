@@ -19,11 +19,7 @@
 
 #ifndef Q_MOC_RUN
 #include <ndn.cxx/security/keychain.h>
-#include <ndn.cxx/security/identity/osx-privatekey-storage.h>
 #include <ndn.cxx/security/identity/identity-manager.h>
-#include <ndn.cxx/security/identity/basic-identity-storage.h>
-#include <ndn.cxx/security/cache/ttl-certificate-cache.h>
-#include <ndn.cxx/security/encryption/basic-encryption-manager.h>
 #include <ndn.cxx/common.h>
 #include <boost/filesystem.hpp>
 #include <boost/random/random_device.hpp>
@@ -147,16 +143,16 @@ ContactPanel::openDB()
 void 
 ContactPanel::setKeychain()
 {
-  Ptr<security::IdentityManager> identityManager = Ptr<security::IdentityManager>::Create();
-  Ptr<security::CertificateCache> certificateCache = Ptr<security::CertificateCache>(new security::TTLCertificateCache());
-  Ptr<PanelPolicyManager> policyManager = Ptr<PanelPolicyManager>(new PanelPolicyManager(10, certificateCache));
+  m_panelPolicyManager = Ptr<PanelPolicyManager>::Create();
   // Ptr<security::EncryptionManager> encryptionManager = Ptr<security::EncryptionManager>(new security::BasicEncryptionManager(privateStorage, "/tmp/encryption.db"));
 
   vector<Ptr<ContactItem> >::const_iterator it = m_contactList.begin();
   for(; it != m_contactList.end(); it++)
-      policyManager->addTrustAnchor((*it)->getSelfEndorseCertificate());
+      m_panelPolicyManager->addTrustAnchor((*it)->getSelfEndorseCertificate());
 
-  m_keychain = Ptr<security::Keychain>(new security::Keychain(identityManager, policyManager, NULL));
+  m_keychain = Ptr<security::Keychain>(new security::Keychain(Ptr<security::IdentityManager>::Create(), 
+                                                              m_panelPolicyManager, 
+                                                              NULL));
 }
 
 void
@@ -207,23 +203,20 @@ ContactPanel::onTimeout(Ptr<Closure> closure, Ptr<Interest> interest)
 
 void
 ContactPanel::onInvitationCertVerified(Ptr<Data> data, 
-                                       const Name& interestName,
-                                       int inviterIndex)
+                                       Ptr<ChronosInvitation> invitation)
 {
   Ptr<security::IdentityCertificate> certificate = Ptr<security::IdentityCertificate>(new security::IdentityCertificate(*data));
-  Ptr<ChronosInvitation> invitation = Ptr<ChronosInvitation>(new ChronosInvitation(interestName));
   
   if(security::PolicyManager::verifySignature(invitation->getSignedBlob(), invitation->getSignatureBits(), certificate->getPublicKeyInfo()))
     {
       Name keyName = certificate->getPublicKeyName();
       Name inviterNameSpace = keyName.getSubName(0, keyName.size() - 1);
-      popChatInvitation(invitation, inviterIndex, inviterNameSpace, certificate);
+      popChatInvitation(invitation, inviterNameSpace, certificate);
     }
 }
 
 void
 ContactPanel::popChatInvitation(Ptr<ChronosInvitation> invitation,
-                                int inviterIndex,
                                 const Name& inviterNameSpace,
                                 Ptr<security::IdentityCertificate> certificate)
 {
@@ -278,48 +271,14 @@ ContactPanel::onInvitation(Ptr<Interest> interest)
 {
   _LOG_DEBUG("receive interest!" << interest->getName().toUri());
   const Name& interestName = interest->getName();
-  const int end = interestName.size();
-  
-  string inviter("inviter");
-  int j = end-2;
-  for(; j >= 0; j--)
-    if(interestName.get(j).toUri() == inviter)
-      break;
 
-  //No certificate name found
-  if(j < 0)
-    return;
-  
-  Name certName = interestName.getSubName(j+1, end-2-j);
-  string keyString("KEY");
-  string idString("ID-CERT");
-  int m = certName.size() - 1;
-  int keyIndex = -1;
-  int idIndex = -1;
-  for(; m >= 0; m--)
-    if(certName.get(m).toUri() == idString)
-      {
-        idIndex = m;
-        break;
-      }
+  Ptr<ChronosInvitation> invitation = Ptr<ChronosInvitation>(new ChronosInvitation(interestName));
 
-  for(; m >=0; m--)
-    if(certName.get(m).toUri() == keyString)
-      {
-        keyIndex = m;
-        break;
-      }
-
-  //Not a qualified certificate name 
-  if(keyIndex < 0 && idIndex < 0)
-    return;
-
-  Ptr<Interest> newInterest = Ptr<Interest>(new Interest(certName));
+  Ptr<Interest> newInterest = Ptr<Interest>(new Interest(invitation->getInviterCertificateName()));
   Ptr<Closure> closure = Ptr<Closure>(new Closure(boost::bind(&ContactPanel::onInvitationCertVerified, 
                                                               this,
                                                               _1,
-                                                              interestName,
-                                                              j),
+                                                              invitation),
                                                   boost::bind(&ContactPanel::onTimeout,
                                                               this,
                                                               _1,

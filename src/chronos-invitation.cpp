@@ -9,6 +9,8 @@
  */
 
 #include "chronos-invitation.h"
+
+#include <ndn.cxx/security/certificate/identity-certificate.h>
 #include "exception.h"
 #include "logging.h"
 
@@ -72,15 +74,9 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& interestName)
   
   string signature = interestName.get(-1).toBlob();
   m_signatureBits.insert(m_signatureBits.end(), signature.begin(), signature.end());
-
-  string keyStr("KEY");
-  int keyId = 0;
-  for(; keyId < m_inviterCertificateName.size(); keyId++)
-    if(m_inviterCertificateName.get(keyId).toUri() == keyStr)
-      break;
-  if(keyId >= m_inviterCertificateName.size())
-    throw LnException("Wrong ChronosInvitation Name, no KEY tag in inviter Certificate Name");
-  m_inviterNameSpace = m_inviterCertificateName.getSubName(0, keyId);
+ 
+  Name keyName = security::IdentityCertificate::certificateNameToPublicKeyName(m_inviterCertificateName, true);
+  m_inviterNameSpace = keyName.getPrefix(keyName.size()-1);
 
   string signedName = interestName.getSubName(0, size - 1).toUri();
   m_signedBlob.insert(m_signedBlob.end(), signedName.begin(), signedName.end());

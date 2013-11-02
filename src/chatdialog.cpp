@@ -302,6 +302,7 @@ ChatDialog::publishIntroCert(ndn::Ptr<ndn::security::IdentityCertificate> dskCer
                                             dskCertificate->getPublicKeyInfo(),
                                             (isIntroducer ? SyncIntroCertificate::INTRODUCER : SyncIntroCertificate::PRODUCER));
   ndn::Name certName = m_identityManager->getDefaultCertificateNameByIdentity(m_defaultIdentity);
+  _LOG_DEBUG("publishIntroCert: " << syncIntroCertificate.getName());
   m_identityManager->signByCertificate(syncIntroCertificate, certName);
   m_handler->putToNdnd(*syncIntroCertificate.encodeToWire());
 }
