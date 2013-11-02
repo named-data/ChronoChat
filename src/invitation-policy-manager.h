@@ -82,6 +82,7 @@ private:
   ndn::Ptr<ndn::security::IdentityPolicyRule> m_dskRule;
   std::map<ndn::Name, ChatPolicyRule> m_chatDataRules;
 
+  ndn::Ptr<ndn::Regex> m_kskRegex;
   ndn::Ptr<ndn::Regex> m_keyNameRegex;
 
   std::map<ndn::Name, ndn::security::Publickey> m_trustAnchors;

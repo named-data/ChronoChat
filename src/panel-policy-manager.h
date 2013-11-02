@@ -22,7 +22,7 @@ class PanelPolicyManager : public ndn::security::PolicyManager
 {
 public:
   PanelPolicyManager(const int & stepLimit = 10,                        
-                          ndn::Ptr<ndn::security::CertificateCache> certificateCache = NULL);
+                     ndn::Ptr<ndn::security::CertificateCache> certificateCache = NULL);
 
   ~PanelPolicyManager()
   {}
@@ -96,6 +96,7 @@ private:
   ndn::Ptr<ndn::security::CertificateCache> m_certificateCache;
   ndn::Ptr<ndn::Regex> m_localPrefixRegex;
   ndn::Ptr<ndn::security::IdentityPolicyRule> m_invitationDataSigningRule;
+  ndn::Ptr<ndn::Regex> m_kskRegex;
   ndn::Ptr<ndn::security::IdentityPolicyRule> m_dskRule;
   ndn::Ptr<ndn::Regex> m_keyNameRegex;
   ndn::Ptr<ndn::Regex> m_signingCertificateRegex;

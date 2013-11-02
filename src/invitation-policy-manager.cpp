@@ -31,8 +31,10 @@ InvitationPolicyManager::InvitationPolicyManager(const string& chatroomName,
     m_certificateCache = Ptr<TTLCertificateCache>(new TTLCertificateCache());
 
   m_invitationPolicyRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
-									  "^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>$", 
-									  "==", "\\1", "\\1", true));
+									  "^([^<KEY>]*)<KEY>(<>*)[<dsk-.*><ksk-.*>]<ID-CERT>$", 
+									  "==", "\\1", "\\1\\2", true));
+
+  m_kskRegex = Ptr<Regex>(new Regex("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT><>$", "\\1\\2"));
 
   m_dskRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
 							     "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
@@ -77,6 +79,18 @@ InvitationPolicyManager::checkVerificationPolicy(Ptr<Data> data,
 
   if(m_invitationPolicyRule->satisfy(*data))
     {
+      // Name keyName = IdentityCertificate::certificateNameToPublicKeyName(keyLocatorName);
+      // map<Name, Publickey>::iterator it = m_trustAnchors.find(keyName);
+      // if(m_trustAnchors.end() != it)
+      //   {
+      //     if(verifySignature(*data, it->second))
+      //       verifiedCallback(data);
+      //     else
+      //       unverifiedCallback(data);
+
+      //     return NULL;
+      //   }
+
       Ptr<const IdentityCertificate> trustedCert = m_certificateCache->getCertificate(keyLocatorName);
       
       if(NULL != trustedCert){
@@ -87,33 +101,56 @@ InvitationPolicyManager::checkVerificationPolicy(Ptr<Data> data,
 
 	return NULL;
       }
-      else{
-	_LOG_DEBUG("KeyLocator has not been cached and validated!");
 
-	DataCallback recursiveVerifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateVerified, 
-							     this, 
-							     _1, 
-							     data, 
-							     verifiedCallback, 
-							     unverifiedCallback);
+      _LOG_DEBUG("KeyLocator has not been cached and validated!");
 
-	UnverifiedCallback recursiveUnverifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateUnverified, 
-								     this, 
-								     _1, 
-								     data, 
-								     unverifiedCallback);
+      DataCallback recursiveVerifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateVerified, 
+                                                           this, 
+                                                           _1, 
+                                                           data, 
+                                                           verifiedCallback, 
+                                                           unverifiedCallback);
+      
+      UnverifiedCallback recursiveUnverifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateUnverified, 
+                                                                   this, 
+                                                                   _1, 
+                                                                   data, 
+                                                                   unverifiedCallback);
 
 
-	Ptr<Interest> interest = Ptr<Interest>(new Interest(keyLocatorName));
-	
-	Ptr<ValidationRequest> nextStep = Ptr<ValidationRequest>(new ValidationRequest(interest, 
-										       recursiveVerifiedCallback,
-										       recursiveUnverifiedCallback,
-										       0,
-										       stepCount + 1)
-								 );
-	return nextStep;
-      }
+      Ptr<Interest> interest = Ptr<Interest>(new Interest(keyLocatorName));
+      
+      Ptr<ValidationRequest> nextStep = Ptr<ValidationRequest>(new ValidationRequest(interest, 
+                                                                                     recursiveVerifiedCallback,
+                                                                                     recursiveUnverifiedCallback,
+                                                                                     0,
+                                                                                     stepCount + 1)
+                                                               );
+      return nextStep;
+    }
+
+  if(m_kskRegex->match(data->getName()))
+    {
+      _LOG_DEBUG("is ksk");
+      Name keyName = m_kskRegex->expand();
+      _LOG_DEBUG("ksk name: " << keyName.toUri());
+      map<Name, Publickey>::iterator it = m_trustAnchors.find(keyName);
+      if(m_trustAnchors.end() != it)
+        {
+          _LOG_DEBUG("found key!");
+          Ptr<IdentityCertificate> identityCertificate = Ptr<IdentityCertificate>(new IdentityCertificate(*data));
+          if(it->second.getKeyBlob() == identityCertificate->getPublicKeyInfo().getKeyBlob())
+            {
+              _LOG_DEBUG("same key!");
+              verifiedCallback(data);
+            }
+          else
+            unverifiedCallback(data);
+        }
+      else
+        unverifiedCallback(data);
+
+      return NULL;
     }
 
   if(m_dskRule->satisfy(*data))

@@ -27,6 +27,7 @@
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
 #include "chronos-invitation.h"
+#include "panel-policy-manager.h"
 #endif
 
 
@@ -73,15 +74,13 @@ private:
 
   void
   onInvitationCertVerified(ndn::Ptr<ndn::Data> data,
-                           const ndn::Name& interestName,
-                           int inviterIndex);
+                           ndn::Ptr<ChronosInvitation> invitation);
 
   std::string
   getRandomString();
 
   void
   popChatInvitation(ndn::Ptr<ChronosInvitation> invitation,
-                    int inviterIndex,
                     const ndn::Name& inviterNameSpace,
                     ndn::Ptr<ndn::security::IdentityCertificate> certificate);
 
@@ -150,6 +149,7 @@ private:
   QAction* m_menuAlias;
   std::vector<ndn::Ptr<ContactItem> > m_contactList;
 
+  ndn::Ptr<PanelPolicyManager> m_panelPolicyManager;
   ndn::Ptr<ndn::security::Keychain> m_keychain;
   ndn::Ptr<ndn::Wrapper> m_handler;
 
