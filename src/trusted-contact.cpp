@@ -21,6 +21,8 @@ TrustedContact::TrustedContact(const EndorseCertificate& selfEndorseCertificate,
 			       const string& alias)
   : ContactItem(selfEndorseCertificate, alias)
 {
+  m_isIntroducer = true;
+
   tokenizer<escaped_list_separator<char> > trustScopeItems(trustScope, escaped_list_separator<char> ("\\", " \t", "'\""));
 
   tokenizer<escaped_list_separator<char> >::iterator it = trustScopeItems.begin();
@@ -31,6 +33,20 @@ TrustedContact::TrustedContact(const EndorseCertificate& selfEndorseCertificate,
       m_trustScopeName.push_back(Name(*it));
       it++;
     }
+}
+
+TrustedContact::TrustedContact(const ContactItem& contactItem)
+  : ContactItem(contactItem)
+{
+  m_isIntroducer = true;
+}
+
+TrustedContact::TrustedContact(const TrustedContact& trustedContact)
+  : ContactItem(trustedContact)
+  , m_trustScope(trustedContact.m_trustScope)
+  , m_trustScopeName(trustedContact.m_trustScopeName)
+{
+  m_isIntroducer = true;
 }
 
 bool 
@@ -57,3 +73,4 @@ TrustedContact::getTrustScopeBlob() const
 
   return Ptr<Blob>(new Blob(oss.str().c_str(), oss.str().size()));
 }
+

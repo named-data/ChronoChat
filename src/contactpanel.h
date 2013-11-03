@@ -134,6 +134,9 @@ private slots:
   void
   rejectInvitation(const ChronosInvitation& invitation);
 
+  void
+  isIntroducerChanged(int state);
+
 private:
   Ui::ContactPanel *ui;
   ndn::Ptr<ContactManager> m_contactManager;
@@ -157,8 +160,10 @@ private:
   ndn::Name m_localPrefix;
   ndn::Name m_inviteListenPrefix;
 
-  std::string m_currentSelectedContactAlias;
-  std::string m_currentSelectedContactNamespace;
+  // std::string m_currentSelectedContactAlias;
+  // std::string m_currentSelectedContactNamespace;
+  ndn::Ptr<ContactItem> m_currentSelectedContact;
+  QStringListModel* m_currentContactTrustScopeListModel;
 
 
 };

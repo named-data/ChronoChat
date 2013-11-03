@@ -40,14 +40,14 @@ Q_DECLARE_METATYPE(ndn::security::IdentityCertificate)
 Q_DECLARE_METATYPE(ChronosInvitation)
 
 ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent) 
-    : QDialog(parent)
-    , ui(new Ui::ContactPanel)
-    , m_contactListModel(new QStringListModel)
-    , m_startChatDialog(new StartChatDialog)
-    , m_invitationDialog(new InvitationDialog)
-    , m_settingDialog(new SettingDialog)
-    , m_menuInvite(new QAction("&Chat", this))
-    , m_menuAlias(new QAction("&Set Alias", this))
+  : QDialog(parent)
+  , ui(new Ui::ContactPanel)
+  , m_contactListModel(new QStringListModel)
+  , m_startChatDialog(new StartChatDialog)
+  , m_invitationDialog(new InvitationDialog)
+  , m_settingDialog(new SettingDialog)
+  , m_menuInvite(new QAction("&Chat", this))
+  , m_menuAlias(new QAction("&Set Alias", this))
 {
   qRegisterMetaType<ndn::security::IdentityCertificate>("IdentityCertificate");
   qRegisterMetaType<ChronosInvitation>("ChronosInvitation");
@@ -111,8 +111,8 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   connect(this, SIGNAL(newInvitationReady()),
           this, SLOT(openInvitationDialog()));
 
-
-
+  connect(ui->isIntroducer, SIGNAL(stateChanged(int)),
+          this, SLOT(isIntroducerChanged(int)));
 }
 
 ContactPanel::~ContactPanel()
@@ -121,6 +121,8 @@ ContactPanel::~ContactPanel()
   delete m_contactListModel;
   delete m_profileEditor;
   delete m_addContactPanel;
+  if(NULL != m_currentContactTrustScopeListModel)
+    delete m_currentContactTrustScopeListModel;
 
   delete m_menuInvite;
 
@@ -304,16 +306,33 @@ ContactPanel::updateSelection(const QItemSelection &selected,
         break;
     }
   
-  QString name = QString::fromUtf8(m_contactList[i]->getName().c_str());
-  QString institution = QString::fromUtf8(m_contactList[i]->getInstitution().c_str());
-  QString nameSpace = QString::fromUtf8(m_contactList[i]->getNameSpace().toUri().c_str());
+  m_currentSelectedContact = m_contactList[i];
+  QString name = QString::fromUtf8(m_currentSelectedContact->getName().c_str());
+  QString institution = QString::fromUtf8(m_currentSelectedContact->getInstitution().c_str());
+  QString nameSpace = QString::fromUtf8(m_currentSelectedContact->getNameSpace().toUri().c_str());
   ui->NameData->setText(name);
   ui->NameSpaceData->setText(nameSpace);
   ui->InstitutionData->setText(institution);
 
-  m_currentSelectedContactAlias = alias;
-  m_currentSelectedContactNamespace = m_contactList[i]->getNameSpace().toUri();
+  // m_currentSelectedContactAlias = alias;
+  // m_currentSelectedContactNamespace = m_contactList[i]->getNameSpace().toUri();
   // _LOG_DEBUG("current Alias: " << m_currentSelectedContact);
+
+  if(m_currentSelectedContact->isIntroducer())
+    {
+      ui->isIntroducer->setChecked(true);
+      ui->addScope->setEnabled(true);
+      ui->deleteScope->setEnabled(true);
+      Ptr<TrustedContact> trustedContact = boost::dynamic_pointer_cast<TrustedContact>(m_currentSelectedContact);      
+      m_currentContactTrustScopeListModel = new QStringListModel;
+    }
+  else
+    {
+      ui->isIntroducer->setChecked(false);
+      ui->addScope->setEnabled(false);
+      ui->deleteScope->setEnabled(false);
+      delete m_currentContactTrustScopeListModel;
+    }
 }
 
 void
@@ -373,7 +392,7 @@ ContactPanel::showContextMenu(const QPoint& pos)
 void
 ContactPanel::openSetAliasDialog()
 {
-  m_setAliasDialog->setTargetIdentity(m_currentSelectedContactNamespace);
+  m_setAliasDialog->setTargetIdentity(m_currentSelectedContact->getNameSpace().toUri());
   m_setAliasDialog->show();
 }
 
@@ -394,7 +413,7 @@ ContactPanel::openStartChatDialog()
   Name chatroom("/ndn/broadcast/chronos");
   chatroom.append(string("chatroom-") + getRandomString());
 
-  m_startChatDialog->setInvitee(m_currentSelectedContactNamespace, chatroom.toUri());
+  m_startChatDialog->setInvitee(m_currentSelectedContact->getNameSpace().toUri(), chatroom.toUri());
   m_startChatDialog->show();
 }
 
@@ -461,6 +480,22 @@ ContactPanel::rejectInvitation(const ChronosInvitation& invitation)
   m_handler->publishDataByIdentity (invitation.getInterestName(), empty);
 }
 
+void
+ContactPanel::isIntroducerChanged(int state)
+{
+  if(state == Qt::Checked)
+    {
+      ui->addScope->setEnabled(true);
+      ui->deleteScope->setEnabled(true);
+      Ptr<TrustedContact> trustedContact = boost::dynamic_pointer_cast<TrustedContact>(m_currentSelectedContact);      
+    }
+  else
+    {
+      ui->isIntroducer->setChecked(false);
+      ui->addScope->setEnabled(false);
+      ui->deleteScope->setEnabled(false);
+    }
+}
 
 #if WAF
 #include "contactpanel.moc"

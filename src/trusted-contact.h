@@ -14,13 +14,18 @@
 #include "contact-item.h"
 #include <ndn.cxx/regex/regex.h>
 
-class TrustedContact : public ContactItem
+class TrustedContact : public virtual ContactItem
 {
 public:
   TrustedContact(const EndorseCertificate& selfEndorseCertificate,
                  const std::string& trustScope,
                  const std::string& alias = std::string());
 
+  TrustedContact(const ContactItem& contactItem);
+
+  TrustedContact(const TrustedContact& trustedContact);
+ 
+  virtual
   ~TrustedContact() {}
 
   void
@@ -32,6 +37,10 @@ public:
 
   ndn::Ptr<ndn::Blob> 
   getTrustScopeBlob() const;
+
+  inline const std::vector<ndn::Name>&
+  getTrustScopeList() const
+  { return m_trustScopeName; }
 
 private:
   std::vector<ndn::Ptr<ndn::Regex> > m_trustScope;
