@@ -24,6 +24,7 @@ INIT_LOGGER("ContactItem");
 ContactItem::ContactItem(const EndorseCertificate& selfEndorseCertificate,
                          const string& alias)
   : m_selfEndorseCertificate(selfEndorseCertificate)
+  , m_isIntroducer(false)
 {
   Name endorsedkeyName = selfEndorseCertificate.getPublicKeyName();
   Ptr<const signature::Sha256WithRsa> endorseSig = boost::dynamic_pointer_cast<const signature::Sha256WithRsa>(selfEndorseCertificate.getSignature());
@@ -64,4 +65,13 @@ ContactItem::ContactItem(const EndorseCertificate& selfEndorseCertificate,
   Ptr<const Blob> institutionBlob = profileData->getProfile().getProfileEntry("institution");
   m_institution = string(institutionBlob->buf(), institutionBlob->size());
 }
+
+ContactItem::ContactItem(const ContactItem& contactItem)
+  : m_selfEndorseCertificate(contactItem.m_selfEndorseCertificate)
+  , m_namespace(contactItem.m_namespace)
+  , m_alias(contactItem.m_alias)
+  , m_name(contactItem.m_name)
+  , m_institution(contactItem.m_institution)
+  , m_isIntroducer(false)
+{}
 

@@ -22,7 +22,10 @@ class ContactItem
 public:
   ContactItem(const EndorseCertificate& selfEndorseCertificate,
               const std::string& alias = std::string());
+
+  ContactItem(const ContactItem& contactItem);
   
+  virtual
   ~ContactItem() {}
 
   inline const EndorseCertificate&
@@ -49,6 +52,10 @@ public:
   getPublicKeyName() const
   { return m_selfEndorseCertificate.getPublicKeyName(); }
 
+  inline bool
+  isIntroducer()
+  { return m_isIntroducer; }
+
 protected:
   EndorseCertificate m_selfEndorseCertificate;
 
@@ -57,6 +64,8 @@ protected:
 
   std::string m_name;
   std::string m_institution;
+
+  bool m_isIntroducer;
 };
 
 #endif
