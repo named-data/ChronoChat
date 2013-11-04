@@ -12,6 +12,7 @@
 #define LINKNDN_CONTACT_ITEM_H
 
 #include <ndn.cxx/data.h>
+#include <ndn.cxx/regex/regex.h>
 #include <vector>
 #include "endorse-certificate.h"
 
@@ -21,6 +22,7 @@ class ContactItem
 
 public:
   ContactItem(const EndorseCertificate& selfEndorseCertificate,
+              bool isIntroducer = false,
               const std::string& alias = std::string());
 
   ContactItem(const ContactItem& contactItem);
@@ -53,8 +55,22 @@ public:
   { return m_selfEndorseCertificate.getPublicKeyName(); }
 
   inline bool
-  isIntroducer()
+  isIntroducer() const
   { return m_isIntroducer; }
+
+  void
+  addTrustScope(const ndn::Name& nameSpace)
+  {
+    m_trustScopeName.push_back(nameSpace);
+    m_trustScope.push_back(ndn::Regex::fromName(nameSpace)); 
+  }
+
+  bool
+  canBeTrustedFor(const ndn::Name& name);
+
+  inline const std::vector<ndn::Name>&
+  getTrustScopeList() const
+  { return m_trustScopeName; }
 
 protected:
   EndorseCertificate m_selfEndorseCertificate;
@@ -66,6 +82,9 @@ protected:
   std::string m_institution;
 
   bool m_isIntroducer;
+
+  std::vector<ndn::Ptr<ndn::Regex> > m_trustScope;
+  std::vector<ndn::Name> m_trustScopeName;
 };
 
 #endif

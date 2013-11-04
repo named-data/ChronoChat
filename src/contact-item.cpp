@@ -22,9 +22,10 @@ using namespace ndn::security;
 INIT_LOGGER("ContactItem");
 
 ContactItem::ContactItem(const EndorseCertificate& selfEndorseCertificate,
+                         bool isIntroducer,
                          const string& alias)
   : m_selfEndorseCertificate(selfEndorseCertificate)
-  , m_isIntroducer(false)
+  , m_isIntroducer(isIntroducer)
 {
   Name endorsedkeyName = selfEndorseCertificate.getPublicKeyName();
   Ptr<const signature::Sha256WithRsa> endorseSig = boost::dynamic_pointer_cast<const signature::Sha256WithRsa>(selfEndorseCertificate.getSignature());
@@ -72,6 +73,18 @@ ContactItem::ContactItem(const ContactItem& contactItem)
   , m_alias(contactItem.m_alias)
   , m_name(contactItem.m_name)
   , m_institution(contactItem.m_institution)
-  , m_isIntroducer(false)
+  , m_isIntroducer(contactItem.m_isIntroducer)
+  , m_trustScope(contactItem.m_trustScope)
+  , m_trustScopeName(contactItem.m_trustScopeName)
 {}
 
+bool 
+ContactItem::canBeTrustedFor(const Name& name)
+{
+  vector<Ptr<Regex> >::iterator it = m_trustScope.begin();
+
+  for(; it != m_trustScope.end(); it++)
+    if((*it)->match(name))
+      return true;
+  return false;
+}

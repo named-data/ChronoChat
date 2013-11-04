@@ -45,31 +45,30 @@ CREATE TABLE IF NOT EXISTS                                           \n \
 CREATE INDEX se_index ON SelfEndorse(identity);                      \n \
 ";
 
-const string INIT_TC_TABLE = "\
+const string INIT_CONTACT_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
-  TrustedContact(                                                    \n \
+  Contact(                                                           \n \
       contact_namespace BLOB NOT NULL,                               \n \
       contact_alias     BLOB NOT NULL,                               \n \
       self_certificate  BLOB NOT NULL,                               \n \
-      trust_scope       BLOB NOT NULL,                               \n \
+      is_introducer     INTEGER DEFAULT 0,                           \n \
                                                                      \
       PRIMARY KEY (contact_namespace)                                \n \
   );                                                                 \n \
                                                                      \
-CREATE INDEX tc_index ON TrustedContact(contact_namespace);          \n \
+CREATE INDEX contact_index ON TrustedContact(contact_namespace);     \n \
 ";
 
-const string INIT_NC_TABLE = "\
+const string INIT_TS_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
-  NormalContact(                                                     \n \
+  TrustScope(                                                        \n \
       contact_namespace BLOB NOT NULL,                               \n \
-      contact_alias     BLOB NOT NULL,                               \n \
-      self_certificate  BLOB NOT NULL,                               \n \
+      trust_scope       BLOB NOT NULL,                               \n \
                                                                      \
-      PRIMARY KEY (contact_namespace)                                \n \
+      PRIMARY KEY (contact_namespace, trust_scope)                   \n \
   );                                                                 \n \
                                                                      \
-CREATE INDEX nc_index ON NormalContact(contact_namespace);           \n \
+CREATE INDEX ts_index ON TrustedContact(contact_namespace);          \n \
 ";
 
 ContactStorage::ContactStorage()
@@ -118,38 +117,37 @@ ContactStorage::ContactStorage()
 
 
   // Check if TrustedContact table exists
-  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='TrustedContact'", -1, &stmt, 0);
+  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='Contact'", -1, &stmt, 0);
   res = sqlite3_step (stmt);
 
-  bool tcTableExist = false;
+  bool contactTableExist = false;
   if (res == SQLITE_ROW)
-      tcTableExist = true;
+      contactTableExist = true;
   sqlite3_finalize (stmt);
 
-  if(!tcTableExist)
+  if(!contactTableExist)
     {
       char *errmsg = 0;
-      res = sqlite3_exec (m_db, INIT_TC_TABLE.c_str (), NULL, NULL, &errmsg);
+      res = sqlite3_exec (m_db, INIT_CONTACT_TABLE.c_str (), NULL, NULL, &errmsg);
       if (res != SQLITE_OK && errmsg != 0)
-        throw LnException("Init \"error\" in TrustedContact");
+        throw LnException("Init \"error\" in Contact");
     }
-    
-  // Check if NormalContact table exists
-  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='NormalContact'", -1, &stmt, 0);
+
+  // Check if TrustedContact table exists
+  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='TrustScope'", -1, &stmt, 0);
   res = sqlite3_step (stmt);
 
-  bool ncTableExist = false;
+  bool tsTableExist = false;
   if (res == SQLITE_ROW)
-      ncTableExist = true;
+      tsTableExist = true;
   sqlite3_finalize (stmt);
 
-  if(!ncTableExist)
+  if(!tsTableExist)
     {
       char *errmsg = 0;
-      res = sqlite3_exec (m_db, INIT_NC_TABLE.c_str (), NULL, NULL, &errmsg);
-        
+      res = sqlite3_exec (m_db, INIT_TS_TABLE.c_str (), NULL, NULL, &errmsg);
       if (res != SQLITE_OK && errmsg != 0)
-        throw LnException("Init \"error\" in NormalContact");
+        throw LnException("Init \"error\" in TrustScope");
     }
 }
 
@@ -218,89 +216,73 @@ ContactStorage::getSelfProfile(const Name& identity)
 
   return profile;
 }
-
-void
-ContactStorage::addTrustedContact(const TrustedContact& trustedContact)
-{
-  if(doesTrustedContactExist(trustedContact.getNameSpace()))
-    throw LnException("Trusted Contact has already existed");
-  
-  sqlite3_stmt *stmt;  
-  sqlite3_prepare_v2 (m_db, 
-                      "INSERT INTO TrustedContact (contact_namespace, contact_alias, self_certificate, trust_scope) values (?, ?, ?, ?)", 
-                      -1, 
-                      &stmt, 
-                      0);
-  
-  sqlite3_bind_text(stmt, 1, trustedContact.getNameSpace().toUri().c_str(),  trustedContact.getNameSpace().toUri().size (), SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt, 2, trustedContact.getAlias().c_str(), trustedContact.getAlias().size(), SQLITE_TRANSIENT);
-  Ptr<Blob> selfCertificateBlob = trustedContact.getSelfEndorseCertificate().encodeToWire();
-  sqlite3_bind_text(stmt, 3, selfCertificateBlob->buf(), selfCertificateBlob->size(), SQLITE_TRANSIENT);
-  Ptr<Blob> trustScopeBlob = trustedContact.getTrustScopeBlob();
-  sqlite3_bind_text(stmt, 4, trustScopeBlob->buf(), trustScopeBlob->size(),SQLITE_TRANSIENT);
-
-  int res = sqlite3_step (stmt);
-  sqlite3_finalize (stmt);
-}
   
 void
-ContactStorage::addNormalContact(const ContactItem& normalContact)
+ContactStorage::addContact(const ContactItem& contact)
 {
-  if(doesNormalContactExist(normalContact.getNameSpace()))
+  if(doesContactExist(contact.getNameSpace()))
     throw LnException("Normal Contact has already existed");
 
+  bool isIntroducer = contact.isIntroducer();
+
   sqlite3_stmt *stmt;  
   sqlite3_prepare_v2 (m_db, 
-                      "INSERT INTO NormalContact (contact_namespace, contact_alias, self_certificate) values (?, ?, ?)", 
+                      "INSERT INTO Contact (contact_namespace, contact_alias, self_certificate, is_introducer) values (?, ?, ?, ?)", 
                       -1, 
                       &stmt, 
                       0);
 
-  sqlite3_bind_text(stmt, 1, normalContact.getNameSpace().toUri().c_str(),  normalContact.getNameSpace().toUri().size (), SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt, 2, normalContact.getAlias().c_str(), normalContact.getAlias().size(), SQLITE_TRANSIENT);
-  Ptr<Blob> selfCertificateBlob = normalContact.getSelfEndorseCertificate().encodeToWire();
+  sqlite3_bind_text(stmt, 1, contact.getNameSpace().toUri().c_str(),  contact.getNameSpace().toUri().size (), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, contact.getAlias().c_str(), contact.getAlias().size(), SQLITE_TRANSIENT);
+  Ptr<Blob> selfCertificateBlob = contact.getSelfEndorseCertificate().encodeToWire();
   sqlite3_bind_text(stmt, 3, selfCertificateBlob->buf(), selfCertificateBlob->size(), SQLITE_TRANSIENT);
+  sqlite3_bind_int(stmt, 4, (isIntroducer ? 1 : 0));
 
   int res = sqlite3_step (stmt);
   // _LOG_DEBUG("res " << res);
   sqlite3_finalize (stmt);
+
+  if(isIntroducer)
+    {
+      const vector<Name>& scopeList = contact.getTrustScopeList();
+      vector<Name>::const_iterator it = scopeList.begin();
+      string nameSpace = contact.getNameSpace().toUri();
+      
+      while(it != scopeList.end())
+        {
+          sqlite3_prepare_v2 (m_db, 
+                              "INSERT INTO TrustScope (contact_namespace, trust_scope) values (?, ?)", 
+                              -1, 
+                              &stmt, 
+                              0);
+          sqlite3_bind_text(stmt, 1, nameSpace.c_str(),  nameSpace.size (), SQLITE_TRANSIENT);
+          sqlite3_bind_text(stmt, 2, it->toUri().c_str(), it->toUri().size(), SQLITE_TRANSIENT);
+          res = sqlite3_step (stmt);
+          sqlite3_finalize (stmt);          
+          it++;
+        }
+    }
 }
 
 void 
 ContactStorage::updateAlias(const ndn::Name& identity, std::string alias)
 {
-  if(doesNormalContactExist(identity))
-    {
-      sqlite3_stmt *stmt;
-      sqlite3_prepare_v2 (m_db, "UPDATE NormalContact SET contact_alias=? WHERE contact_namespace=?", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, alias.c_str(), alias.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, identity.toUri().c_str(),  identity.toUri().size (), SQLITE_TRANSIENT);
-      int res = sqlite3_step (stmt);
-      sqlite3_finalize (stmt);
-      return;
-    }
-  if(doesTrustedContactExist(identity))
-    {
-      sqlite3_stmt *stmt;
-      sqlite3_prepare_v2 (m_db, "UPDATE TrustedContact SET contact_alias=? WHERE contact_namespace=?", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, alias.c_str(), alias.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, identity.toUri().c_str(),  identity.toUri().size (), SQLITE_TRANSIENT);
-      int res = sqlite3_step (stmt);
-      sqlite3_finalize (stmt);
-      return;
-    }
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "UPDATE Contact SET contact_alias=? WHERE contact_namespace=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, alias.c_str(), alias.size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, identity.toUri().c_str(),  identity.toUri().size (), SQLITE_TRANSIENT);
+  int res = sqlite3_step (stmt);
+  sqlite3_finalize (stmt);
+  return;
 }
 
 bool
-ContactStorage::doesContactExist(const Name& name, bool normal)
+ContactStorage::doesContactExist(const Name& name)
 {
   bool result = false;
   
   sqlite3_stmt *stmt;
-  if(normal)
-    sqlite3_prepare_v2 (m_db, "SELECT count(*) FROM NormalContact WHERE contact_namespace=?", -1, &stmt, 0);
-  else
-    sqlite3_prepare_v2 (m_db, "SELECT count(*) FROM TrustedContact WHERE contact_namespace=?", -1, &stmt, 0);
+  sqlite3_prepare_v2 (m_db, "SELECT count(*) FROM Contact WHERE contact_namespace=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
 
   int res = sqlite3_step (stmt);
@@ -315,43 +297,13 @@ ContactStorage::doesContactExist(const Name& name, bool normal)
   return result;
 }
 
-vector<Ptr<TrustedContact> >
-ContactStorage::getAllTrustedContacts() const
-{
-  vector<Ptr<TrustedContact> > trustedContacts;
-
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, 
-                      "SELECT contact_alias, self_certificate, trust_scope FROM TrustedContact", 
-                      -1, 
-                      &stmt, 
-                      0);
-  
-  while( sqlite3_step (stmt) == SQLITE_ROW)
-    {
-      string alias(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      Ptr<Blob> certBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1)));
-      Ptr<Data> certData = Data::decodeFromWire(certBlob);
-      EndorseCertificate endorseCertificate(*certData);
-      string trustScope(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2)), sqlite3_column_bytes (stmt, 2));
-
-      trustedContacts.push_back(Ptr<TrustedContact>(new TrustedContact(endorseCertificate, trustScope, alias)));      
-    }
-
-  return trustedContacts;
-}
-
 vector<Ptr<ContactItem> >
-ContactStorage::getAllNormalContacts() const
+ContactStorage::getAllContacts() const
 {
-  vector<Ptr<ContactItem> > normalContacts;
+  vector<Ptr<ContactItem> > contacts;
 
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, 
-                      "SELECT contact_alias, self_certificate FROM NormalContact", 
-                      -1, 
-                      &stmt, 
-                      0);
+  sqlite3_prepare_v2 (m_db, "SELECT contact_alias, self_certificate, is_introducer FROM Contact", -1, &stmt, 0);
   
   while( sqlite3_step (stmt) == SQLITE_ROW)
     {
@@ -359,22 +311,37 @@ ContactStorage::getAllNormalContacts() const
       Ptr<Blob> certBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1)));
       Ptr<Data> certData = Data::decodeFromWire(certBlob);
       EndorseCertificate endorseCertificate(*certData);
+      int isIntroducer = sqlite3_column_int (stmt, 2);
 
-      normalContacts.push_back(Ptr<ContactItem>(new ContactItem(endorseCertificate, alias)));      
+      contacts.push_back(Ptr<ContactItem>(new ContactItem(endorseCertificate, isIntroducer, alias)));      
     }
-  
-  return normalContacts;
+  sqlite3_finalize (stmt);  
+
+  vector<Ptr<ContactItem> >::iterator it = contacts.begin();
+  for(; it != contacts.end(); it++)
+    {
+      if((*it)->isIntroducer())
+        {
+          sqlite3_prepare_v2 (m_db, "SELECT trust_scope FROM TrustScope WHERE contact_namespace=?", -1, &stmt, 0);
+          sqlite3_bind_text(stmt, 1, (*it)->getNameSpace().toUri().c_str(), (*it)->getNameSpace().toUri().size(), SQLITE_TRANSIENT);
+
+          while( sqlite3_step (stmt) == SQLITE_ROW)
+            {
+              Name scope(string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
+              (*it)->addTrustScope(scope);
+            }
+          sqlite3_finalize (stmt);  
+        }
+    }
+
+  return contacts;
 }
 
 Ptr<ContactItem>
-ContactStorage::getNormalContact(const Name& name)
+ContactStorage::getContact(const Name& name)
 {
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, 
-                      "SELECT contact_alias, self_certificate FROM NormalContact where contact_namespace=?", 
-                      -1, 
-                      &stmt, 
-                      0);
+  sqlite3_prepare_v2 (m_db, "SELECT contact_alias, self_certificate, is_introducer FROM Contact where contact_namespace=?", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
   
   if( sqlite3_step (stmt) == SQLITE_ROW)
@@ -383,33 +350,10 @@ ContactStorage::getNormalContact(const Name& name)
       Ptr<Blob> certBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1)));
       Ptr<Data> certData = Data::decodeFromWire(certBlob);
       EndorseCertificate endorseCertificate(*certData);
+      int isIntroducer = sqlite3_column_int (stmt, 2);
 
-      return Ptr<ContactItem>(new ContactItem(endorseCertificate, alias));      
+      return Ptr<ContactItem>(new ContactItem(endorseCertificate, isIntroducer, alias));      
     } 
-  return NULL;
-}
-
-Ptr<TrustedContact>
-ContactStorage::getTrustedContact(const Name& name)
-{
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, 
-                      "SELECT contact_alias, self_certificate, trust_scope FROM TrustedContact where contact_namespace=?", 
-                      -1, 
-                      &stmt, 
-                      0);
-  sqlite3_bind_text (stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
-  
-  if( sqlite3_step (stmt) == SQLITE_ROW)
-    {
-      string alias(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      Ptr<Blob> certBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1)));
-      Ptr<Data> certData = Data::decodeFromWire(certBlob);
-      EndorseCertificate endorseCertificate(*certData);
-      string trustScope(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2)), sqlite3_column_bytes (stmt, 2));
-
-      return Ptr<TrustedContact>(new TrustedContact(endorseCertificate, trustScope, alias));      
-    }
   return NULL;
 }
 

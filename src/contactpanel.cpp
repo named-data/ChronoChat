@@ -323,7 +323,6 @@ ContactPanel::updateSelection(const QItemSelection &selected,
       ui->isIntroducer->setChecked(true);
       ui->addScope->setEnabled(true);
       ui->deleteScope->setEnabled(true);
-      Ptr<TrustedContact> trustedContact = boost::dynamic_pointer_cast<TrustedContact>(m_currentSelectedContact);      
       m_currentContactTrustScopeListModel = new QStringListModel;
     }
   else
@@ -487,11 +486,9 @@ ContactPanel::isIntroducerChanged(int state)
     {
       ui->addScope->setEnabled(true);
       ui->deleteScope->setEnabled(true);
-      Ptr<TrustedContact> trustedContact = boost::dynamic_pointer_cast<TrustedContact>(m_currentSelectedContact);      
     }
   else
     {
-      ui->isIntroducer->setChecked(false);
       ui->addScope->setEnabled(false);
       ui->deleteScope->setEnabled(false);
     }

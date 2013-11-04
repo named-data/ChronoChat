@@ -161,31 +161,11 @@ ContactManager::updateProfileData(const Name& identity)
 
 vector<Ptr<ContactItem> >
 ContactManager::getContactItemList()
-{
-  vector<Ptr<ContactItem> > result;
-  
-  vector<Ptr<ContactItem> > ncList = m_contactStorage->getAllNormalContacts();
-  vector<Ptr<TrustedContact> > tcList = m_contactStorage->getAllTrustedContacts();
-
-  result.insert(result.end(), tcList.begin(), tcList.end());
-  result.insert(result.end(), ncList.begin(), ncList.end());
-
-  return result;
-}
+{ return m_contactStorage->getAllContacts(); }
 
 Ptr<ContactItem>
 ContactManager::getContact(const ndn::Name& contactNamespace)
-{
-  Ptr<ContactItem> contactItem = m_contactStorage->getNormalContact(contactNamespace);
-  if(NULL != contactItem)
-    return contactItem;
-  
-  contactItem = m_contactStorage->getTrustedContact(contactNamespace);
-  if(NULL != contactItem)
-    return contactItem;
-  
-  return NULL;
-}
+{ return m_contactStorage->getContact(contactNamespace); }
 
 Ptr<EndorseCertificate>
 ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
