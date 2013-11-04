@@ -70,7 +70,7 @@ void
 AddContactPanel::onAddClicked()
 {
   ContactItem contactItem(*m_currentEndorseCertificate);
-  m_contactManager->getContactStorage()->addNormalContact(contactItem);
+  m_contactManager->getContactStorage()->addContact(contactItem);
   emit newContactAdded();
   this->close();
 }
