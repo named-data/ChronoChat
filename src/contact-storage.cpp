@@ -56,19 +56,58 @@ CREATE TABLE IF NOT EXISTS                                           \n \
       PRIMARY KEY (contact_namespace)                                \n \
   );                                                                 \n \
                                                                      \
-CREATE INDEX contact_index ON TrustedContact(contact_namespace);     \n \
+CREATE INDEX contact_index ON Contact(contact_namespace);            \n \
 ";
 
 const string INIT_TS_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
   TrustScope(                                                        \n \
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,           \n \
       contact_namespace BLOB NOT NULL,                               \n \
-      trust_scope       BLOB NOT NULL,                               \n \
-                                                                     \
-      PRIMARY KEY (contact_namespace, trust_scope)                   \n \
+      trust_scope       BLOB NOT NULL                                \n \
   );                                                                 \n \
                                                                      \
-CREATE INDEX ts_index ON TrustedContact(contact_namespace);          \n \
+CREATE INDEX ts_index ON TrustScope(contact_namespace);              \n \
+";
+
+const string INIT_CP_TABLE = "\
+CREATE TABLE IF NOT EXISTS                                           \n \
+  ContactProfile(                                                    \n \
+      profile_identity  BLOB NOT NULL,                               \n \
+      profile_type      BLOB NOT NULL,                               \n \
+      profile_value     BLOB NOT NULL,                               \n \
+      endorse           INTEGER NOT NULL,                            \n \
+                                                                     \
+      PRIMARY KEY (profile_identity, profile_type)                   \n \
+  );                                                                 \n \
+                                                                     \
+CREATE INDEX cp_index ON ContactProfile(profile_identity);           \n \
+";
+
+const string INIT_PE_TABLE = "\
+CREATE TABLE IF NOT EXISTS                                           \n \
+  ProfileEndorse(                                                    \n \
+      identity          BLOB NOT NULL UNIQUE,                        \n \
+      endorse_data      BLOB NOT NULL,                               \n \
+                                                                     \
+      PRIMARY KEY (identity)                                         \n \
+  );                                                                 \n \
+                                                                     \
+CREATE INDEX pe_index ON ProfileEndorse(identity);                   \n \
+";
+
+const string INIT_CE_TABLE = "\
+CREATE TABLE IF NOT EXISTS                                           \n \
+  CollectEndorse(                                                    \n \
+      endorsee          BLOB NOT NULL,                               \n \
+      endorser          BLOB NOT NULL,                               \n \
+      endorse_name      BLOB NOT NULL,                               \n \
+      endorse_data      BLOB NOT NULL,                               \n \
+                                                                     \
+      PRIMARY KEY (endorsee, endorser)                               \n \
+  );                                                                 \n \
+                                                                     \
+CREATE INDEX ce_index ON CollectEndorse(endorsee);                   \n \
 ";
 
 ContactStorage::ContactStorage()
@@ -116,7 +155,7 @@ ContactStorage::ContactStorage()
     }
 
 
-  // Check if TrustedContact table exists
+  // Check if Contact table exists
   sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='Contact'", -1, &stmt, 0);
   res = sqlite3_step (stmt);
 
@@ -133,7 +172,7 @@ ContactStorage::ContactStorage()
         throw LnException("Init \"error\" in Contact");
     }
 
-  // Check if TrustedContact table exists
+  // Check if TrustScope table exists
   sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='TrustScope'", -1, &stmt, 0);
   res = sqlite3_step (stmt);
 
@@ -148,6 +187,57 @@ ContactStorage::ContactStorage()
       res = sqlite3_exec (m_db, INIT_TS_TABLE.c_str (), NULL, NULL, &errmsg);
       if (res != SQLITE_OK && errmsg != 0)
         throw LnException("Init \"error\" in TrustScope");
+    }
+
+  // Check if ContactProfile table exists
+  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='ContactProfile'", -1, &stmt, 0);
+  res = sqlite3_step (stmt);
+
+  bool cpTableExist = false;
+  if (res == SQLITE_ROW)
+      cpTableExist = true;
+  sqlite3_finalize (stmt);
+
+  if(!cpTableExist)
+    {
+      char *errmsg = 0;
+      res = sqlite3_exec (m_db, INIT_CP_TABLE.c_str (), NULL, NULL, &errmsg);
+      if (res != SQLITE_OK && errmsg != 0)
+        throw LnException("Init \"error\" in ContactProfile");
+    }
+
+  // Check if ProfileEndorse table exists
+  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='ProfileEndorse'", -1, &stmt, 0);
+  res = sqlite3_step (stmt);
+
+  bool peTableExist = false;
+  if (res == SQLITE_ROW)
+      peTableExist = true;
+  sqlite3_finalize (stmt);
+
+  if(!peTableExist)
+    {
+      char *errmsg = 0;
+      res = sqlite3_exec (m_db, INIT_PE_TABLE.c_str (), NULL, NULL, &errmsg);
+      if (res != SQLITE_OK && errmsg != 0)
+        throw LnException("Init \"error\" in ProfileEndorse");
+    }
+
+  // Check if CollectEndorse table exists
+  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='CollectEndorse'", -1, &stmt, 0);
+  res = sqlite3_step (stmt);
+
+  bool ceTableExist = false;
+  if (res == SQLITE_ROW)
+      ceTableExist = true;
+  sqlite3_finalize (stmt);
+
+  if(!ceTableExist)
+    {
+      char *errmsg = 0;
+      res = sqlite3_exec (m_db, INIT_CE_TABLE.c_str (), NULL, NULL, &errmsg);
+      if (res != SQLITE_OK && errmsg != 0)
+        throw LnException("Init \"error\" in CollectEndorse");
     }
 }
 
@@ -242,6 +332,24 @@ ContactStorage::addContact(const ContactItem& contact)
   // _LOG_DEBUG("res " << res);
   sqlite3_finalize (stmt);
 
+  Ptr<ProfileData> profileData = contact.getSelfEndorseCertificate().getProfileData();
+  const Profile&  profile = profileData->getProfile();
+  Profile::const_iterator it = profile.begin();
+  string identity = contact.getNameSpace().toUri();
+  for(; it != profile.end(); it++)
+    {
+      sqlite3_prepare_v2 (m_db, 
+                          "INSERT INTO ContactProfile (profile_identity, profile_type, profile_value, endorse) values (?, ?, ?, 0)", 
+                          -1, 
+                          &stmt, 
+                          0);
+      sqlite3_bind_text(stmt, 1, identity.c_str(),  identity.size (), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 2, it->first.c_str(), it->first.size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 3, it->second.buf(), it->second.size(), SQLITE_TRANSIENT);
+      res = sqlite3_step (stmt);
+      sqlite3_finalize (stmt);
+    }
+
   if(isIntroducer)
     {
       const vector<Name>& scopeList = contact.getTrustScopeList();
@@ -262,6 +370,18 @@ ContactStorage::addContact(const ContactItem& contact)
           it++;
         }
     }
+}
+
+void
+ContactStorage::updateIsIntroducer(const ndn::Name& identity, bool isIntroducer)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "UPDATE Contact SET is_introducer=? WHERE contact_namespace=?", -1, &stmt, 0);
+  sqlite3_bind_int(stmt, 1, (isIntroducer ? 1 : 0));
+  sqlite3_bind_text(stmt, 2, identity.toUri().c_str(),  identity.toUri().size (), SQLITE_TRANSIENT);
+  int res = sqlite3_step (stmt);
+  sqlite3_finalize (stmt);
+  return;
 }
 
 void 
@@ -352,7 +472,24 @@ ContactStorage::getContact(const Name& name)
       EndorseCertificate endorseCertificate(*certData);
       int isIntroducer = sqlite3_column_int (stmt, 2);
 
-      return Ptr<ContactItem>(new ContactItem(endorseCertificate, isIntroducer, alias));      
+      sqlite3_finalize (stmt);
+      
+      Ptr<ContactItem> contact = Ptr<ContactItem>(new ContactItem(endorseCertificate, isIntroducer, alias));
+
+      if(contact->isIntroducer())
+        {
+          sqlite3_prepare_v2 (m_db, "SELECT trust_scope FROM TrustScope WHERE contact_namespace=?", -1, &stmt, 0);
+          sqlite3_bind_text(stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
+
+          while( sqlite3_step (stmt) == SQLITE_ROW)
+            {
+              Name scope(string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
+              contact->addTrustScope(scope);
+            }
+          sqlite3_finalize (stmt);  
+        }
+
+      return contact;      
     } 
   return NULL;
 }
@@ -401,6 +538,8 @@ ContactStorage::updateSelfEndorseCertificate(Ptr<EndorseCertificate> newEndorseC
   sqlite3_bind_text(stmt, 1, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
   sqlite3_step(stmt);
+  
+  sqlite3_finalize (stmt);
 }
 
 void
@@ -413,4 +552,142 @@ ContactStorage::addSelfEndorseCertificate(Ptr<EndorseCertificate> newEndorseCert
   sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 2, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
   sqlite3_step(stmt);
+
+  sqlite3_finalize (stmt);
+}
+
+Ptr<Blob>
+ContactStorage::getEndorseCertificate(const ndn::Name& identity)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT endorse_data FROM ProfileEndorse where identity=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+
+  Ptr<Blob> result = NULL;
+  if(sqlite3_step (stmt) == SQLITE_ROW)
+    result = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
+
+  sqlite3_finalize (stmt);
+
+  return result;
+}
+
+void
+ContactStorage::updateEndorseCertificate(ndn::Ptr<EndorseCertificate> endorseCertificate, const ndn::Name& identity)
+{
+  Ptr<Blob> newEndorseCertificateBlob = endorseCertificate->encodeToWire();
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "UPDATE ProfileEndorse SET endorse_data=? WHERE identity=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+  sqlite3_step(stmt);
+
+  sqlite3_finalize (stmt);
+}
+
+void
+ContactStorage::addEndorseCertificate(ndn::Ptr<EndorseCertificate> endorseCertificate, const ndn::Name& identity)
+{
+  Ptr<Blob> newEndorseCertificateBlob = endorseCertificate->encodeToWire();
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "INSERT INTO ProfileEndorse (identity, endorse_data) values (?, ?)", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
+  sqlite3_step(stmt);
+
+  sqlite3_finalize (stmt);
+}
+
+vector<string>
+ContactStorage::getEndorseList(const Name& identity)
+{
+  vector<string> endorseList;
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT profile_type FROM ContactProfile WHERE profile_identity=? AND endorse=1 ORDER BY profile_type", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+
+  while( sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      endorseList.push_back(profileType);      
+    }
+  sqlite3_finalize (stmt);  
+  
+  return endorseList;
+}
+
+void
+ContactStorage::updateCollectEndorse(const EndorseCertificate& endorseCertificate)
+{
+  Name endorserName = endorseCertificate.getSigner();
+  Name keyName = endorseCertificate.getPublicKeyName();
+  Name endorseeName = keyName.getPrefix(keyName.size()-1);
+  Name getCertName = endorseCertificate.getName();
+  Name oldCertName;
+  bool insert = true;
+  bool update = true;
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT endorse_name FROM CollectEndorse WHERE endorser=? AND endorsee=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, endorserName.toUri().c_str(), endorserName.toUri().size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, endorseeName.toUri().c_str(), endorseeName.toUri().size(), SQLITE_TRANSIENT);
+
+  if(sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      insert = false;
+      oldCertName = Name(string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
+      if(getCertName == oldCertName)
+        update = false;
+    }
+  sqlite3_finalize (stmt);  
+  
+  if(insert)
+    {
+      sqlite3_prepare_v2 (m_db, "INSERT INTO CollectEndorse (endorser, endorsee, endorse_name, endorse_data) VALUES (?, ?, ?, ?)", -1, &stmt, 0);
+      sqlite3_bind_text(stmt, 1, endorserName.toUri().c_str(), endorserName.toUri().size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 2, endorseeName.toUri().c_str(), endorseeName.toUri().size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 3, getCertName.toUri().c_str(), getCertName.toUri().size(), SQLITE_TRANSIENT);
+      Ptr<Blob> blob = endorseCertificate.encodeToWire();
+      sqlite3_bind_text(stmt, 4, blob->buf(), blob->size(), SQLITE_TRANSIENT);
+      int res = sqlite3_step (stmt);
+      // if(res != SQLITE_OK)
+      //   _LOG_DEBUG("Insert CollectEndorse Failure: " << getCertName.toUri());
+      sqlite3_finalize (stmt); 
+      return;
+    }
+  if(update)
+    {
+      sqlite3_prepare_v2 (m_db, "UPDATE CollectEndorse SET endorse_name=?, endorse_data=? WHERE endorser=? AND endorsee=?", -1, &stmt, 0);
+      sqlite3_bind_text(stmt, 1, getCertName.toUri().c_str(), getCertName.toUri().size(), SQLITE_TRANSIENT);
+      Ptr<Blob> blob = endorseCertificate.encodeToWire();
+      sqlite3_bind_text(stmt, 2, blob->buf(), blob->size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 3, endorserName.toUri().c_str(), endorserName.toUri().size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 4, endorseeName.toUri().c_str(), endorseeName.toUri().size(), SQLITE_TRANSIENT);
+      int res = sqlite3_step (stmt);
+      // if(res != SQLITE_OK)
+      //   _LOG_DEBUG("Insert CollectEndorse Failure: " << getCertName.toUri());
+      sqlite3_finalize (stmt); 
+      return;
+    }
+}
+
+Ptr<vector<Blob> >
+ContactStorage::getCollectEndorseList(const Name& name)
+{
+  Ptr<vector<Blob> > collectEndorseList = Ptr<vector<Blob> >::Create();
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT endorse_data FROM CollectEndorse WHERE endorsee=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
+
+  while(sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      Blob blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      collectEndorseList->push_back(blob);
+    }
+
+  return collectEndorseList;
 }

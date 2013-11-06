@@ -8,16 +8,18 @@ def options(opt):
     opt.load('compiler_c compiler_cxx boost protoc qt4')
 
     opt.load('tinyxml', tooldir=['waf-tools'])
+    opt.load('cryptopp', tooldir=['waf-tools'])
     
 def configure(conf):
-    conf.load("compiler_c compiler_cxx boost protoc qt4 tinyxml")
+    conf.load("compiler_c compiler_cxx boost protoc qt4 tinyxml cryptopp")
 
-    conf.add_supported_cxxflags (cxxflags = ['-O3', '-g'])
+    conf.add_supported_cxxflags (cxxflags = ['-O0', '-g'])
 
     conf.check_tinyxml(path=conf.options.tinyxml_dir)
     conf.check_cfg(package='libndn.cxx', args=['--cflags', '--libs'], uselib_store='NDNCXX', mandatory=True)
     conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
     conf.check_cfg(package='liblog4cxx', args=['--cflags', '--libs'], uselib_store='LOG4CXX', mandatory=True)
+    conf.check_cfg (package='ChronoSync', args=['ChronoSync >= 0.1', '--cflags', '--libs'], uselib_store='SYNC', mandatory=True)
     conf.define ("HAVE_LOG4CXX", 1)
 
     conf.check_boost(lib='system random thread filesystem')
@@ -30,9 +32,9 @@ def build (bld):
         target = "Contacts",
         features = "qt4 cxx cxxprogram",
         defines = "WAF",
-        source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', 'logging.cc']),
+        source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', 'logging.cc', 'src/*.proto']),
         includes = ".",
-        use = "QTCORE QTGUI QTSQL SQLITE3 NDNCXX TINYXML BOOST BOOST_FILESYSTEM LOG4CXX",
+        use = "QTCORE QTGUI QTSQL SQLITE3 NDNCXX TINYXML BOOST BOOST_FILESYSTEM LOG4CXX CRYPTOPP SYNC",
         )
 
     cert_publish = bld (

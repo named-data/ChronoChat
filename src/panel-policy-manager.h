@@ -98,6 +98,7 @@ private:
   ndn::Ptr<ndn::security::IdentityPolicyRule> m_invitationDataSigningRule;
   ndn::Ptr<ndn::Regex> m_kskRegex;
   ndn::Ptr<ndn::security::IdentityPolicyRule> m_dskRule;
+  ndn::Ptr<ndn::security::IdentityPolicyRule> m_endorseeRule;
   ndn::Ptr<ndn::Regex> m_keyNameRegex;
   ndn::Ptr<ndn::Regex> m_signingCertificateRegex;
   std::map<ndn::Name, ndn::security::Publickey> m_trustAnchors;

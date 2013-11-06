@@ -28,7 +28,7 @@ public:
   updateDnsEndorseOthers(const ndn::Data& data, const ndn::Name& identity, const ndn::Name& endorsee);
   
   void
-  updateDnsOthersEndorse(const ndn::Data& data, const ndn::Name& identity, const ndn::Name& endorser);
+  updateDnsOthersEndorse(const ndn::Data& data, const ndn::Name& identity);
 
   ndn::Ptr<ndn::Data>
   getData(const ndn::Name& name);

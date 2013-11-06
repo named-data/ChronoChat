@@ -29,6 +29,8 @@ Q_DECLARE_METATYPE(ndn::Name)
 
 Q_DECLARE_METATYPE(EndorseCertificate)
 
+Q_DECLARE_METATYPE(ndn::Data)
+
 class AddContactPanel : public QDialog
 {
   Q_OBJECT
@@ -38,6 +40,13 @@ public:
                            QWidget *parent = 0);
 
   ~AddContactPanel();
+
+private:
+  void
+  displayContactInfo();
+
+  bool
+  isCorrectName(const ndn::Name& name);
 
 private slots:
   void
@@ -55,6 +64,18 @@ private slots:
   void
   selfEndorseCertificateFetchFailed(const ndn::Name& identity);
 
+  void
+  onContactKeyFetched(const EndorseCertificate& endorseCertificate);
+
+  void
+  onContactKeyFetchFailed(const ndn::Name& identity);
+
+  void
+  onCollectEndorseFetched(const ndn::Data& data);
+
+  void
+  onCollectEndorseFetchFailed(const ndn::Name& identity);
+
 signals:
   void
   newContactAdded();
@@ -65,6 +86,9 @@ private:
   ndn::Ptr<ContactManager> m_contactManager;
   WarningDialog* m_warningDialog;
   ndn::Ptr<EndorseCertificate> m_currentEndorseCertificate;
+  ndn::Ptr<ndn::Data> m_currentCollectEndorse;
+  bool m_currentEndorseCertificateReady;
+  bool m_currentCollectEndorseReady;
 };
 
 #endif // ADDCONTACTPANEL_H

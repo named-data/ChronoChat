@@ -122,18 +122,18 @@ DnsStorage::updateDnsEndorseOthers(const Data& data, const Name& identity, const
 {
   string dnsIdentity = identity.toUri();
   string dnsName = endorsee.toUri();
-  string dnsType("ENORSEE");
+  string dnsType("ENDORSEE");
   Ptr<Blob> dnsValue = data.encodeToWire();
 
   updateDnsData(*dnsValue, dnsIdentity, dnsName, dnsType, data.getName().toUri());
 }
   
 void
-DnsStorage::updateDnsOthersEndorse(const Data& data, const Name& identity, const Name& endorser)
+DnsStorage::updateDnsOthersEndorse(const Data& data, const Name& identity)
 {
   string dnsIdentity = identity.toUri();
-  string dnsName = endorser.toUri();
-  string dnsType("ENORSER");
+  string dnsName("N/A");
+  string dnsType("ENDORSED");
   Ptr<Blob> dnsValue = data.encodeToWire();
 
   updateDnsData(*dnsValue, dnsIdentity, dnsName, dnsType, data.getName().toUri());

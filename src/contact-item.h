@@ -58,6 +58,10 @@ public:
   isIntroducer() const
   { return m_isIntroducer; }
 
+  inline void
+  setIsIntroducer(bool isIntroducer) 
+  { m_isIntroducer = isIntroducer; }
+
   void
   addTrustScope(const ndn::Name& nameSpace)
   {

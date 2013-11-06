@@ -22,7 +22,7 @@
      <height>481</height>
     </rect>
    </property>
-   <layout class="QVBoxLayout" name="addContactPanelLayout" stretch="1,25,1">
+   <layout class="QVBoxLayout" name="addContactPanelLayout" stretch="1,25,0,1">
     <property name="spacing">
      <number>10</number>
     </property>
@@ -64,6 +64,16 @@
       <attribute name="horizontalHeaderStretchLastSection">
        <bool>true</bool>
       </attribute>
+     </widget>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="fetchBox">
+      <property name="text">
+       <string>Fetch profile</string>
+      </property>
+      <property name="checkable">
+       <bool>true</bool>
+      </property>
      </widget>
     </item>
     <item>

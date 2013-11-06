@@ -70,7 +70,7 @@ void
 ProfileEditor::onDeleteClicked()
 {
   QItemSelectionModel* selectionModel = ui->profileTable->selectionModel();
-  QModelIndexList indexList = selectionModel->selectedRows();
+  QModelIndexList indexList = selectionModel->selectedIndexes();
 
   int i = indexList.size() - 1;  
   for(; i >= 0; i--)
