@@ -97,9 +97,36 @@ EndorseExtension::prepareValue(const vector<string>& endorsedList)
   return blobStream.buf ();
 }
 
+// EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate)
+//   : Certificate()
+//   , m_keyName(kskCertificate.getPublicKeyName())
+//   , m_signer(kskCertificate.getPublicKeyName())
+// {
+//   Profile profile(m_keyName.getPrefix(m_keyName.size()-1), 
+//                   m_keyName.get(-2).toUri(),
+//                   m_keyName.get(m_keyName.size()-2).toUri());
+  
+//   Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(m_keyName.getPrefix(m_keyName.size()-1),
+//                                                                   profile));
+
+//   m_profileData = profileData;
+
+//   Name dataName = m_keyName;
+//   dataName.append("PROFILE-CERT").append(m_signer).appendVersion();
+//   setName(dataName);
+
+//   setNotBefore(kskCertificate.getNotBefore());
+//   setNotAfter(kskCertificate.getNotAfter());
+//   addSubjectDescription(CertificateSubDescrypt("2.5.4.41", m_keyName.toUri()));
+//   setPublicKeyInfo(kskCertificate.getPublicKeyInfo());  
+//   addExtension(ProfileExtension(*m_profileData));
+//   addExtension(EndorseExtension(m_endorseList));
+  
+//   encode();
+// }
+
+
 EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate,
-                                       const Time& notBefore,
-                                       const Time& notAfter,
                                        Ptr<ProfileData> profileData,
                                        const vector<string>& endorseList)
   : Certificate()
@@ -109,14 +136,11 @@ EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate
   , m_endorseList(endorseList)
 {
   Name dataName = m_keyName;
-  TimeInterval ti = time::NowUnixTimestamp();
-  ostringstream oss;
-  oss << ti.total_seconds();
-  dataName.append("PROFILE-CERT").append(m_signer).append(oss.str());
+  dataName.append("PROFILE-CERT").append(m_signer).appendVersion();
   setName(dataName);
 
-  setNotBefore(notBefore);
-  setNotAfter(notAfter);
+  setNotBefore(kskCertificate.getNotBefore());
+  setNotAfter(kskCertificate.getNotAfter());
   addSubjectDescription(CertificateSubDescrypt("2.5.4.41", m_keyName.toUri()));
   setPublicKeyInfo(kskCertificate.getPublicKeyInfo());  
   addExtension(ProfileExtension(*m_profileData));
@@ -127,8 +151,6 @@ EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate
 
 EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertificate,
                                        const Name& signer,
-                                       const Time& notBefore,
-                                       const Time& notAfter,
                                        const vector<string>& endorseList)
   : Certificate()
   , m_keyName(endorseCertificate.m_keyName)
@@ -137,14 +159,11 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
   , m_endorseList(endorseList)
 {
   Name dataName = m_keyName;
-  TimeInterval ti = time::NowUnixTimestamp();
-  ostringstream oss;
-  oss << ti.total_seconds();
-  dataName.append("PROFILE-CERT").append(m_signer).append(oss.str());
+  dataName.append("PROFILE-CERT").append(m_signer).appendVersion();
   setName(dataName);
   
-  setNotBefore(notBefore);
-  setNotAfter(notAfter);
+  setNotBefore(endorseCertificate.getNotBefore());
+  setNotAfter(endorseCertificate.getNotAfter());
   addSubjectDescription(CertificateSubDescrypt("2.5.4.41", m_keyName.toUri()));
   setPublicKeyInfo(endorseCertificate.getPublicKeyInfo());
   addExtension(ProfileExtension(*m_profileData));

@@ -37,7 +37,16 @@ public:
   fetchSelfEndorseCertificate(const ndn::Name& identity);
 
   void
+  fetchKey(const ndn::Name& identity);
+
+  void
+  fetchCollectEndorse(const ndn::Name& identity);
+
+  void
   updateProfileData(const ndn::Name& identity);
+
+  void
+  updateEndorseCertificate(const ndn::Name& identity, const ndn::Name& signerIdentity);
 
   std::vector<ndn::Ptr<ContactItem> >
   getContactItemList();
@@ -61,6 +70,9 @@ public:
   getWrapper()
   { return m_wrapper; }
 
+  void
+  publishEndorsedDataInDns(const ndn::Name& identity);
+
 private:
   void
   setKeychain();
@@ -68,8 +80,14 @@ private:
   ndn::Ptr<EndorseCertificate>
   getSignedSelfEndorseCertificate(const ndn::Name& identity, const Profile& profile);
 
+  ndn::Ptr<EndorseCertificate> 
+  generateEndorseCertificate(const ndn::Name& identity, const ndn::Name& signerIdentity);
+
   void
   publishSelfEndorseCertificateInDNS(ndn::Ptr<EndorseCertificate> selfEndorseCertificate);
+
+  void
+  publishEndorseCertificateInDNS(ndn::Ptr<EndorseCertificate> endorseCertificate, const ndn::Name& signerIdentity);
 
   void 
   onDnsSelfEndorseCertificateVerified(ndn::Ptr<ndn::Data> selfEndorseCertificate, const ndn::Name& identity);
@@ -80,12 +98,44 @@ private:
   void
   onDnsSelfEndorseCertificateTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest, const ndn::Name& identity, int retry);
 
+  void
+  onKeyVerified(ndn::Ptr<ndn::Data> data, const ndn::Name& identity);
+
+  void
+  onKeyUnverified(ndn::Ptr<ndn::Data> data, const ndn::Name& identity);
+
+  void
+  onKeyTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest, const ndn::Name& identity, int retry);
+
+  void
+  onDnsCollectEndorseVerified(ndn::Ptr<ndn::Data> data, const ndn::Name& identity);
+
+  void
+  onDnsCollectEndorseTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest, const ndn::Name& identity, int retry);
+
+  void
+  onDnsCollectEndorseUnverified(ndn::Ptr<ndn::Data> data, const ndn::Name& identity);
+
+  
+
 signals:
   void 
   contactFetched(const EndorseCertificate& endorseCertificate);
   
   void
   contactFetchFailed(const ndn::Name& identity);
+
+  void
+  contactKeyFetched(const EndorseCertificate& endorseCertificate);
+
+  void
+  contactKeyFetchFailed(const ndn::Name& identity);
+
+  void 
+  collectEndorseFetched(const ndn::Data& data);
+
+  void
+  collectEndorseFetchFailed(const ndn::Name& identity);
 
 private slots:
   

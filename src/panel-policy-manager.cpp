@@ -38,6 +38,11 @@ PanelPolicyManager::PanelPolicyManager(const int & stepLimit,
   m_dskRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
 							     "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
 							     "==", "\\1", "\\1\\2", true));
+  
+  m_endorseeRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<DNS>]*)<DNS><>*<ENDORSEE><>$", 
+                                                                  "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
+                                                                  "==", "\\1", "\\1\\2", true));
+  
   m_kskRegex = Ptr<Regex>(new Regex("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT><>$", "\\1\\2"));
 
   m_keyNameRegex = Ptr<Regex>(new Regex("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>$", "\\1\\2"));
@@ -59,11 +64,14 @@ PanelPolicyManager::requireVerify (const Data & data)
 {
   // if(m_invitationDataRule->matchDataName(data))
   //   return true;
-
   if(m_kskRegex->match(data.getName()))
      return true;
   if(m_dskRule->matchDataName(data))
     return true;
+
+  if(m_endorseeRule->matchDataName(data))
+    return true;
+
 
   return false;
 }
@@ -131,6 +139,25 @@ PanelPolicyManager::checkVerificationPolicy(Ptr<Data> data,
 
       return NULL;	
     }
+
+  _LOG_DEBUG("KEY Locator: " << keyLocatorName.toUri());
+  if(m_endorseeRule->satisfy(*data))
+    {
+      m_keyNameRegex->match(keyLocatorName);
+      Name keyName = m_keyNameRegex->expand();
+      _LOG_DEBUG("data name: " << data->getName());
+      _LOG_DEBUG("keyName: " << keyName.toUri());
+      if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
+        if(verifySignature(*data, m_trustAnchors[keyName]))
+          verifiedCallback(data);
+        else
+          unverifiedCallback(data);
+      else
+        unverifiedCallback(data);
+
+      return NULL;
+    }
+
   _LOG_DEBUG("Unverified!");
 
   unverifiedCallback(data);

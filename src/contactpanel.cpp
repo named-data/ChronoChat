@@ -16,6 +16,9 @@
 #include <QItemSelectionModel>
 #include <QModelIndex>
 #include <QDir>
+#include <QtSql/QSqlRecord>
+#include <QtSql/QSqlField>
+#include <QtSql/QSqlError>
 
 #ifndef Q_MOC_RUN
 #include <ndn.cxx/security/keychain.h>
@@ -71,6 +74,7 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   m_defaultIdentity = m_keychain->getDefaultIdentity();
   m_settingDialog->setIdentity(m_defaultIdentity.toUri());
   setInvitationListener();
+  collectEndorsement();
   
   ui->ContactList->setModel(m_contactListModel);
   
@@ -113,6 +117,18 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
 
   connect(ui->isIntroducer, SIGNAL(stateChanged(int)),
           this, SLOT(isIntroducerChanged(int)));
+
+  connect(ui->addScope, SIGNAL(clicked()),
+          this, SLOT(addScopeClicked()));
+
+  connect(ui->deleteScope, SIGNAL(clicked()),
+          this, SLOT(deleteScopeClicked()));
+
+  connect(ui->saveButton, SIGNAL(clicked()),
+          this, SLOT(saveScopeClicked()));
+
+  connect(ui->endorseButton, SIGNAL(clicked()),
+          this, SLOT(endorseButtonClicked()));
 }
 
 ContactPanel::~ContactPanel()
@@ -121,8 +137,8 @@ ContactPanel::~ContactPanel()
   delete m_contactListModel;
   delete m_profileEditor;
   delete m_addContactPanel;
-  if(NULL != m_currentContactTrustScopeListModel)
-    delete m_currentContactTrustScopeListModel;
+  delete m_trustScopeModel;
+  delete m_endorseDataModel;
 
   delete m_menuInvite;
 
@@ -140,6 +156,10 @@ ContactPanel::openDB()
   db.setDatabaseName(path);
   bool ok = db.open();
   _LOG_DEBUG("db opened: " << std::boolalpha << ok );
+
+  m_trustScopeModel = new QSqlTableModel;
+  m_endorseDataModel = new QSqlTableModel;
+  m_endorseComboBoxDelegate = new EndorseComboBoxDelegate;
 }
 
 void 
@@ -202,6 +222,72 @@ ContactPanel::onUnverified(Ptr<Data> data)
 void
 ContactPanel::onTimeout(Ptr<Closure> closure, Ptr<Interest> interest)
 {}
+
+void
+ContactPanel::collectEndorsement()
+{
+  m_collectStatus = Ptr<vector<bool> >::Create();
+  m_collectStatus->assign(m_contactList.size(), false);
+  vector<Ptr<ContactItem> >::iterator it = m_contactList.begin();
+  int count = 0;
+  for(; it != m_contactList.end(); it++, count++)
+    {
+      Name interestName = (*it)->getNameSpace();
+      interestName.append("DNS").append(m_defaultIdentity).append("ENDORSEE");
+      Ptr<Interest> interest = Ptr<Interest>(new Interest(interestName));
+      interest->setChildSelector(Interest::CHILD_RIGHT);
+  
+      Ptr<Closure> closure = Ptr<Closure>(new Closure(boost::bind(&ContactPanel::onDnsEndoreeVerified, 
+                                                                  this,
+                                                                  _1,
+                                                                  count),
+                                                      boost::bind(&ContactPanel::onDnsEndoreeTimeout,
+                                                                  this,
+                                                                  _1, 
+                                                                  _2,
+                                                                  count),
+                                                      boost::bind(&ContactPanel::onDnsEndoreeUnverified,
+                                                                  this,
+                                                                  _1,
+                                                                  count)));
+
+      m_handler->sendInterest(interest, closure);
+    }
+}
+
+void
+ContactPanel::onDnsEndoreeVerified(Ptr<Data> data, int count)
+{
+  Ptr<Blob> contentBlob = Ptr<Blob>(new Blob(data->content().buf(), data->content().size()));
+  Ptr<Data> endorseData = Data::decodeFromWire(contentBlob);
+  EndorseCertificate endorseCertificate(*endorseData);
+
+  _LOG_DEBUG("get data: " << endorseCertificate.getName().toUri());
+
+  m_contactManager->getContactStorage()->updateCollectEndorse(endorseCertificate);
+
+  updateCollectStatus(count);
+}
+
+void
+ContactPanel::onDnsEndoreeTimeout(Ptr<Closure> closure, Ptr<Interest> interest, int count)
+{ updateCollectStatus(count); }
+
+void
+ContactPanel::onDnsEndoreeUnverified(Ptr<Data> data, int count)
+{ updateCollectStatus(count); }
+
+void 
+ContactPanel::updateCollectStatus(int count)
+{
+  m_collectStatus->at(count) = true;
+  vector<bool>::const_iterator it = m_collectStatus->begin();
+  for(; it != m_collectStatus->end(); it++)
+    if(*it == false)
+      return;
+
+  m_contactManager->publishEndorsedDataInDns(m_defaultIdentity);
+}
 
 void
 ContactPanel::onInvitationCertVerified(Ptr<Data> data, 
@@ -322,16 +408,72 @@ ContactPanel::updateSelection(const QItemSelection &selected,
     {
       ui->isIntroducer->setChecked(true);
       ui->addScope->setEnabled(true);
-      ui->deleteScope->setEnabled(true);
-      m_currentContactTrustScopeListModel = new QStringListModel;
+      ui->deleteScope->setEnabled(true);     
+      ui->trustScopeList->setEnabled(true);
+
+      string filter("contact_namespace = '");
+      filter.append(m_currentSelectedContact->getNameSpace().toUri()).append("'");
+
+      m_trustScopeModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+      m_trustScopeModel->setTable("TrustScope");
+      m_trustScopeModel->setFilter(filter.c_str());
+      m_trustScopeModel->select();
+      m_trustScopeModel->setHeaderData(0, Qt::Horizontal, QObject::tr("ID"));
+      m_trustScopeModel->setHeaderData(1, Qt::Horizontal, QObject::tr("Contact"));
+      m_trustScopeModel->setHeaderData(2, Qt::Horizontal, QObject::tr("TrustScope"));
+
+      // _LOG_DEBUG("row count: " << m_trustScopeModel->rowCount());
+
+      ui->trustScopeList->setModel(m_trustScopeModel);
+      ui->trustScopeList->setColumnHidden(0, true);
+      ui->trustScopeList->setColumnHidden(1, true);
+      ui->trustScopeList->show();
     }
   else
     {
       ui->isIntroducer->setChecked(false);
       ui->addScope->setEnabled(false);
       ui->deleteScope->setEnabled(false);
-      delete m_currentContactTrustScopeListModel;
+
+      string filter("contact_namespace = '");
+      filter.append(m_currentSelectedContact->getNameSpace().toUri()).append("'");
+
+      m_trustScopeModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+      m_trustScopeModel->setTable("TrustScope");
+      m_trustScopeModel->setFilter(filter.c_str());
+      m_trustScopeModel->select();
+      m_trustScopeModel->setHeaderData(0, Qt::Horizontal, QObject::tr("ID"));
+      m_trustScopeModel->setHeaderData(1, Qt::Horizontal, QObject::tr("Contact"));
+      m_trustScopeModel->setHeaderData(2, Qt::Horizontal, QObject::tr("TrustScope"));
+
+      ui->trustScopeList->setModel(m_trustScopeModel);
+      ui->trustScopeList->setColumnHidden(0, true);
+      ui->trustScopeList->setColumnHidden(1, true);
+      ui->trustScopeList->show();
+
+      ui->trustScopeList->setEnabled(false);
     }
+
+  string filter("profile_identity = '");
+  filter.append(m_currentSelectedContact->getNameSpace().toUri()).append("'");
+
+  m_endorseDataModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+  m_endorseDataModel->setTable("ContactProfile");
+  m_endorseDataModel->setFilter(filter.c_str());
+  m_endorseDataModel->select();
+  
+  m_endorseDataModel->setHeaderData(0, Qt::Horizontal, QObject::tr("Identity"));
+  m_endorseDataModel->setHeaderData(1, Qt::Horizontal, QObject::tr("Type"));
+  m_endorseDataModel->setHeaderData(2, Qt::Horizontal, QObject::tr("Value"));
+  m_endorseDataModel->setHeaderData(3, Qt::Horizontal, QObject::tr("Endorse"));
+
+  ui->endorseList->setModel(m_endorseDataModel);
+  ui->endorseList->setColumnHidden(0, true);
+  ui->endorseList->resizeColumnToContents(1);
+  ui->endorseList->resizeColumnToContents(2);
+  ui->endorseList->setItemDelegateForColumn(3, m_endorseComboBoxDelegate);
+  ui->endorseList->show();
+
 }
 
 void
@@ -349,6 +491,8 @@ ContactPanel::updateDefaultIdentity(const QString& identity)
                                            this,
                                            _1));
   m_inviteListenPrefix = prefix;
+
+  collectEndorsement();
 }
 
 void
@@ -486,12 +630,93 @@ ContactPanel::isIntroducerChanged(int state)
     {
       ui->addScope->setEnabled(true);
       ui->deleteScope->setEnabled(true);
+      ui->trustScopeList->setEnabled(true);
+      
+      string filter("contact_namespace = '");
+      filter.append(m_currentSelectedContact->getNameSpace().toUri()).append("'");
+      _LOG_DEBUG("filter: " << filter);
+
+      m_trustScopeModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+      m_trustScopeModel->setTable("TrustScope");
+      m_trustScopeModel->setFilter(filter.c_str());
+      m_trustScopeModel->select();
+      m_trustScopeModel->setHeaderData(0, Qt::Horizontal, QObject::tr("ID"));
+      m_trustScopeModel->setHeaderData(1, Qt::Horizontal, QObject::tr("Contact"));
+      m_trustScopeModel->setHeaderData(2, Qt::Horizontal, QObject::tr("TrustScope"));
+      _LOG_DEBUG("row count: " << m_trustScopeModel->rowCount());
+
+
+      ui->trustScopeList->setModel(m_trustScopeModel);
+      ui->trustScopeList->setColumnHidden(0, true);
+      ui->trustScopeList->setColumnHidden(1, true);
+      ui->trustScopeList->show();
+
+      m_currentSelectedContact->setIsIntroducer(true);
     }
   else
     {
       ui->addScope->setEnabled(false);
       ui->deleteScope->setEnabled(false);
+
+      string filter("contact_namespace = '");
+      filter.append(m_currentSelectedContact->getNameSpace().toUri()).append("'");
+
+      m_trustScopeModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+      m_trustScopeModel->setTable("TrustScope");
+      m_trustScopeModel->setFilter(filter.c_str());
+      m_trustScopeModel->select();
+      m_trustScopeModel->setHeaderData(0, Qt::Horizontal, QObject::tr("ID"));
+      m_trustScopeModel->setHeaderData(1, Qt::Horizontal, QObject::tr("Contact"));
+      m_trustScopeModel->setHeaderData(2, Qt::Horizontal, QObject::tr("TrustScope"));
+
+      ui->trustScopeList->setModel(m_trustScopeModel);
+      ui->trustScopeList->setColumnHidden(0, true);
+      ui->trustScopeList->setColumnHidden(1, true);
+      ui->trustScopeList->show();
+
+      ui->trustScopeList->setEnabled(false);
+
+      m_currentSelectedContact->setIsIntroducer(false);
     }
+  m_contactManager->getContactStorage()->updateIsIntroducer(m_currentSelectedContact->getNameSpace(), m_currentSelectedContact->isIntroducer());
+}
+
+void
+ContactPanel::addScopeClicked()
+{
+  int rowCount = m_trustScopeModel->rowCount();
+  QSqlRecord record;
+  QSqlField identityField("contact_namespace", QVariant::String);
+  record.append(identityField);
+  record.setValue("contact_namespace", QString(m_currentSelectedContact->getNameSpace().toUri().c_str()));
+  m_trustScopeModel->insertRow(rowCount);
+  m_trustScopeModel->setRecord(rowCount, record);
+}
+
+void
+ContactPanel::deleteScopeClicked()
+{
+  QItemSelectionModel* selectionModel = ui->trustScopeList->selectionModel();
+  QModelIndexList indexList = selectionModel->selectedIndexes();
+
+  int i = indexList.size() - 1;  
+  for(; i >= 0; i--)
+    m_trustScopeModel->removeRow(indexList[i].row());
+    
+  m_trustScopeModel->submitAll();
+}
+
+void
+ContactPanel::saveScopeClicked()
+{
+  m_trustScopeModel->submitAll();
+}
+
+void
+ContactPanel::endorseButtonClicked()
+{
+  m_endorseDataModel->submitAll();
+  m_contactManager->updateEndorseCertificate(m_currentSelectedContact->getNameSpace(), m_defaultIdentity);
 }
 
 #if WAF

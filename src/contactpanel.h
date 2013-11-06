@@ -23,6 +23,7 @@
 #include "invitationdialog.h"
 #include "settingdialog.h"
 #include "chatdialog.h"
+#include "endorse-combobox-delegate.h"
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
@@ -75,6 +76,23 @@ private:
   void
   onInvitationCertVerified(ndn::Ptr<ndn::Data> data,
                            ndn::Ptr<ChronosInvitation> invitation);
+
+  void
+  collectEndorsement();
+
+  void
+  onDnsEndoreeVerified(ndn::Ptr<ndn::Data> data, int count);
+
+  void
+  onDnsEndoreeTimeout(ndn::Ptr<ndn::Closure> closure, 
+                      ndn::Ptr<ndn::Interest> interest, 
+                      int count);
+  
+  void
+  onDnsEndoreeUnverified(ndn::Ptr<ndn::Data> data, int count);
+
+  void 
+  updateCollectStatus(int count);
 
   std::string
   getRandomString();
@@ -137,6 +155,20 @@ private slots:
   void
   isIntroducerChanged(int state);
 
+  void
+  addScopeClicked();
+
+  void
+  deleteScopeClicked();
+
+  void
+  saveScopeClicked();
+
+  void
+  endorseButtonClicked();
+
+  
+
 private:
   Ui::ContactPanel *ui;
   ndn::Ptr<ContactManager> m_contactManager;
@@ -151,6 +183,7 @@ private:
   QAction* m_menuInvite;
   QAction* m_menuAlias;
   std::vector<ndn::Ptr<ContactItem> > m_contactList;
+  ndn::Ptr<std::vector<bool> > m_collectStatus;
 
   ndn::Ptr<PanelPolicyManager> m_panelPolicyManager;
   ndn::Ptr<ndn::security::Keychain> m_keychain;
@@ -163,7 +196,9 @@ private:
   // std::string m_currentSelectedContactAlias;
   // std::string m_currentSelectedContactNamespace;
   ndn::Ptr<ContactItem> m_currentSelectedContact;
-  QStringListModel* m_currentContactTrustScopeListModel;
+  QSqlTableModel* m_trustScopeModel;
+  QSqlTableModel* m_endorseDataModel;
+  EndorseComboBoxDelegate* m_endorseComboBoxDelegate;
 
 
 };
