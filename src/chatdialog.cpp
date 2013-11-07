@@ -348,10 +348,7 @@ ChatDialog::invitationAccepted(const ndn::Name& identity, ndn::Ptr<ndn::Data> da
   ndn::Ptr<const ndn::signature::Sha256WithRsa> sha256sig = boost::dynamic_pointer_cast<const ndn::signature::Sha256WithRsa> (data->getSignature());
   const ndn::Name & keyLocatorName = sha256sig->getKeyLocator().getKeyName();
   ndn::Ptr<ndn::security::IdentityCertificate> dskCertificate = m_invitationPolicyManager->getValidatedDskCertificate(keyLocatorName);
-  ndn::Name tmpPrefix(inviteePrefix);
-  ndn::Name prefix = tmpPrefix.getPrefix(tmpPrefix.size()-1);
-  m_syncPolicyManager->addChatDataRule(prefix, *dskCertificate, isIntroducer);
-  // m_syncPolicyManager->addChatDataRule(inviteePrefix, *dskCertificate, isIntroducer);
+  m_syncPolicyManager->addChatDataRule(inviteePrefix, *dskCertificate, isIntroducer);
   publishIntroCert(dskCertificate, isIntroducer);
 }
 

@@ -218,7 +218,6 @@ ContactPanel::onLocalPrefixVerified(Ptr<Data> data)
   string prefix = QString::fromStdString (originPrefix).trimmed ().toUtf8().constData();
   string randomSuffix = getRandomString();
   m_localPrefix = Name(prefix);
-  m_localPrefix.append(randomSuffix);
 }
 
 void
@@ -226,7 +225,6 @@ ContactPanel::onLocalPrefixTimeout(Ptr<Closure> closure, Ptr<Interest> interest)
 { 
   string randomSuffix = getRandomString();
   m_localPrefix = Name("/private/local"); 
-  m_localPrefix.append(randomSuffix);
 }
 
 void
@@ -570,15 +568,13 @@ ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, boo
   _LOG_DEBUG("introducer: " << std::boolalpha << isIntroducer);
 
   Name chatroomName(chatroom.toUtf8().constData());
-  Name prefix = m_localPrefix.getPrefix(m_localPrefix.size()-1);
-  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, prefix, m_defaultIdentity, m_nickName);
-  // ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity);
+  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName);
   m_chatDialogs.insert(pair <Name, ChatDialog*> (chatroomName, chatDialog));
 
   connect(chatDialog, SIGNAL(closeChatDialog(const ndn::Name&)),
           this, SLOT(removeChatDialog(const ndn::Name&)));
 
-  //TODO: send invitation
+  // send invitation
   Name inviteeNamespace(invitee.toUtf8().constData());
   Ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
 
@@ -597,15 +593,11 @@ ContactPanel::startChatroom2(const ChronosInvitation& invitation,
 
   Name chatroomName("/ndn/broadcast/chronos");
   chatroomName.append(invitation.getChatroom());
-  Name prefix = m_localPrefix.getPrefix(m_localPrefix.size()-1);
-  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, prefix, m_defaultIdentity, m_nickName, true);
-  // ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity);
+  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName, true);
   connect(chatDialog, SIGNAL(closeChatDialog(const ndn::Name&)),
           this, SLOT(removeChatDialog(const ndn::Name&)));
 
-  Name inviterPrefix = invitation.getInviterPrefix().getPrefix(invitation.getInviterPrefix().size()-1);
-  chatDialog->addChatDataRule(inviterPrefix, identityCertificate, true);
-  // chatDialog->addChatDataRule(invitation.getInviterPrefix(), identityCertificate, true);
+  chatDialog->addChatDataRule(invitation.getInviterPrefix(), identityCertificate, true);
 
   Ptr<ContactItem> inviterItem = m_contactManager->getContact(invitation.getInviterNameSpace());
   chatDialog->addTrustAnchor(inviterItem->getSelfEndorseCertificate());
