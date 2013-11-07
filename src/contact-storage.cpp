@@ -288,7 +288,6 @@ ContactStorage::setSelfProfileEntry(const Name& identity, const string& profileT
 Ptr<Profile>
 ContactStorage::getSelfProfile(const Name& identity)
 {
-  _LOG_DEBUG("getSelfProfile " << identity.toUri());
   sqlite3_stmt *stmt;
   Ptr<Profile> profile = Ptr<Profile>(new Profile(identity));
   
@@ -297,12 +296,13 @@ ContactStorage::getSelfProfile(const Name& identity)
 
   while(sqlite3_step (stmt) == SQLITE_ROW)
     {
-      _LOG_DEBUG("entry");
       string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
       Blob profileValue(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
 
       profile->setProfileEntry(profileType, profileValue );
     }
+
+  sqlite3_finalize(stmt);
 
   return profile;
 }
@@ -329,7 +329,6 @@ ContactStorage::addContact(const ContactItem& contact)
   sqlite3_bind_int(stmt, 4, (isIntroducer ? 1 : 0));
 
   int res = sqlite3_step (stmt);
-  // _LOG_DEBUG("res " << res);
   sqlite3_finalize (stmt);
 
   Ptr<ProfileData> profileData = contact.getSelfEndorseCertificate().getProfileData();
@@ -509,6 +508,8 @@ ContactStorage::getSelfProfile(const Name& identity) const
       profile->setProfileEntry(profileType, profileValue);
     }
 
+  sqlite3_finalize(stmt);
+
   return profile;
 }
 
@@ -653,8 +654,6 @@ ContactStorage::updateCollectEndorse(const EndorseCertificate& endorseCertificat
       Ptr<Blob> blob = endorseCertificate.encodeToWire();
       sqlite3_bind_text(stmt, 4, blob->buf(), blob->size(), SQLITE_TRANSIENT);
       int res = sqlite3_step (stmt);
-      // if(res != SQLITE_OK)
-      //   _LOG_DEBUG("Insert CollectEndorse Failure: " << getCertName.toUri());
       sqlite3_finalize (stmt); 
       return;
     }
@@ -667,8 +666,6 @@ ContactStorage::updateCollectEndorse(const EndorseCertificate& endorseCertificat
       sqlite3_bind_text(stmt, 3, endorserName.toUri().c_str(), endorserName.toUri().size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 4, endorseeName.toUri().c_str(), endorseeName.toUri().size(), SQLITE_TRANSIENT);
       int res = sqlite3_step (stmt);
-      // if(res != SQLITE_OK)
-      //   _LOG_DEBUG("Insert CollectEndorse Failure: " << getCertName.toUri());
       sqlite3_finalize (stmt); 
       return;
     }
@@ -688,6 +685,8 @@ ContactStorage::getCollectEndorseList(const Name& name)
       Blob blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
       collectEndorseList->push_back(blob);
     }
+
+  sqlite3_finalize (stmt);
 
   return collectEndorseList;
 }

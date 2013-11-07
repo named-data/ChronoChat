@@ -558,6 +558,10 @@ void
 ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, bool isIntroducer)
 {
   Name chatroomName(chatroom.toUtf8().constData());
+
+  Name inviteeNamespace(invitee.toStdString());
+  Ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
+
   ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName);
   m_chatDialogs.insert(pair <Name, ChatDialog*> (chatroomName, chatDialog));
 
@@ -565,9 +569,6 @@ ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, boo
           this, SLOT(removeChatDialog(const ndn::Name&)));
 
   // send invitation
-  Name inviteeNamespace(invitee.toUtf8().constData());
-  Ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
-
   chatDialog->sendInvitation(inviteeItem, isIntroducer); 
   
   chatDialog->show();
@@ -578,8 +579,11 @@ void
 ContactPanel::startChatroom2(const ChronosInvitation& invitation, 
                              const security::IdentityCertificate& identityCertificate)
 {
+  Ptr<ContactItem> inviterItem = m_contactManager->getContact(invitation.getInviterNameSpace());
+
   Name chatroomName("/ndn/broadcast/chronos");
   chatroomName.append(invitation.getChatroom());
+
   ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName, true);
 
   connect(chatDialog, SIGNAL(closeChatDialog(const ndn::Name&)),
@@ -588,7 +592,6 @@ ContactPanel::startChatroom2(const ChronosInvitation& invitation,
   chatDialog->addChatDataRule(invitation.getInviterPrefix(), identityCertificate, true);
   chatDialog->publishIntroCert(identityCertificate, true);
 
-  Ptr<ContactItem> inviterItem = m_contactManager->getContact(invitation.getInviterNameSpace());
   chatDialog->addTrustAnchor(inviterItem->getSelfEndorseCertificate());
   
   m_chatDialogs.insert(pair <Name, ChatDialog*> (chatroomName, chatDialog));

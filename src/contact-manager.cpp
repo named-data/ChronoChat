@@ -13,13 +13,10 @@
 #ifndef Q_MOC_RUN
 #include <ndn.cxx/wrapper/wrapper.h>
 #include <ndn.cxx/security/keychain.h>
-#include <ndn.cxx/security/identity/basic-identity-storage.h>
-#include <ndn.cxx/security/identity/osx-privatekey-storage.h>
 #include <ndn.cxx/security/policy/simple-policy-manager.h>
 #include <ndn.cxx/security/policy/identity-policy-rule.h>
-#include <ndn.cxx/security/cache/ttl-certificate-cache.h>
-#include <ndn.cxx/security/encryption/basic-encryption-manager.h>
 #include <ndn.cxx/helpers/der/der.h>
+#include <cryptopp/base64.h>
 #include <fstream>
 #include "logging.h"
 #endif
@@ -48,12 +45,10 @@ ContactManager::~ContactManager()
 void
 ContactManager::setKeychain()
 {
-  Ptr<OSXPrivatekeyStorage> privateStorage = Ptr<OSXPrivatekeyStorage>::Create();
-  Ptr<IdentityManager> identityManager = Ptr<IdentityManager>(new IdentityManager(Ptr<BasicIdentityStorage>::Create(), privateStorage));
-  Ptr<TTLCertificateCache> certificateCache = Ptr<TTLCertificateCache>(new TTLCertificateCache());
-  Ptr<SimplePolicyManager> policyManager = Ptr<SimplePolicyManager>(new SimplePolicyManager(10, certificateCache));
-  Ptr<EncryptionManager> encryptionManager = Ptr<EncryptionManager>(new BasicEncryptionManager(privateStorage, "/tmp/encryption.db"));
-  Ptr<Keychain> keychain = Ptr<Keychain>(new Keychain(identityManager, policyManager, encryptionManager));
+  Ptr<IdentityManager> identityManager = Ptr<IdentityManager>::Create();
+  Ptr<SimplePolicyManager> policyManager = Ptr<SimplePolicyManager>::Create();
+
+  Ptr<Keychain> keychain = Ptr<Keychain>(new Keychain(identityManager, policyManager, NULL));
 
   policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<DNS>]*)<DNS><ENDORSED>",
                                                                                           "^([^<KEY>]*)<KEY>(<>*)[<ksk-.*><dsk-.*>]<ID-CERT>$",
@@ -75,20 +70,65 @@ ContactManager::setKeychain()
                                                                                      "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT>",
                                                                                      "==", "\\1", "\\1\\2", true)));
 
-  ifstream is ("trust-anchor.data", ios::binary);
-  is.seekg (0, ios::end);
-  ifstream::pos_type size = is.tellg();
-  char * memblock = new char [size];    
-  is.seekg (0, ios::beg);
-  is.read (memblock, size);
-  is.close();
+  const string TrustAnchor("BIICqgOyEIWlKzDI2xX2hdq5Azheu9IVyewcV4uM7ylfh67Y8MIxF3tDCTx5JgEn\
+HYMuCaYQm6XuaXTlVfDdWff/K7Xebq8IgGxjNBeU9eMf7Gy9iIMrRAOdBG0dBHmo\
+67biGs8F+P1oh1FwKu/FN1AE9vh8HSOJ94PWmjO+6PvITFIXuI3QbcCz8rhvbsfb\
+5X/DmfbJ8n8c4X3nVxrBm6fd4z8kOFOvvhgJImvqsow69Uy+38m8gJrmrcWMoPBJ\
+WsNLcEriZCt/Dlg7EqqVrIn6ukylKCvVrxA9vm/cEB74J/N+T0JyMRDnTLm17gpq\
+Gd75rhj+bLmpOMOBT7Nb27wUKq8gcXzeAADy+p1uZG4A+p1LRVkA+vVrc2stMTM4\
+MzMyNTcyMAD6vUlELUNFUlQA+q39PgurHgAAAaID4gKF5vjua9EIr3/Fn8k1AdSc\
+nEryjVDW3ikvYoSwjK7egTkAArq1BSc+C6sdAAHiAery+p1uZG4A+p1LRVkA+vVr\
+c2stMTM4MzMyNTcyMAD6vUlELUNFUlQAAAAAAAGaFr0wggFjMCIYDzIwMTMxMTAx\
+MTcxMTIyWhgPMjAxNDExMDExNzExMjJaMBkwFwYDVQQpExBORE4gVGVzdGJlZCBS\
+b290MIIBIDANBgkqhkiG9w0BAQEFAAOCAQ0AMIIBCAKCAQEA06x+elwzWCHa4I3b\
+yrYCMAIVxQpRVLuOXp0h+BS+5GNgMVPi7+40o4zSJG+kiU8CIH1mtj8RQAzBX9hF\
+I5VAyOC8nS8D8YOfBwt2yRDZPgt1E5PpyYUBiDYuq/zmJDL8xjxAlxrMzVOqD/uj\
+/vkkcBM/T1t9Q6p1CpRyq+GMRbV4EAHvH7MFb6bDrH9t8DHEg7NPUCaSQBrd7PvL\
+72P+QdiNH9zs/EiVzAkeMG4iniSXLuYM3z0gMqqcyUUUr6r1F9IBmDO+Kp97nZh8\
+VCL+cnIEwyzAFAupQH5GoXUWGiee8oKWwH2vGHX7u6sWZsCp15NMSG3OC4jUIZOE\
+iVUF1QIBEQAA");
 
-  Ptr<Blob> readBlob = Ptr<Blob>(new Blob(memblock, size));
-  Ptr<Data> readData = Data::decodeFromWire (readBlob);
-  Ptr<IdentityCertificate> anchor = Ptr<IdentityCertificate>(new IdentityCertificate(*readData));   
+  string decoded;
+  CryptoPP::StringSource ss(reinterpret_cast<const unsigned char *>(TrustAnchor.c_str()), 
+                            TrustAnchor.size(), 
+                            true,
+                            new CryptoPP::Base64Decoder(new CryptoPP::StringSink(decoded)));
+  Ptr<Blob> blob = Ptr<Blob>(new Blob(decoded.c_str(), decoded.size()));
+  Ptr<Data> data = Data::decodeFromWire(blob);
+  Ptr<IdentityCertificate>anchor = Ptr<IdentityCertificate>(new IdentityCertificate(*data));
   policyManager->addTrustAnchor(anchor);  
-  
-  delete memblock;
+
+#ifdef _DEBUG
+
+  const string FakeAnchor("BIICqgOyEIVAaoHnQZIx5osAuY2fKte4HBSrxyam7MY6/kp+w47O1bGdd2KjeZKV\
+zZzQd3EQorDC3KUPbB6ql30jYfspvo4OPSlIuDrkyROaoZ+MSKyzQYpB6CZcTjBa\
+qcWYFOfwUlcWvkbd00X4bkc5PkcWpVdRrx+NCTiq9EXes//hOHpEJHMNsJUi45O+\
+6M4OE6/sNEqs/ryHn2w1vCqwPpG8xzcd0prQUdCH2MGE77F+H0XFDuWp8mrT37Uw\
+DUy7Ltm+7nDTHSQy2J3Zk4Q+0tjxCzSw4owEpwOHr+afdkuE3v9aB2NRQBBDCEmL\
+Ykz4sYX3XE8MVFqRn1HHWCkszjDg+F0UAADy+p1uZG4A+p1LRVkA+vVrc2stMTM4\
+MjkzNDE5OAD6vUlELUNFUlQA+s39/////95rc7MAAAGiA+IChaK1eVvzlkg6BJAw\
+qiOpxRoezQ0hAHOBbPRLeBllxMN7AAK6tQUm3mtztQAB4gHq8vqdbmRuAPqdS0VZ\
+APr1a3NrLTEzODI5MzQxOTgA+r1JRC1DRVJUAAAAAAABmhblMIIBaDAiGA8yMDEz\
+MTAyODAwMDAwMFoYDzIwMzMxMDI4MDAwMDAwWjAcMBoGA1UEKRMTL25kbi9rc2st\
+MTM4MjkzNDE5ODCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAK2htIFF\
+/PH+SJsGOA6jhpFT74xfLJlgZNJOnKzl27HI2gupE0mainWj/HqVzdGxD6jOOReI\
+sul+eQyEyBYq4e35pLmdJGlux/+UPQ51DD8jg04GrUPewV7+iGm6usp/7xEGHbah\
+H2Grv/bsGrt6aRA8cKmdIc+rehxZCVFtiwSEHTnOWzn3lfZR5xnjF9aGX+uGo1hA\
+gMwu1ECxg4H3O4z1tbTzji5+WH0RDsPRlgzQX6wAQH8btlQyoFJfljEA3QaOtDaB\
+OcfegIlClzutmgJnK9i5ZLz2Mjvx49dlCWAVKg65vOXMLC/33jD9F+V8urwsBlOb\
+F7Wh5ayeo8NBKDsCAwEAAQAA");
+
+  string decoded2;
+  CryptoPP::StringSource ss2(reinterpret_cast<const unsigned char *>(FakeAnchor.c_str()), 
+                            FakeAnchor.size(), 
+                            true,
+                            new CryptoPP::Base64Decoder(new CryptoPP::StringSink(decoded2)));
+  Ptr<Blob> blob2 = Ptr<Blob>(new Blob(decoded2.c_str(), decoded2.size()));
+  Ptr<Data> data2 = Data::decodeFromWire(blob2);
+  Ptr<IdentityCertificate>anchor2 = Ptr<IdentityCertificate>(new IdentityCertificate(*data2));
+  policyManager->addTrustAnchor(anchor2);  
+
+#endif
 
   m_keychain = keychain;
 }
@@ -210,7 +250,7 @@ ContactManager::onKeyTimeout(Ptr<Closure> closure, Ptr<Interest> interest, const
 void
 ContactManager::updateProfileData(const Name& identity)
 {
-  _LOG_DEBUG("updateProfileData: " << identity.toUri());
+  // _LOG_DEBUG("updateProfileData: " << identity.toUri());
   // Get current profile;
   Ptr<Profile> newProfile = m_contactStorage->getSelfProfile(identity);
   if(NULL == newProfile)
@@ -233,7 +273,7 @@ ContactManager::updateProfileData(const Name& identity)
       // _LOG_DEBUG("Signing DONE!");
       if(NULL == newEndorseCertificate)
         return;
-      _LOG_DEBUG("About to update");
+      // _LOG_DEBUG("About to update");
       m_contactStorage->updateSelfEndorseCertificate(newEndorseCertificate, identity);
 
       publishSelfEndorseCertificateInDNS(newEndorseCertificate);
@@ -244,7 +284,7 @@ ContactManager::updateProfileData(const Name& identity)
       // _LOG_DEBUG("Signing DONE!");
       if(NULL == newEndorseCertificate)
         return;
-      _LOG_DEBUG("About to Insert");
+      // _LOG_DEBUG("About to Insert");
       m_contactStorage->addSelfEndorseCertificate(newEndorseCertificate, identity);
 
       publishSelfEndorseCertificateInDNS(newEndorseCertificate);
@@ -278,6 +318,8 @@ Ptr<EndorseCertificate>
 ContactManager::generateEndorseCertificate(const Name& identity, const Name& signerIdentity)
 {
   Ptr<ContactItem> contact = getContact(identity);
+  if(contact == NULL)
+    return NULL;
 
   Ptr<IdentityManager> identityManager = m_keychain->getIdentityManager();
   Name signerKeyName = identityManager->getDefaultKeyNameForIdentity(signerIdentity);
@@ -312,6 +354,9 @@ ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
   identityManager->signByCertificate(*profileData, certificateName);
 
   Ptr<security::IdentityCertificate> signingCert = identityManager->getCertificate(certificateName);
+  if(NULL == signingCert)
+    return NULL;
+
   Name signingKeyName = security::IdentityCertificate::certificateNameToPublicKeyName(signingCert->getName(), true);
 
   Ptr<security::IdentityCertificate> kskCert;
@@ -319,19 +364,20 @@ ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
     {
       Ptr<const signature::Sha256WithRsa> dskCertSig = DynamicCast<const signature::Sha256WithRsa>(signingCert->getSignature());
       // HACK! KSK certificate should be retrieved from network.
-      _LOG_DEBUG("keyLocator: " << dskCertSig->getKeyLocator().getKeyName());
       Name keyName = security::IdentityCertificate::certificateNameToPublicKeyName(dskCertSig->getKeyLocator().getKeyName());
-      _LOG_DEBUG("keyName: " << keyName.toUri());
+
       Name kskCertName = identityManager->getPublicStorage()->getDefaultCertificateNameForKey(keyName);
-      _LOG_DEBUG("ksk cert name: " << kskCertName);
+
       kskCert = identityManager->getCertificate(kskCertName);
 
     }
   else
     {
       kskCert = signingCert;
-      _LOG_DEBUG("ksk cert name: " << kskCert->getName().toUri());
     }
+
+  if(NULL == kskCert)
+    return NULL;
 
   vector<string> endorseList;
   Profile::const_iterator it = profile.begin();
@@ -359,18 +405,9 @@ ContactManager::onDnsSelfEndorseCertificateVerified(Ptr<Data> data, const Name& 
   const security::Publickey& ksk = selfEndorseCertificate->getPublicKeyInfo();
 
   if(security::PolicyManager::verifySignature(*plainData, ksk))
-    {
-      // Profile profile = selfEndorseCertificate->getProfileData()->getProfile();
-      // Profile::const_iterator it = profile.getEntries().begin();
-      // it++;
-      // _LOG_DEBUG("Entry Size: " << it->first);
-
-      emit contactFetched (*selfEndorseCertificate); 
-    }
+    emit contactFetched (*selfEndorseCertificate); 
   else
-    {
-      emit contactFetchFailed (identity);
-    }
+    emit contactFetchFailed (identity);
 }
 
 void
@@ -396,11 +433,6 @@ ContactManager::publishSelfEndorseCertificateInDNS(Ptr<EndorseCertificate> selfE
   data->setName(dnsName);
   Ptr<Blob> blob = selfEndorseCertificate->encodeToWire();
 
-  // string encoded;
-  // CryptoPP::StringSource ss(reinterpret_cast<const unsigned char *>(blob->buf()), blob->size(), true,
-  //       		    new CryptoPP::Base64Encoder(new CryptoPP::StringSink(encoded), false));
-
-  // Content content(encoded.c_str(), encoded.size());
   Content content(blob->buf(), blob->size());
   data->setContent(content);
 
