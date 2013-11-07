@@ -46,7 +46,7 @@ ChatDialog::ChatDialog(ndn::Ptr<ContactManager> contactManager,
   , m_chatroomPrefix(chatroomPrefix)
   , m_localPrefix(localPrefix)
   , m_defaultIdentity(defaultIdentity)
-  , m_invitationPolicyManager(ndn::Ptr<InvitationPolicyManager>(new InvitationPolicyManager(m_chatroomPrefix.get(-1).toUri())))
+  , m_invitationPolicyManager(ndn::Ptr<InvitationPolicyManager>(new InvitationPolicyManager(m_chatroomPrefix.get(-1).toUri(), m_defaultIdentity)))
   , m_nick(nick)
   , m_sock(NULL)
   , m_lastMsgTime(0)
@@ -328,7 +328,6 @@ ChatDialog::initializeSync()
   QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
   // Sync::CcnxWrapperPtr handle = boost::make_shared<Sync::CcnxWrapper> ();
   // handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
-  // _LOG_DEBUG("initializeSync is done!");
 }
 
 void

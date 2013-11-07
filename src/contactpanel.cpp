@@ -55,14 +55,9 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   
   createAction();
 
-  openDB();    
-
   m_contactManager = contactManager;
-  m_profileEditor = new ProfileEditor(m_contactManager);
-  m_addContactPanel = new AddContactPanel(contactManager);
-  m_setAliasDialog = new SetAliasDialog(contactManager);
- 
-  ui->setupUi(this);
+
+  openDB();    
 
   refreshContactList();
 
@@ -71,6 +66,14 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   m_defaultIdentity = m_keychain->getDefaultIdentity();
   m_nickName = m_defaultIdentity.get(-1).toUri();
   m_settingDialog->setIdentity(m_defaultIdentity.toUri(), m_nickName);
+
+  m_profileEditor = new ProfileEditor(m_contactManager);
+  m_profileEditor->setCurrentIdentity(m_defaultIdentity);
+
+  m_addContactPanel = new AddContactPanel(contactManager);
+  m_setAliasDialog = new SetAliasDialog(contactManager);
+ 
+  ui->setupUi(this);
 
   m_handler = Ptr<Wrapper>(new Wrapper(m_keychain));  
 
@@ -184,7 +187,9 @@ ContactPanel::setKeychain()
 
   vector<Ptr<ContactItem> >::const_iterator it = m_contactList.begin();
   for(; it != m_contactList.end(); it++)
-    m_panelPolicyManager->addTrustAnchor((*it)->getSelfEndorseCertificate());
+    {
+      m_panelPolicyManager->addTrustAnchor((*it)->getSelfEndorseCertificate());
+    }
 
   m_keychain = Ptr<security::Keychain>(new security::Keychain(Ptr<security::IdentityManager>::Create(), 
                                                               m_panelPolicyManager, 
@@ -243,15 +248,21 @@ void
 ContactPanel::onInvitation(Ptr<Interest> interest)
 {
   _LOG_DEBUG("Receive invitation!" << interest->getName().toUri());
-
-  Ptr<ChronosInvitation> invitation = Ptr<ChronosInvitation>(new ChronosInvitation(interest->getName()));
-
+  
+  Ptr<ChronosInvitation> invitation = NULL;
+  try{
+    invitation = Ptr<ChronosInvitation>(new ChronosInvitation(interest->getName()));
+  }catch(exception& e){
+    _LOG_ERROR("Exception: " << e.what());
+    return;
+  }
+  
   Name chatroomName("/ndn/broadcast/chronos");
   chatroomName.append(invitation->getChatroom());
   map<Name, ChatDialog*>::iterator it = m_chatDialogs.find(chatroomName);
   if(it != m_chatDialogs.end())
     {
-      _LOG_DEBUG("Exisiting chatroom!");
+      _LOG_ERROR("Exisiting chatroom!");
       return;
     }
 
@@ -485,6 +496,7 @@ void
 ContactPanel::updateDefaultIdentity(const QString& identity, const QString& nickName)
 { 
   m_defaultIdentity = Name(identity.toStdString());
+  m_profileEditor->setCurrentIdentity(m_defaultIdentity);
   m_nickName = nickName.toStdString();
   m_handler->clearInterestFilter(m_inviteListenPrefix);
   setInvitationListener();

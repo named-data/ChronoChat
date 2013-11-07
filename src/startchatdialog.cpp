@@ -33,14 +33,14 @@ void
 StartChatDialog::setInvitee(const string& invitee, const string& chatroom)
 { 
   m_invitee = invitee;
-  ui->chatroomInput->setText(QString::fromUtf8(chatroom.c_str()));
+  ui->chatroomInput->setText(QString::fromStdString(chatroom));
 }
 
 void 
 StartChatDialog::onOkClicked()
 {
   QString chatroom = ui->chatroomInput->text();
-  QString invitee = QString::fromUtf8(m_invitee.c_str());
+  QString invitee = QString::fromStdString(m_invitee);
   // bool isIntroducer = ui->introCheckBox->isChecked();
   bool isIntroducer = true;
   emit chatroomConfirmed(chatroom, invitee, isIntroducer);

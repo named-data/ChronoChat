@@ -28,41 +28,14 @@ ContactItem::ContactItem(const EndorseCertificate& selfEndorseCertificate,
   , m_isIntroducer(isIntroducer)
 {
   Name endorsedkeyName = selfEndorseCertificate.getPublicKeyName();
-  // Ptr<const signature::Sha256WithRsa> endorseSig = boost::dynamic_pointer_cast<const signature::Sha256WithRsa>(selfEndorseCertificate.getSignature());
-  // const Name& signingKeyName = endorseSig->getKeyLocator().getKeyName();
-  
-  // int i = 0;
-  // int j = -1;
-  // string keyString("KEY");
-  // string idString("ID-CERT");
-  // for(; i < signingKeyName.size(); i++)
-  //   {
-  //     if(keyString == signingKeyName.get(i).toUri())
-  //       j = i;
-  //     if(idString == signingKeyName.get(i).toUri())
-  //       break;
-  //   }
-
-  // if(i >= signingKeyName.size() || j < 0)
-  //   throw LnException("Wrong name!");
-
-  // Name subName = signingKeyName.getSubName(0, j);
-  // subName.append(signingKeyName.getSubName(j+1, i-j-1));
-
-
-
-  // // _LOG_DEBUG("endorsedkeyName " << endorsedkeyName.toUri());
-  // // _LOG_DEBUG("subKeyName " << subName.toUri());
-
-  // if(endorsedkeyName != subName)
-  //   throw LnException("not a self-claimed");
 
   m_namespace = endorsedkeyName.getSubName(0, endorsedkeyName.size() - 1);
-  m_alias = alias.empty() ? m_namespace.toUri() : alias;
+
 
   Ptr<ProfileData> profileData = selfEndorseCertificate.getProfileData();
   Ptr<const Blob> nameBlob = profileData->getProfile().getProfileEntry("name");
   m_name = string(nameBlob->buf(), nameBlob->size());
+  m_alias = alias.empty() ? m_name : alias;
   Ptr<const Blob> institutionBlob = profileData->getProfile().getProfileEntry("institution");
   m_institution = string(institutionBlob->buf(), institutionBlob->size());
 }

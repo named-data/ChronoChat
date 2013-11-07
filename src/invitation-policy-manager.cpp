@@ -21,9 +21,11 @@ using namespace ndn::security;
 INIT_LOGGER("InvitationPolicyManager");
 
 InvitationPolicyManager::InvitationPolicyManager(const string& chatroomName,
-                                             int stepLimit,
-					     Ptr<CertificateCache> certificateCache)
+                                                 const Name& signingIdentity,
+                                                 int stepLimit,
+                                                 Ptr<CertificateCache> certificateCache)
   : m_chatroomName(chatroomName)
+  , m_signingIdentity(signingIdentity)
   , m_stepLimit(stepLimit)
   , m_certificateCache(certificateCache)
 {
@@ -62,7 +64,7 @@ InvitationPolicyManager::checkVerificationPolicy(Ptr<Data> data,
 {
   if(m_stepLimit == stepCount)
     {
-      _LOG_DEBUG("reach the maximum steps of verification");
+      _LOG_ERROR("Reach the maximum steps of verification!");
       unverifiedCallback(data);
       return NULL;
     }
@@ -71,6 +73,7 @@ InvitationPolicyManager::checkVerificationPolicy(Ptr<Data> data,
 
   if(KeyLocator::KEYNAME != sha256sig->getKeyLocator().getType())
     {
+      _LOG_ERROR("KeyLocator is not name!");
       unverifiedCallback(data);
       return NULL;
     }
@@ -102,8 +105,6 @@ InvitationPolicyManager::checkVerificationPolicy(Ptr<Data> data,
 	return NULL;
       }
 
-      _LOG_DEBUG("KeyLocator has not been cached and validated!");
-
       DataCallback recursiveVerifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateVerified, 
                                                            this, 
                                                            _1, 
@@ -131,17 +132,13 @@ InvitationPolicyManager::checkVerificationPolicy(Ptr<Data> data,
 
   if(m_kskRegex->match(data->getName()))
     {
-      _LOG_DEBUG("is ksk");
       Name keyName = m_kskRegex->expand();
-      _LOG_DEBUG("ksk name: " << keyName.toUri());
       map<Name, Publickey>::iterator it = m_trustAnchors.find(keyName);
       if(m_trustAnchors.end() != it)
         {
-          _LOG_DEBUG("found key!");
           Ptr<IdentityCertificate> identityCertificate = Ptr<IdentityCertificate>(new IdentityCertificate(*data));
           if(it->second.getKeyBlob() == identityCertificate->getPublicKeyInfo().getKeyBlob())
             {
-              _LOG_DEBUG("same key!");
               verifiedCallback(data);
             }
           else
@@ -177,15 +174,13 @@ bool
 InvitationPolicyManager::checkSigningPolicy(const Name& dataName, 
 					  const Name& certificateName)
 {
-  //TODO:
   return true;
 }
     
 Name 
 InvitationPolicyManager::inferSigningIdentity(const Name& dataName)
 {
-  //TODO:
-  return Name();
+  return m_signingIdentity;
 }
 
 void
@@ -215,9 +210,9 @@ InvitationPolicyManager::addTrustAnchor(const EndorseCertificate& selfEndorseCer
 
 void 
 InvitationPolicyManager::onDskCertificateVerified(Ptr<Data> certData, 
-					     Ptr<Data> originalData,
-					     const DataCallback& verifiedCallback, 
-					     const UnverifiedCallback& unverifiedCallback)
+                                                  Ptr<Data> originalData,
+                                                  const DataCallback& verifiedCallback, 
+                                                  const UnverifiedCallback& unverifiedCallback)
 {
   Ptr<IdentityCertificate> certificate = Ptr<IdentityCertificate>(new IdentityCertificate(*certData));
 

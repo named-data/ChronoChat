@@ -232,11 +232,17 @@ ContactManager::onKeyVerified(Ptr<Data> data, const Name& identity)
   Name certificateName = identityManager->getDefaultCertificateName ();
   identityManager->signByCertificate(*profileData, certificateName);
 
-  EndorseCertificate endorseCertificate(identityCertificate, profileData);
+  Ptr<EndorseCertificate> endorseCertificate = NULL;
+  try{
+    endorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(identityCertificate, profileData));
+  }catch(exception& e){
+    _LOG_ERROR("Exception: " << e.what());
+    return;
+  }
 
-  identityManager->signByCertificate(endorseCertificate, certificateName);
+  identityManager->signByCertificate(*endorseCertificate, certificateName);
 
-  emit contactKeyFetched (endorseCertificate); 
+  emit contactKeyFetched (*endorseCertificate); 
 }
 
 void
@@ -250,7 +256,6 @@ ContactManager::onKeyTimeout(Ptr<Closure> closure, Ptr<Interest> interest, const
 void
 ContactManager::updateProfileData(const Name& identity)
 {
-  // _LOG_DEBUG("updateProfileData: " << identity.toUri());
   // Get current profile;
   Ptr<Profile> newProfile = m_contactStorage->getSelfProfile(identity);
   if(NULL == newProfile)
@@ -261,19 +266,26 @@ ContactManager::updateProfileData(const Name& identity)
   Ptr<Blob> profileDataBlob = m_contactStorage->getSelfEndorseCertificate(identity);
   if(NULL != profileDataBlob)
     {
-      Ptr<Data> plainData = Data::decodeFromWire(profileDataBlob);
-      EndorseCertificate oldEndorseCertificate(*plainData);    
-      // _LOG_DEBUG("Certificate converted!");
-      const Blob& oldProfileBlob = oldEndorseCertificate.getProfileData()->content();
+      
+      Ptr<EndorseCertificate> oldEndorseCertificate = NULL;
+      try{
+        Ptr<Data> plainData = Data::decodeFromWire(profileDataBlob);
+        oldEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(*plainData));
+      }catch(exception& e){
+        _LOG_ERROR("Exception: " << e.what());
+        return;
+      }
+
+      const Blob& oldProfileBlob = oldEndorseCertificate->getProfileData()->content();
 
       if(oldProfileBlob == *newProfileBlob)
         return;
 
       Ptr<EndorseCertificate> newEndorseCertificate = getSignedSelfEndorseCertificate(identity, *newProfile);
-      // _LOG_DEBUG("Signing DONE!");
+
       if(NULL == newEndorseCertificate)
         return;
-      // _LOG_DEBUG("About to update");
+
       m_contactStorage->updateSelfEndorseCertificate(newEndorseCertificate, identity);
 
       publishSelfEndorseCertificateInDNS(newEndorseCertificate);
@@ -281,10 +293,10 @@ ContactManager::updateProfileData(const Name& identity)
   else
     {
       Ptr<EndorseCertificate> newEndorseCertificate = getSignedSelfEndorseCertificate(identity, *newProfile);
-      // _LOG_DEBUG("Signing DONE!");
+
       if(NULL == newEndorseCertificate)
         return;
-      // _LOG_DEBUG("About to Insert");
+
       m_contactStorage->addSelfEndorseCertificate(newEndorseCertificate, identity);
 
       publishSelfEndorseCertificateInDNS(newEndorseCertificate);
@@ -298,9 +310,15 @@ ContactManager::updateEndorseCertificate(const ndn::Name& identity, const ndn::N
   Ptr<EndorseCertificate> newEndorseCertificate = generateEndorseCertificate(identity, signerIdentity);
   if(NULL != oldEndorseCertificateBlob)
     {
-      Ptr<Data> plainData = Data::decodeFromWire(oldEndorseCertificateBlob);
-      EndorseCertificate oldEndorseCertificate(*plainData);
-      const Blob& oldEndorseContent = oldEndorseCertificate.content();
+      Ptr<EndorseCertificate> oldEndorseCertificate = NULL;
+      try{
+        Ptr<Data> plainData = Data::decodeFromWire(oldEndorseCertificateBlob);
+        oldEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(*plainData));
+      }catch(exception& e){
+        _LOG_ERROR("Exception: " << e.what());
+        return;
+      }
+      const Blob& oldEndorseContent = oldEndorseCertificate->content();
       const Blob& newEndorseContent = newEndorseCertificate->content();
       if(oldEndorseContent == newEndorseContent)
         return;
@@ -327,7 +345,13 @@ ContactManager::generateEndorseCertificate(const Name& identity, const Name& sig
 
   vector<string> endorseList = m_contactStorage->getEndorseList(identity);
 
-  Ptr<EndorseCertificate> cert = Ptr<EndorseCertificate>(new EndorseCertificate(contact->getSelfEndorseCertificate(), signerKeyName, endorseList)); 
+  Ptr<EndorseCertificate> cert = NULL;
+  try{
+    cert = Ptr<EndorseCertificate>(new EndorseCertificate(contact->getSelfEndorseCertificate(), signerKeyName, endorseList)); 
+  }catch(exception& e){
+    _LOG_ERROR("Exception: " << e.what());
+    return NULL;
+  } 
   identityManager->signByCertificate(*cert, signerCertName);
 
   return cert;
@@ -384,9 +408,16 @@ ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
   for(; it != profile.end(); it++)
     endorseList.push_back(it->first);
   
-  Ptr<EndorseCertificate> selfEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(*kskCert,
-                                                                                                  profileData,
-                                                                                                  endorseList));
+  Ptr<EndorseCertificate> selfEndorseCertificate = NULL;
+  try{
+    selfEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(*kskCert,
+                                                                            profileData,
+                                                                            endorseList));
+  }catch(exception& e){
+    _LOG_ERROR("Exception: " << e.what());
+    return NULL;
+  } 
+
   identityManager->signByCertificate(*selfEndorseCertificate, kskCert->getName());
 
   return selfEndorseCertificate;
@@ -398,9 +429,15 @@ ContactManager::onDnsSelfEndorseCertificateVerified(Ptr<Data> data, const Name& 
 {
   Ptr<Blob> dataContentBlob = Ptr<Blob>(new Blob(data->content().buf(), data->content().size()));
 
-  Ptr<Data> plainData = Data::decodeFromWire(dataContentBlob);
-
-  Ptr<EndorseCertificate> selfEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(*plainData));
+  Ptr<Data> plainData = NULL;
+  Ptr<EndorseCertificate> selfEndorseCertificate = NULL;
+  try{
+    plainData = Data::decodeFromWire(dataContentBlob);
+    selfEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(*plainData));
+  }catch(exception& e){
+    _LOG_ERROR("Exception: " << e.what());
+    return;
+  }
 
   const security::Publickey& ksk = selfEndorseCertificate->getPublicKeyInfo();
 

@@ -36,7 +36,15 @@ ChatPolicyRule::matchDataName(const Data & data)
 bool 
 ChatPolicyRule::matchSignerName(const Data & data)
 { 
-  Ptr<const signature::Sha256WithRsa> sigPtr = DynamicCast<const signature::Sha256WithRsa> (data.getSignature());
+  Ptr<const Signature> sig = data.getSignature();
+
+  if(NULL == sig)
+    return false;
+
+  Ptr<const signature::Sha256WithRsa> sigPtr = DynamicCast<const signature::Sha256WithRsa> (sig);
+  if(KeyLocator::KEYNAME != sigPtr->getKeyLocator().getType())
+    return false;
+
   Name signerName = sigPtr->getKeyLocator ().getKeyName ();
   return m_signerRegex->match(signerName); 
 }

@@ -39,10 +39,8 @@ ProfileExtension::ProfileExtension(const CertificateExtension& extension)
 Ptr<ProfileData>
 ProfileExtension::getProfileData()
 {
-  // _LOG_DEBUG("size: " << m_extnValue.size ());
-  boost::iostreams::stream
-    <boost::iostreams::array_source> is (m_extnValue.buf (), m_extnValue.size ());
-  return Ptr<ProfileData>(new ProfileData(*Data::decodeFromWire(is)));
+  Ptr<Blob> dataBlob = Ptr<Blob>(new Blob(m_extnValue.buf (), m_extnValue.size ()));
+  return Ptr<ProfileData>(new ProfileData(*Data::decodeFromWire(dataBlob)));
 }
 
 EndorseExtension::EndorseExtension(const vector<string>& endorsedList)
@@ -96,35 +94,6 @@ EndorseExtension::prepareValue(const vector<string>& endorsedList)
 
   return blobStream.buf ();
 }
-
-// EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate)
-//   : Certificate()
-//   , m_keyName(kskCertificate.getPublicKeyName())
-//   , m_signer(kskCertificate.getPublicKeyName())
-// {
-//   Profile profile(m_keyName.getPrefix(m_keyName.size()-1), 
-//                   m_keyName.get(-2).toUri(),
-//                   m_keyName.get(m_keyName.size()-2).toUri());
-  
-//   Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(m_keyName.getPrefix(m_keyName.size()-1),
-//                                                                   profile));
-
-//   m_profileData = profileData;
-
-//   Name dataName = m_keyName;
-//   dataName.append("PROFILE-CERT").append(m_signer).appendVersion();
-//   setName(dataName);
-
-//   setNotBefore(kskCertificate.getNotBefore());
-//   setNotAfter(kskCertificate.getNotAfter());
-//   addSubjectDescription(CertificateSubDescrypt("2.5.4.41", m_keyName.toUri()));
-//   setPublicKeyInfo(kskCertificate.getPublicKeyInfo());  
-//   addExtension(ProfileExtension(*m_profileData));
-//   addExtension(EndorseExtension(m_endorseList));
-  
-//   encode();
-// }
-
 
 EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate,
                                        Ptr<ProfileData> profileData,
@@ -183,11 +152,8 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
 EndorseCertificate::EndorseCertificate(const Data& data)
   : Certificate(data)
 {
-  // _LOG_DEBUG("0");
   const Name& dataName = data.getName();
-  // _LOG_DEBUG("1");
   name::Component certFlag(string("PROFILE-CERT"));  
-  // _LOG_DEBUG("2");
   int profileIndex = -1;
   for(int i = 0; i < dataName.size(); i++)
     {
@@ -197,35 +163,25 @@ EndorseCertificate::EndorseCertificate(const Data& data)
 	  break;
 	}
     }
-  // _LOG_DEBUG("3");
   if(profileIndex < 0)
     throw LnException("No PROFILE-CERT component in data name!");
 
   m_keyName = dataName.getSubName(0, profileIndex);
   m_signer = dataName.getSubName(profileIndex + 1, dataName.size() - profileIndex - 2);
 
-  // _LOG_DEBUG("keyName: " << m_keyName.toUri());
-  // _LOG_DEBUG("signer: " << m_signer.toUri());
-
   OID profileExtensionOID("1.3.6.1.5.32.2.1");
   OID endorseExtensionOID("1.3.6.1.5.32.2.2");
 
-  // _LOG_DEBUG("OID ready");
   ExtensionList::iterator it = m_extnList.begin();
   for(; it != m_extnList.end(); it++)
     {
-      // _LOG_DEBUG("entry");
       if(profileExtensionOID == it->getOID())
 	{
-          // _LOG_DEBUG("ProfileExtn");
           ProfileExtension profileExtension(*it);
-          // _LOG_DEBUG("ProfileExtn created");
 	  m_profileData = profileExtension.getProfileData();
-          // _LOG_DEBUG("get profileDate");
 	}
       if(endorseExtensionOID == it->getOID())
         {
-          // _LOG_DEBUG("EndorseExtn");
           EndorseExtension endorseExtension(*it);
           m_endorseList = endorseExtension.getEndorsedList();
         }

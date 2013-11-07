@@ -44,7 +44,6 @@ EndorseComboBoxDelegate::setEditorData(QWidget *editor, const QModelIndex &index
 {
   QComboBox *comboBox = static_cast<QComboBox*>(editor);
   int value = index.model()->data(index, Qt::EditRole).toUInt();
-  _LOG_DEBUG("value: " << value);
   comboBox->setCurrentIndex(value);
 }
  
@@ -52,7 +51,6 @@ void
 EndorseComboBoxDelegate::setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const
 {
   QComboBox *comboBox = static_cast<QComboBox*>(editor);
-  _LOG_DEBUG("currentIndex: " << comboBox->currentIndex());
   model->setData(index, comboBox->currentIndex(), Qt::EditRole);
 }
  
