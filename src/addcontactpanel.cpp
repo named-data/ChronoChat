@@ -173,7 +173,7 @@ AddContactPanel::onContactKeyFetched(const EndorseCertificate& endorseCertificat
     return;
   }
 
-  m_currentCollectEndorseReady = NULL;
+  m_currentCollectEndorseReady = false;
 
   displayContactInfo();
 }

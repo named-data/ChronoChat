@@ -28,7 +28,7 @@
 #include "invitation-policy-manager.h"
 #include "contact-item.h"
 
-#include <ccnx/sync-socket.h>
+#include <sync-socket.h>
 #include <sync-seq-no.h>
 #include "chatbuf.pb.h"
 #include "digesttreescene.h"

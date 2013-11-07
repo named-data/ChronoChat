@@ -23,7 +23,7 @@
 #include <sync-logic.h>
 #include <ctime>
 #include <vector>
-#include <tr1/memory>
+#include <boost/shared_ptr.hpp>
 #endif
 
 const int FRESHNESS = 60;
@@ -32,7 +32,7 @@ class QGraphicsTextItem;
 
 class User;
 class DisplayUser;
-typedef std::tr1::shared_ptr<DisplayUser> DisplayUserPtr;
+typedef boost::shared_ptr<DisplayUser> DisplayUserPtr;
 static DisplayUserPtr DisplayUserNullPtr;
 
 class DigestTreeScene : public QGraphicsScene
