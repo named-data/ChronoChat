@@ -9,11 +9,11 @@ def options(opt):
     
     opt.load('compiler_c compiler_cxx boost protoc qt4')
 
-    opt.load('tinyxml', tooldir=['waf-tools'])
+    # opt.load('tinyxml', tooldir=['waf-tools'])
     opt.load('cryptopp', tooldir=['waf-tools'])
     
 def configure(conf):
-    conf.load("compiler_c compiler_cxx boost protoc qt4 tinyxml cryptopp")
+    conf.load("compiler_c compiler_cxx boost protoc qt4 cryptopp")
 
     if conf.options.debug:
         conf.define ('_DEBUG', 1)
@@ -28,7 +28,7 @@ def configure(conf):
     else:
         conf.add_supported_cxxflags (cxxflags = ['-O3', '-g', '-Wno-tautological-compare', '-Wno-unused-function'])
         
-    conf.check_tinyxml(path=conf.options.tinyxml_dir)
+    # conf.check_tinyxml(path=conf.options.tinyxml_dir)
     conf.check_cfg(package='libndn.cxx', args=['--cflags', '--libs'], uselib_store='NDNCXX', mandatory=True)
     conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
     conf.check_cfg(package='liblog4cxx', args=['--cflags', '--libs'], uselib_store='LOG4CXX', mandatory=True)
@@ -47,7 +47,7 @@ def build (bld):
         defines = "WAF",
         source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', 'logging.cc', 'src/*.proto']),
         includes = ".",
-        use = "QTCORE QTGUI QTSQL SQLITE3 NDNCXX TINYXML BOOST BOOST_FILESYSTEM LOG4CXX CRYPTOPP SYNC",
+        use = "QTCORE QTGUI QTSQL SQLITE3 NDNCXX BOOST BOOST_FILESYSTEM LOG4CXX CRYPTOPP SYNC",
         )
 
     cert_publish = bld (
