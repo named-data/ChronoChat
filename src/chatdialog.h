@@ -17,6 +17,7 @@
 #include <QTextTable>
 #include <QStringListModel>
 #include <QTimer>
+#include <QSystemTrayIcon>
 
 #include "invitelistdialog.h"
 
@@ -94,8 +95,15 @@ public:
   void 
   processRemoveWrapper(std::string);
 
+  void
+  publishIntroCert(const ndn::security::IdentityCertificate& dskCertificate, bool isIntroducer);
+
 protected:
-  void closeEvent(QCloseEvent *e);
+  void 
+  closeEvent(QCloseEvent *e);
+
+  void
+  changeEvent(QEvent *e);
 
 private:
 
@@ -110,9 +118,6 @@ private:
 
   void
   initializeSync();
-
-  void
-  publishIntroCert(ndn::Ptr<ndn::security::IdentityCertificate> dskCertificate, bool isIntroducer);
   
   void 
   onInviteReplyVerified(ndn::Ptr<ndn::Data> data, const ndn::Name& identity, bool isIntroducer);
@@ -160,6 +165,12 @@ private:
 
   void 
   fitView();
+
+  void 
+  createActions();
+
+  void
+  createTrayIcon();
 
   QString 
   formatTime(time_t);
@@ -225,6 +236,12 @@ private slots:
   reap();
 
   void 
+  iconActivated(QSystemTrayIcon::ActivationReason reason);
+
+  void
+  messageClicked();
+
+  void 
   showMessage(QString, QString);
   
   void
@@ -257,7 +274,7 @@ private:
   int m_randomizedInterval;
   QTimer *m_timer;
   QStringListModel *m_rosterModel;
-  
+  QSystemTrayIcon *trayIcon;
 
   // QQueue<SyncDemo::ChatMessage> m_history;
   // bool m_historyInitialized;

@@ -96,8 +96,8 @@ private:
 
   void
   onDnsEndorseeTimeout(ndn::Ptr<ndn::Closure> closure, 
-                      ndn::Ptr<ndn::Interest> interest, 
-                      int count);
+                       ndn::Ptr<ndn::Interest> interest, 
+                       int count);
   
   void
   onDnsEndorseeUnverified(ndn::Ptr<ndn::Data> data, int count);
