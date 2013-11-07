@@ -41,11 +41,15 @@ class ContactPanel : public QDialog
   Q_OBJECT
 
 public:
-  explicit ContactPanel(ndn::Ptr<ContactManager> contactManager, QWidget *parent = 0);
+  explicit ContactPanel(ndn::Ptr<ContactManager> contactManager, 
+                        QWidget *parent = 0);
 
   ~ContactPanel();
 
 private:
+  void
+  createAction();
+
   void
   openDB();
 
@@ -59,14 +63,9 @@ private:
   onLocalPrefixVerified(ndn::Ptr<ndn::Data> data);
   
   void
-  onLocalPrefixTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest);
+  onLocalPrefixTimeout(ndn::Ptr<ndn::Closure> closure, 
+                       ndn::Ptr<ndn::Interest> interest);
 
-  void
-  onUnverified(ndn::Ptr<ndn::Data> data);
-  
-  void
-  onTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest);
-    
   void
   setInvitationListener();
 
@@ -74,33 +73,40 @@ private:
   onInvitation(ndn::Ptr<ndn::Interest> interest);
 
   void
+  onUnverified(ndn::Ptr<ndn::Data> data);
+  
+  void
+  onTimeout(ndn::Ptr<ndn::Closure> closure, 
+            ndn::Ptr<ndn::Interest> interest);
+    
+  void
   onInvitationCertVerified(ndn::Ptr<ndn::Data> data,
                            ndn::Ptr<ChronosInvitation> invitation);
+
+  void
+  popChatInvitation(ndn::Ptr<ChronosInvitation> invitation,
+                    const ndn::Name& inviterNameSpace,
+                    ndn::Ptr<ndn::security::IdentityCertificate> certificate);
 
   void
   collectEndorsement();
 
   void
-  onDnsEndoreeVerified(ndn::Ptr<ndn::Data> data, int count);
+  onDnsEndorseeVerified(ndn::Ptr<ndn::Data> data, int count);
 
   void
-  onDnsEndoreeTimeout(ndn::Ptr<ndn::Closure> closure, 
+  onDnsEndorseeTimeout(ndn::Ptr<ndn::Closure> closure, 
                       ndn::Ptr<ndn::Interest> interest, 
                       int count);
   
   void
-  onDnsEndoreeUnverified(ndn::Ptr<ndn::Data> data, int count);
+  onDnsEndorseeUnverified(ndn::Ptr<ndn::Data> data, int count);
 
   void 
   updateCollectStatus(int count);
 
   std::string
   getRandomString();
-
-  void
-  popChatInvitation(ndn::Ptr<ChronosInvitation> invitation,
-                    const ndn::Name& inviterNameSpace,
-                    ndn::Ptr<ndn::security::IdentityCertificate> certificate);
 
 signals:
   void
@@ -112,7 +118,8 @@ private slots:
                   const QItemSelection &deselected);
 
   void
-  updateDefaultIdentity(const QString& identity);
+  updateDefaultIdentity(const QString& identity,
+                        const QString& nickName);
 
   void
   openProfileEditor();
@@ -139,7 +146,9 @@ private slots:
   showContextMenu(const QPoint& pos);
 
   void
-  startChatroom(const QString& chatroom, const QString& invitee, bool isIntroducer);
+  startChatroom(const QString& chatroom, 
+                const QString& invitee, 
+                bool isIntroducer);
 
   void 
   startChatroom2(const ChronosInvitation& invitation, 
@@ -166,6 +175,9 @@ private slots:
 
   void
   endorseButtonClicked();
+  
+  void
+  removeChatDialog(const ndn::Name& chatroomName);
 
   
 
@@ -190,17 +202,14 @@ private:
   ndn::Ptr<ndn::Wrapper> m_handler;
 
   ndn::Name m_defaultIdentity;
+  std::string m_nickName;
   ndn::Name m_localPrefix;
   ndn::Name m_inviteListenPrefix;
 
-  // std::string m_currentSelectedContactAlias;
-  // std::string m_currentSelectedContactNamespace;
   ndn::Ptr<ContactItem> m_currentSelectedContact;
   QSqlTableModel* m_trustScopeModel;
   QSqlTableModel* m_endorseDataModel;
   EndorseComboBoxDelegate* m_endorseComboBoxDelegate;
-
-
 };
 
 #endif // CONTACTPANEL_H

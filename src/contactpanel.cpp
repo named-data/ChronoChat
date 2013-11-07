@@ -49,12 +49,12 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   , m_startChatDialog(new StartChatDialog)
   , m_invitationDialog(new InvitationDialog)
   , m_settingDialog(new SettingDialog)
-  , m_menuInvite(new QAction("&Chat", this))
-  , m_menuAlias(new QAction("&Set Alias", this))
 {
   qRegisterMetaType<ndn::security::IdentityCertificate>("IdentityCertificate");
   qRegisterMetaType<ChronosInvitation>("ChronosInvitation");
   
+  createAction();
+
   openDB();    
 
   m_contactManager = contactManager;
@@ -63,24 +63,27 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   m_setAliasDialog = new SetAliasDialog(contactManager);
  
   ui->setupUi(this);
+
   refreshContactList();
 
   setKeychain();
-  m_handler = Ptr<Wrapper>(new Wrapper(m_keychain));
-   
+
+  m_defaultIdentity = m_keychain->getDefaultIdentity();
+  m_nickName = m_defaultIdentity.get(-1).toUri();
+  m_settingDialog->setIdentity(m_defaultIdentity.toUri(), m_nickName);
+
+  m_handler = Ptr<Wrapper>(new Wrapper(m_keychain));  
+
   setLocalPrefix();
     
-  // Set Identity, TODO: through user interface
-  m_defaultIdentity = m_keychain->getDefaultIdentity();
-  m_settingDialog->setIdentity(m_defaultIdentity.toUri());
   setInvitationListener();
+
   collectEndorsement();
   
   ui->ContactList->setModel(m_contactListModel);
   
-  QItemSelectionModel* selectionModel = ui->ContactList->selectionModel();
 
-  connect(selectionModel, SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
+  connect(ui->ContactList->selectionModel(), SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
           this, SLOT(updateSelection(const QItemSelection &, const QItemSelection &)));
 
   connect(ui->ContactList, SIGNAL(customContextMenuRequested(const QPoint&)),
@@ -97,7 +100,6 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
    
   connect(m_addContactPanel, SIGNAL(newContactAdded()),
           this, SLOT(refreshContactList()));
-
   connect(m_setAliasDialog, SIGNAL(aliasChanged()),
           this, SLOT(refreshContactList()));
 
@@ -109,8 +111,8 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   connect(m_invitationDialog, SIGNAL(invitationRejected(const ChronosInvitation&)),
           this, SLOT(rejectInvitation(const ChronosInvitation&)));
 
-  connect(m_settingDialog, SIGNAL(identitySet(const QString&)),
-          this, SLOT(updateDefaultIdentity(const QString&)));
+  connect(m_settingDialog, SIGNAL(identitySet(const QString&, const QString&)),
+          this, SLOT(updateDefaultIdentity(const QString&, const QString&)));
 
   connect(this, SIGNAL(newInvitationReady()),
           this, SLOT(openInvitationDialog()));
@@ -120,10 +122,8 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
 
   connect(ui->addScope, SIGNAL(clicked()),
           this, SLOT(addScopeClicked()));
-
   connect(ui->deleteScope, SIGNAL(clicked()),
           this, SLOT(deleteScopeClicked()));
-
   connect(ui->saveButton, SIGNAL(clicked()),
           this, SLOT(saveScopeClicked()));
 
@@ -135,16 +135,31 @@ ContactPanel::~ContactPanel()
 {
   delete ui;
   delete m_contactListModel;
+  delete m_startChatDialog;
+  delete m_invitationDialog;
+  delete m_settingDialog;
+
   delete m_profileEditor;
   delete m_addContactPanel;
+  delete m_setAliasDialog;
+
   delete m_trustScopeModel;
   delete m_endorseDataModel;
+  delete m_endorseComboBoxDelegate;
 
   delete m_menuInvite;
+  delete m_menuAlias;
 
   map<Name, ChatDialog*>::iterator it = m_chatDialogs.begin();
   for(; it != m_chatDialogs.end(); it++)
     delete it->second;
+}
+
+void
+ContactPanel::createAction()
+{
+  m_menuInvite = new QAction("&Chat", this);
+  m_menuAlias = new QAction("&Set Alias", this);
 }
 
 void
@@ -155,7 +170,7 @@ ContactPanel::openDB()
   path.append(QDir::separator()).append(".chronos").append(QDir::separator()).append("chronos.db");
   db.setDatabaseName(path);
   bool ok = db.open();
-  _LOG_DEBUG("db opened: " << std::boolalpha << ok );
+  _LOG_DEBUG("DB opened: " << std::boolalpha << ok );
 
   m_trustScopeModel = new QSqlTableModel;
   m_endorseDataModel = new QSqlTableModel;
@@ -166,11 +181,10 @@ void
 ContactPanel::setKeychain()
 {
   m_panelPolicyManager = Ptr<PanelPolicyManager>::Create();
-  // Ptr<security::EncryptionManager> encryptionManager = Ptr<security::EncryptionManager>(new security::BasicEncryptionManager(privateStorage, "/tmp/encryption.db"));
 
   vector<Ptr<ContactItem> >::const_iterator it = m_contactList.begin();
   for(; it != m_contactList.end(); it++)
-      m_panelPolicyManager->addTrustAnchor((*it)->getSelfEndorseCertificate());
+    m_panelPolicyManager->addTrustAnchor((*it)->getSelfEndorseCertificate());
 
   m_keychain = Ptr<security::Keychain>(new security::Keychain(Ptr<security::IdentityManager>::Create(), 
                                                               m_panelPolicyManager, 
@@ -216,151 +230,32 @@ ContactPanel::onLocalPrefixTimeout(Ptr<Closure> closure, Ptr<Interest> interest)
 }
 
 void
-ContactPanel::onUnverified(Ptr<Data> data)
-{}
-
-void
-ContactPanel::onTimeout(Ptr<Closure> closure, Ptr<Interest> interest)
-{}
-
-void
-ContactPanel::collectEndorsement()
-{
-  m_collectStatus = Ptr<vector<bool> >::Create();
-  m_collectStatus->assign(m_contactList.size(), false);
-  vector<Ptr<ContactItem> >::iterator it = m_contactList.begin();
-  int count = 0;
-  for(; it != m_contactList.end(); it++, count++)
-    {
-      Name interestName = (*it)->getNameSpace();
-      interestName.append("DNS").append(m_defaultIdentity).append("ENDORSEE");
-      Ptr<Interest> interest = Ptr<Interest>(new Interest(interestName));
-      interest->setChildSelector(Interest::CHILD_RIGHT);
-  
-      Ptr<Closure> closure = Ptr<Closure>(new Closure(boost::bind(&ContactPanel::onDnsEndoreeVerified, 
-                                                                  this,
-                                                                  _1,
-                                                                  count),
-                                                      boost::bind(&ContactPanel::onDnsEndoreeTimeout,
-                                                                  this,
-                                                                  _1, 
-                                                                  _2,
-                                                                  count),
-                                                      boost::bind(&ContactPanel::onDnsEndoreeUnverified,
-                                                                  this,
-                                                                  _1,
-                                                                  count)));
-
-      m_handler->sendInterest(interest, closure);
-    }
-}
-
-void
-ContactPanel::onDnsEndoreeVerified(Ptr<Data> data, int count)
-{
-  Ptr<Blob> contentBlob = Ptr<Blob>(new Blob(data->content().buf(), data->content().size()));
-  Ptr<Data> endorseData = Data::decodeFromWire(contentBlob);
-  EndorseCertificate endorseCertificate(*endorseData);
-
-  _LOG_DEBUG("get data: " << endorseCertificate.getName().toUri());
-
-  m_contactManager->getContactStorage()->updateCollectEndorse(endorseCertificate);
-
-  updateCollectStatus(count);
-}
-
-void
-ContactPanel::onDnsEndoreeTimeout(Ptr<Closure> closure, Ptr<Interest> interest, int count)
-{ updateCollectStatus(count); }
-
-void
-ContactPanel::onDnsEndoreeUnverified(Ptr<Data> data, int count)
-{ updateCollectStatus(count); }
-
-void 
-ContactPanel::updateCollectStatus(int count)
-{
-  m_collectStatus->at(count) = true;
-  vector<bool>::const_iterator it = m_collectStatus->begin();
-  for(; it != m_collectStatus->end(); it++)
-    if(*it == false)
-      return;
-
-  m_contactManager->publishEndorsedDataInDns(m_defaultIdentity);
-}
-
-void
-ContactPanel::onInvitationCertVerified(Ptr<Data> data, 
-                                       Ptr<ChronosInvitation> invitation)
-{
-  Ptr<security::IdentityCertificate> certificate = Ptr<security::IdentityCertificate>(new security::IdentityCertificate(*data));
-  
-  if(security::PolicyManager::verifySignature(invitation->getSignedBlob(), invitation->getSignatureBits(), certificate->getPublicKeyInfo()))
-    {
-      Name keyName = certificate->getPublicKeyName();
-      Name inviterNameSpace = keyName.getSubName(0, keyName.size() - 1);
-      popChatInvitation(invitation, inviterNameSpace, certificate);
-    }
-}
-
-void
-ContactPanel::popChatInvitation(Ptr<ChronosInvitation> invitation,
-                                const Name& inviterNameSpace,
-                                Ptr<security::IdentityCertificate> certificate)
-{
-  string chatroom = invitation->getChatroom().get(0).toUri();
-  string inviter = inviterNameSpace.toUri();
-
-  string alias;
-  vector<Ptr<ContactItem> >::iterator it = m_contactList.begin();
-  for(; it != m_contactList.end(); it++)
-    if((*it)->getNameSpace() == inviterNameSpace)
-      alias = (*it)->getAlias();
-
-  if(it != m_contactList.end())
-    return;
-
-  m_invitationDialog->setInvitation(alias, invitation, certificate);
-  emit newInvitationReady();
-}
-
-static std::string chars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789");
-
-string
-ContactPanel::getRandomString()
-{
-  string randStr;
-  boost::random::random_device rng;
-  boost::random::uniform_int_distribution<> index_dist(0, chars.size() - 1);
-  for (int i = 0; i < 10; i ++)
-  {
-    randStr += chars[index_dist(rng)];
-  }
-  return randStr;
-}
-
-
-void
 ContactPanel::setInvitationListener()
 {
-  Name prefix("/ndn/broadcast/chronos/invitation");
-  prefix.append(m_defaultIdentity);
-  _LOG_DEBUG("prefix: " << prefix.toUri());
-  m_inviteListenPrefix = prefix;
-  m_handler->setInterestFilter (prefix, 
+  m_inviteListenPrefix = Name("/ndn/broadcast/chronos/invitation");
+  m_inviteListenPrefix.append(m_defaultIdentity);
+  _LOG_DEBUG("Listening for invitation on prefix: " << m_inviteListenPrefix.toUri());
+  m_handler->setInterestFilter (m_inviteListenPrefix, 
                                 boost::bind(&ContactPanel::onInvitation, 
                                             this,
                                             _1));
-
 }
 
 void
 ContactPanel::onInvitation(Ptr<Interest> interest)
 {
-  _LOG_DEBUG("receive interest!" << interest->getName().toUri());
-  const Name& interestName = interest->getName();
+  _LOG_DEBUG("Receive invitation!" << interest->getName().toUri());
 
-  Ptr<ChronosInvitation> invitation = Ptr<ChronosInvitation>(new ChronosInvitation(interestName));
+  Ptr<ChronosInvitation> invitation = Ptr<ChronosInvitation>(new ChronosInvitation(interest->getName()));
+
+  Name chatroomName("/ndn/broadcast/chronos");
+  chatroomName.append(invitation->getChatroom());
+  map<Name, ChatDialog*>::iterator it = m_chatDialogs.find(chatroomName);
+  if(it != m_chatDialogs.end())
+    {
+      _LOG_DEBUG("Exisiting chatroom!");
+      return;
+    }
 
   Ptr<Interest> newInterest = Ptr<Interest>(new Interest(invitation->getInviterCertificateName()));
   Ptr<Closure> closure = Ptr<Closure>(new Closure(boost::bind(&ContactPanel::onInvitationCertVerified, 
@@ -378,12 +273,134 @@ ContactPanel::onInvitation(Ptr<Interest> interest)
 }
 
 void
+ContactPanel::onInvitationCertVerified(Ptr<Data> data, 
+                                       Ptr<ChronosInvitation> invitation)
+{
+  using namespace ndn::security;
+  Ptr<IdentityCertificate> certificate = Ptr<IdentityCertificate>(new IdentityCertificate(*data));
+  
+  if(PolicyManager::verifySignature(invitation->getSignedBlob(), invitation->getSignatureBits(), certificate->getPublicKeyInfo()))
+    {
+      Name keyName = certificate->getPublicKeyName();
+      Name inviterNameSpace = keyName.getPrefix(keyName.size() - 1);
+      popChatInvitation(invitation, inviterNameSpace, certificate);
+    }
+}
+
+void
+ContactPanel::onUnverified(Ptr<Data> data)
+{}
+
+void
+ContactPanel::onTimeout(Ptr<Closure> closure, Ptr<Interest> interest)
+{}
+
+void
+ContactPanel::popChatInvitation(Ptr<ChronosInvitation> invitation,
+                                const Name& inviterNameSpace,
+                                Ptr<security::IdentityCertificate> certificate)
+{
+  string alias;
+  vector<Ptr<ContactItem> >::iterator it = m_contactList.begin();
+  for(; it != m_contactList.end(); it++)
+    if((*it)->getNameSpace() == inviterNameSpace)
+      alias = (*it)->getAlias();
+
+  if(it != m_contactList.end())
+    return;
+
+  m_invitationDialog->setInvitation(alias, invitation, certificate);
+  emit newInvitationReady();
+}
+
+void
+ContactPanel::collectEndorsement()
+{
+  m_collectStatus = Ptr<vector<bool> >::Create();
+  m_collectStatus->assign(m_contactList.size(), false);
+
+  vector<Ptr<ContactItem> >::iterator it = m_contactList.begin();
+  int count = 0;
+  for(; it != m_contactList.end(); it++, count++)
+    {
+      Name interestName = (*it)->getNameSpace();
+      interestName.append("DNS").append(m_defaultIdentity).append("ENDORSEE");
+      Ptr<Interest> interest = Ptr<Interest>(new Interest(interestName));
+      interest->setChildSelector(Interest::CHILD_RIGHT);
+      interest->setInterestLifetime(1);
+  
+      Ptr<Closure> closure = Ptr<Closure>(new Closure(boost::bind(&ContactPanel::onDnsEndorseeVerified, 
+                                                                  this,
+                                                                  _1,
+                                                                  count),
+                                                      boost::bind(&ContactPanel::onDnsEndorseeTimeout,
+                                                                  this,
+                                                                  _1, 
+                                                                  _2,
+                                                                  count),
+                                                      boost::bind(&ContactPanel::onDnsEndorseeUnverified,
+                                                                  this,
+                                                                  _1,
+                                                                  count)));
+
+      m_handler->sendInterest(interest, closure);
+    }
+}
+
+void
+ContactPanel::onDnsEndorseeVerified(Ptr<Data> data, int count)
+{
+  Ptr<Blob> contentBlob = Ptr<Blob>(new Blob(data->content().buf(), data->content().size()));
+  Ptr<Data> endorseData = Data::decodeFromWire(contentBlob);
+  EndorseCertificate endorseCertificate(*endorseData);
+
+  m_contactManager->getContactStorage()->updateCollectEndorse(endorseCertificate);
+
+  updateCollectStatus(count);
+}
+
+void
+ContactPanel::onDnsEndorseeTimeout(Ptr<Closure> closure, Ptr<Interest> interest, int count)
+{ updateCollectStatus(count); }
+
+void
+ContactPanel::onDnsEndorseeUnverified(Ptr<Data> data, int count)
+{ updateCollectStatus(count); }
+
+void 
+ContactPanel::updateCollectStatus(int count)
+{
+  m_collectStatus->at(count) = true;
+  vector<bool>::const_iterator it = m_collectStatus->begin();
+  for(; it != m_collectStatus->end(); it++)
+    if(*it == false)
+      return;
+
+  m_contactManager->publishEndorsedDataInDns(m_defaultIdentity);
+}
+
+static std::string chars("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789");
+
+string
+ContactPanel::getRandomString()
+{
+  string randStr;
+  boost::random::random_device rng;
+  boost::random::uniform_int_distribution<> index_dist(0, chars.size() - 1);
+  for (int i = 0; i < 10; i ++)
+  {
+    randStr += chars[index_dist(rng)];
+  }
+  return randStr;
+}
+
+void
 ContactPanel::updateSelection(const QItemSelection &selected,
 			      const QItemSelection &deselected)
 {
   QModelIndexList items = selected.indexes();
   QString text = m_contactListModel->data(items.first(), Qt::DisplayRole).toString();
-  string alias = text.toUtf8().constData();
+  string alias = text.toStdString();
 
   int i = 0;
   for(; i < m_contactList.size(); i++)
@@ -393,16 +410,12 @@ ContactPanel::updateSelection(const QItemSelection &selected,
     }
   
   m_currentSelectedContact = m_contactList[i];
-  QString name = QString::fromUtf8(m_currentSelectedContact->getName().c_str());
-  QString institution = QString::fromUtf8(m_currentSelectedContact->getInstitution().c_str());
-  QString nameSpace = QString::fromUtf8(m_currentSelectedContact->getNameSpace().toUri().c_str());
+  QString name = QString::fromStdString(m_currentSelectedContact->getName());
+  QString institution = QString::fromStdString(m_currentSelectedContact->getInstitution());
+  QString nameSpace = QString::fromStdString(m_currentSelectedContact->getNameSpace().toUri());
   ui->NameData->setText(name);
   ui->NameSpaceData->setText(nameSpace);
   ui->InstitutionData->setText(institution);
-
-  // m_currentSelectedContactAlias = alias;
-  // m_currentSelectedContactNamespace = m_contactList[i]->getNameSpace().toUri();
-  // _LOG_DEBUG("current Alias: " << m_currentSelectedContact);
 
   if(m_currentSelectedContact->isIntroducer())
     {
@@ -421,8 +434,6 @@ ContactPanel::updateSelection(const QItemSelection &selected,
       m_trustScopeModel->setHeaderData(0, Qt::Horizontal, QObject::tr("ID"));
       m_trustScopeModel->setHeaderData(1, Qt::Horizontal, QObject::tr("Contact"));
       m_trustScopeModel->setHeaderData(2, Qt::Horizontal, QObject::tr("TrustScope"));
-
-      // _LOG_DEBUG("row count: " << m_trustScopeModel->rowCount());
 
       ui->trustScopeList->setModel(m_trustScopeModel);
       ui->trustScopeList->setColumnHidden(0, true);
@@ -473,25 +484,15 @@ ContactPanel::updateSelection(const QItemSelection &selected,
   ui->endorseList->resizeColumnToContents(2);
   ui->endorseList->setItemDelegateForColumn(3, m_endorseComboBoxDelegate);
   ui->endorseList->show();
-
 }
 
 void
-ContactPanel::updateDefaultIdentity(const QString& identity)
+ContactPanel::updateDefaultIdentity(const QString& identity, const QString& nickName)
 { 
-  m_defaultIdentity = Name(identity.toUtf8().constData()); 
-  Name prefix("/ndn/broadcast/chronos/invitation");
-  prefix.append(m_defaultIdentity);
-
-  _LOG_DEBUG("reset invite listen prefix: " << prefix.toUri());
-  
+  m_defaultIdentity = Name(identity.toStdString());
+  m_nickName = nickName.toStdString();
   m_handler->clearInterestFilter(m_inviteListenPrefix);
-  m_handler->setInterestFilter(prefix,
-                               boost::bind(&ContactPanel::onInvitation, 
-                                           this,
-                                           _1));
-  m_inviteListenPrefix = prefix;
-
+  setInvitationListener();
   collectEndorsement();
 }
 
@@ -542,7 +543,7 @@ ContactPanel::openSetAliasDialog()
 void
 ContactPanel::openSettingDialog()
 {
-  m_settingDialog->setIdentity(m_defaultIdentity.toUri());
+  m_settingDialog->setIdentity(m_defaultIdentity.toUri(), m_nickName);
   m_settingDialog->show();
 }
 
@@ -569,10 +570,14 @@ ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, boo
   _LOG_DEBUG("introducer: " << std::boolalpha << isIntroducer);
 
   Name chatroomName(chatroom.toUtf8().constData());
-  
-  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity);
+  Name prefix = m_localPrefix.getPrefix(m_localPrefix.size()-1);
+  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, prefix, m_defaultIdentity, m_nickName);
+  // ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity);
   m_chatDialogs.insert(pair <Name, ChatDialog*> (chatroomName, chatDialog));
-  
+
+  connect(chatDialog, SIGNAL(closeChatDialog(const ndn::Name&)),
+          this, SLOT(removeChatDialog(const ndn::Name&)));
+
   //TODO: send invitation
   Name inviteeNamespace(invitee.toUtf8().constData());
   Ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
@@ -592,14 +597,22 @@ ContactPanel::startChatroom2(const ChronosInvitation& invitation,
 
   Name chatroomName("/ndn/broadcast/chronos");
   chatroomName.append(invitation.getChatroom());
+  Name prefix = m_localPrefix.getPrefix(m_localPrefix.size()-1);
+  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, prefix, m_defaultIdentity, m_nickName, true);
+  // ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity);
+  connect(chatDialog, SIGNAL(closeChatDialog(const ndn::Name&)),
+          this, SLOT(removeChatDialog(const ndn::Name&)));
 
-  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity);
-  chatDialog->addChatDataRule(invitation.getInviterPrefix(), identityCertificate, true);
+  Name inviterPrefix = invitation.getInviterPrefix().getPrefix(invitation.getInviterPrefix().size()-1);
+  chatDialog->addChatDataRule(inviterPrefix, identityCertificate, true);
+  // chatDialog->addChatDataRule(invitation.getInviterPrefix(), identityCertificate, true);
 
   Ptr<ContactItem> inviterItem = m_contactManager->getContact(invitation.getInviterNameSpace());
   chatDialog->addTrustAnchor(inviterItem->getSelfEndorseCertificate());
   
   m_chatDialogs.insert(pair <Name, ChatDialog*> (chatroomName, chatDialog));
+
+
 
   chatDialog->show();
 }
@@ -717,6 +730,21 @@ ContactPanel::endorseButtonClicked()
 {
   m_endorseDataModel->submitAll();
   m_contactManager->updateEndorseCertificate(m_currentSelectedContact->getNameSpace(), m_defaultIdentity);
+}
+
+void
+ContactPanel::removeChatDialog(const ndn::Name& chatroomName)
+{
+  map<Name, ChatDialog*>::iterator it = m_chatDialogs.find(chatroomName);
+  _LOG_DEBUG("about to leave 2!");
+  ChatDialog* deletedChat;
+  if(it != m_chatDialogs.end())
+    {
+      _LOG_DEBUG("about to leave 3!");
+      deletedChat = it->second;
+      m_chatDialogs.erase(it);      
+    }
+  delete deletedChat;
 }
 
 #if WAF

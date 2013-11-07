@@ -16,9 +16,12 @@
 #include "contact-storage.h"
 #include "dns-storage.h"
 #include "contact-manager.h"
+#include "logging.h"
 #include <ndn.cxx/security/identity/identity-manager.h>
 #include <ndn.cxx/security/identity/osx-privatekey-storage.h>
 #include <ndn.cxx/security/identity/basic-identity-storage.h>
+
+INIT_LOGGER("MAIN");
 
 using namespace ndn;
 
@@ -27,7 +30,7 @@ class NewApp : public QApplication
 public:
   NewApp(int & argc, char ** argv)
     : QApplication(argc, argv)
-  {}
+  { }
 
   bool notify(QObject * receiver, QEvent * event) 
   {
@@ -48,14 +51,10 @@ int main(int argc, char *argv[])
 {
   NewApp app(argc, argv);
 
+  // app.setWindowIcon(QIcon(":/demo.icns"));
 
-//   app.setWindowIcon(QIcon("/Users/yuyingdi/Develop/QT/demo.icns"));
-// // #else
-// // 	app.setWindowIcon(QIcon("/Users/yuyingdi/Develop/QT/images/icon_large.png"));
-// // #endif
-
-  Ptr<ContactStorage> contactStorage = Ptr<ContactStorage>(new ContactStorage());
-  Ptr<DnsStorage> dnsStorage = Ptr<DnsStorage>(new DnsStorage());
+  Ptr<ContactStorage> contactStorage = Ptr<ContactStorage>::Create();
+  Ptr<DnsStorage> dnsStorage = Ptr<DnsStorage>::Create();
   Ptr<ContactManager> contactManager = Ptr<ContactManager>(new ContactManager(contactStorage, dnsStorage));
 
   ContactPanel contactPanel(contactManager);
