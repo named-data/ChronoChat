@@ -18,6 +18,48 @@ using namespace std;
 using namespace ndn;
 
 INIT_LOGGER("Profile");
+
+static string nameOid("2.5.4.41");
+static string orgOid("2.5.4.11");
+static string groupOid("2.5.4.1");
+static string homepageOid("2.5.4.3");
+static string advisor("2.5.4.80");
+static string emailOid("1.2.840.113549.1.9.1");
+
+Profile::Profile(security::IdentityCertificate& identityCertificate)
+{
+  using namespace ndn::security;
+
+  Name keyName = identityCertificate.getPublicKeyName();
+  m_identityName = keyName.getPrefix(keyName.size()-1);
+
+  const string& identityString = m_identityName.toUri();
+  Blob identityBlob (identityString.c_str(), identityString.size());
+  m_entries[string("IDENTITY")] = identityBlob;
+  
+  const vector<CertificateSubDescrypt>& subList = identityCertificate.getSubjectDescriptionList();
+  vector<CertificateSubDescrypt>::const_iterator it = subList.begin();
+  for(; it != subList.end(); it++)
+    {
+      string oidStr = it->getOidStr();
+      Blob blob (it->getValue().c_str(), it->getValue().size());
+      if(oidStr == nameOid)
+        m_entries[string("name")] = blob;
+      else if(oidStr == orgOid)
+        m_entries[string("institution")] = blob;
+      else if(oidStr == groupOid)
+        m_entries[string("group")] = blob;
+      else if(oidStr == homepageOid)
+        m_entries[string("homepage")] = blob;
+      else if(oidStr == advisor)
+        m_entries[string("advisor")] = blob;
+      else if(oidStr == emailOid)
+        m_entries[string("email")] = blob;
+      else
+        m_entries[oidStr] = blob;
+    }
+}
+
 Profile::Profile(const Name& identityName)
   : m_identityName(identityName)
 {

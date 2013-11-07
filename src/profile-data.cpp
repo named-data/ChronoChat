@@ -19,13 +19,12 @@ using namespace std;
 
 INIT_LOGGER("ProfileData");
 
-ProfileData::ProfileData(const Name& identity,
-			 const Profile& profile)
+ProfileData::ProfileData(const Profile& profile)
   : Data()
-  , m_identity(identity)
+  , m_identity(profile.getIdentityName())
   , m_profile(profile)
 {
-  Name dataName = identity;
+  Name dataName = m_identity;
 
   dataName.append("PROFILE").appendVersion();
   setName(dataName);
