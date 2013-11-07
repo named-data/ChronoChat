@@ -26,11 +26,13 @@ public:
   ~SettingDialog();
 
   void
-  setIdentity(const std::string& identity);
+  setIdentity(const std::string& identity,
+              const std::string& nickName);
 
 signals:
   void
-  identitySet(const QString& identity);
+  identitySet(const QString& identity,
+              const QString& nickName);
 
 private slots:
   void
@@ -39,6 +41,7 @@ private slots:
 private:
   Ui::SettingDialog *ui;
   std::string m_identity;
+  std::string m_nickName;
 };
 
 #endif // SETTINGDIALOG_H

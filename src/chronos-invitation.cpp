@@ -19,9 +19,10 @@ using namespace ndn;
 
 INIT_LOGGER("ChronosInvitation");
 
-ChronosInvitation::ChronosInvitation(const ndn::Name& interestName)
-  : m_interestName(interestName)
+ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
+  : m_interestName(originalInterestName)
 {
+  Name interestName = originalInterestName.getPrefix(originalInterestName.size()-1);
   if(interestName.get(0).toUri() != string("ndn")
      || interestName.get(1).toUri() != string("broadcast")
      || interestName.get(2).toUri() != string("chronos")

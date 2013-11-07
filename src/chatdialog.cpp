@@ -37,6 +37,8 @@ ChatDialog::ChatDialog(ndn::Ptr<ContactManager> contactManager,
                        const ndn::Name& chatroomPrefix,
 		       const ndn::Name& localPrefix,
                        const ndn::Name& defaultIdentity,
+                       const std::string& nick,
+                       bool trial,
 		       QWidget *parent) 
 : QDialog(parent)
   , ui(new Ui::ChatDialog)
@@ -45,6 +47,7 @@ ChatDialog::ChatDialog(ndn::Ptr<ContactManager> contactManager,
   , m_localPrefix(localPrefix)
   , m_defaultIdentity(defaultIdentity)
   , m_invitationPolicyManager(ndn::Ptr<InvitationPolicyManager>(new InvitationPolicyManager(m_chatroomPrefix.get(-1).toUri())))
+  , m_nick(nick)
   , m_sock(NULL)
   , m_lastMsgTime(0)
   // , m_historyInitialized(false)
@@ -57,7 +60,7 @@ ChatDialog::ChatDialog(ndn::Ptr<ContactManager> contactManager,
   ui->setupUi(this);
 
   m_localChatPrefix = m_localPrefix;
-  m_localChatPrefix.append("FH").append(m_defaultIdentity);
+  m_localChatPrefix.append("%F0.").append(m_defaultIdentity);
   m_localChatPrefix.append("chronos").append(m_chatroomPrefix.get(-1));
 
   m_session = time(NULL);
@@ -77,7 +80,7 @@ ChatDialog::ChatDialog(ndn::Ptr<ContactManager> contactManager,
 
   m_timer = new QTimer(this);
 
-  setWrapper();
+  setWrapper(trial);
 
   connect(ui->inviteButton, SIGNAL(clicked()),
           this, SLOT(openInviteListDialog()));
@@ -188,13 +191,18 @@ ChatDialog::ChatDialog(ndn::Ptr<ContactManager> contactManager,
 
 ChatDialog::~ChatDialog()
 {
-  delete ui;
-  sendLeave();
-  m_handler->shutdown();
+  _LOG_DEBUG("about to leave 4!");
+  if(m_sock != NULL)
+    {
+      sendLeave();
+      delete m_sock;
+      m_sock = NULL;
+    }
+  // m_handler->shutdown();
 }
 
 void
-ChatDialog::setWrapper()
+ChatDialog::setWrapper(bool trial)
 {
   m_identityManager = ndn::Ptr<ndn::security::IdentityManager>::Create();
   // ndn::Ptr<ndn::security::EncryptionManager> encryptionManager = ndn::Ptr<ndn::security::EncryptionManager>(new ndn::security::BasicEncryptionManager(privateStorage, "/tmp/encryption.db"));
@@ -205,13 +213,30 @@ ChatDialog::setWrapper()
   m_keychain = ndn::Ptr<ndn::security::Keychain>(new ndn::security::Keychain(m_identityManager, m_invitationPolicyManager, NULL));
 
   m_handler = ndn::Ptr<ndn::Wrapper>(new ndn::Wrapper(m_keychain));
+
+  if(trial == true)
+    {
+      ndn::Ptr<ndn::Interest> interest = ndn::Ptr<ndn::Interest>(new ndn::Interest(ndn::Name("/local/ndn/prefix")));
+      ndn::Ptr<ndn::Closure> closure = ndn::Ptr<ndn::Closure>(new ndn::Closure(boost::bind(&ChatDialog::onUnverified,
+                                                                                           this,
+                                                                                           _1),
+                                                                               boost::bind(&ChatDialog::onTimeout,
+                                                                                           this,
+                                                                                           _1,
+                                                                                           _2),
+                                                                               boost::bind(&ChatDialog::onUnverified,
+                                                                                           this,
+                                                                                           _1)));
+
+      m_handler->sendInterest(interest, closure);
+    }
 }
 
 void
 ChatDialog::initializeSetting()
 {
   // TODO: nick name may be changed.
-  m_user.setNick(QString::fromStdString(m_defaultIdentity.get(-1).toUri()));
+  m_user.setNick(QString::fromStdString(m_nick));
   m_user.setChatroom(QString::fromStdString(m_chatroomPrefix.get(-1).toUri()));
   m_user.setOriginPrefix(QString::fromStdString(m_localPrefix.toUri()));
   m_user.setPrefix(QString::fromStdString(m_localChatPrefix.toUri()));
@@ -261,6 +286,8 @@ ChatDialog::sendInvitation(ndn::Ptr<ContactItem> contact, bool isIntroducer)
   const ndn::Blob& sigBits = sha256sig->getSignatureBits();
 
   interestName.append(sigBits.buf(), sigBits.size());
+  interestName.appendVersion();
+
 
   ndn::Ptr<ndn::Interest> interest = ndn::Ptr<ndn::Interest>(new ndn::Interest(interestName));
   ndn::Ptr<ndn::Closure> closure = ndn::Ptr<ndn::Closure>(new ndn::Closure(boost::bind(&ChatDialog::onInviteReplyVerified,
@@ -321,7 +348,10 @@ ChatDialog::invitationAccepted(const ndn::Name& identity, ndn::Ptr<ndn::Data> da
   ndn::Ptr<const ndn::signature::Sha256WithRsa> sha256sig = boost::dynamic_pointer_cast<const ndn::signature::Sha256WithRsa> (data->getSignature());
   const ndn::Name & keyLocatorName = sha256sig->getKeyLocator().getKeyName();
   ndn::Ptr<ndn::security::IdentityCertificate> dskCertificate = m_invitationPolicyManager->getValidatedDskCertificate(keyLocatorName);
-  m_syncPolicyManager->addChatDataRule(inviteePrefix, *dskCertificate, isIntroducer);
+  ndn::Name tmpPrefix(inviteePrefix);
+  ndn::Name prefix = tmpPrefix.getPrefix(tmpPrefix.size()-1);
+  m_syncPolicyManager->addChatDataRule(prefix, *dskCertificate, isIntroducer);
+  // m_syncPolicyManager->addChatDataRule(inviteePrefix, *dskCertificate, isIntroducer);
   publishIntroCert(dskCertificate, isIntroducer);
 }
 
@@ -358,6 +388,11 @@ ChatDialog::onInviteTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Intere
  
 void
 ChatDialog::onUnverified(ndn::Ptr<ndn::Data> data)
+{}
+
+void
+ChatDialog::onTimeout(ndn::Ptr<ndn::Closure> closure, 
+                      ndn::Ptr<ndn::Interest> interest)
 {}
 
 void
@@ -969,6 +1004,16 @@ ChatDialog::sendInvitationWrapper(QString invitee, bool isIntroducer)
   ndn::Ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
   sendInvitation(inviteeItem, isIntroducer);
 }
+
+void
+ChatDialog::closeEvent(QCloseEvent *e)
+{
+  hide();
+  _LOG_DEBUG("about to leave 1");
+  emit closeChatDialog(m_chatroomPrefix);
+}
+
+
 
 
 #if WAF

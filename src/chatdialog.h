@@ -48,6 +48,8 @@ public:
                       const ndn::Name& chatroomPrefix,
                       const ndn::Name& localPrefix,
                       const ndn::Name& defaultIdentity,
+                      const std::string& nick,
+                      bool trial = false,
                       QWidget *parent = 0);
 
   // explicit ChatDialog(const ndn::Name& chatroomPrefix,
@@ -92,6 +94,9 @@ public:
   void 
   processRemoveWrapper(std::string);
 
+protected:
+  void closeEvent(QCloseEvent *e);
+
 private:
 
   void
@@ -101,7 +106,7 @@ private:
   updateLabels();
 
   void
-  setWrapper();
+  setWrapper(bool trial);
 
   void
   initializeSync();
@@ -130,6 +135,9 @@ private:
   void
   onUnverified(ndn::Ptr<ndn::Data> data);
 
+  void
+  onTimeout(ndn::Ptr<ndn::Closure> closure, 
+            ndn::Ptr<ndn::Interest> interest);
 
 
   // void 
@@ -171,6 +179,9 @@ signals:
   
   void 
   removeReceived(QString prefix);
+
+  void
+  closeChatDialog(const ndn::Name& chatroomPrefix);
 
 public slots:
   void 
@@ -236,6 +247,7 @@ private:
   ndn::Ptr<ndn::Wrapper> m_handler;
 
   User m_user; 
+  std::string m_nick;
   Sync::SyncSocket *m_sock;
   uint32_t m_session;
   DigestTreeScene *m_scene;
