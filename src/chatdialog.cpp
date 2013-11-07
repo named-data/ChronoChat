@@ -249,7 +249,7 @@ ChatDialog::publishIntroCert(const ndn::security::IdentityCertificate& dskCertif
                                             dskCertificate.getPublicKeyInfo(),
                                             (isIntroducer ? SyncIntroCertificate::INTRODUCER : SyncIntroCertificate::PRODUCER));
   ndn::Name certName = m_identityManager->getDefaultCertificateNameByIdentity(m_defaultIdentity);
-  _LOG_DEBUG("publishIntroCert: " << syncIntroCertificate.getName());
+  _LOG_DEBUG("Publish Intro Certificate: " << syncIntroCertificate.getName());
   m_identityManager->signByCertificate(syncIntroCertificate, certName);
   m_handler->putToNdnd(*syncIntroCertificate.encodeToWire());
 }
@@ -257,14 +257,13 @@ ChatDialog::publishIntroCert(const ndn::security::IdentityCertificate& dskCertif
 void
 ChatDialog::invitationRejected(const ndn::Name& identity)
 {
-  _LOG_DEBUG(" " << identity.toUri() << " rejected your invitation!");
-  //TODO:
+  _LOG_DEBUG(" " << identity.toUri() << " Rejected your invitation!");
 }
 
 void
 ChatDialog::invitationAccepted(const ndn::Name& identity, ndn::Ptr<ndn::Data> data, const string& inviteePrefix, bool isIntroducer)
 {
-  _LOG_DEBUG(" " << identity.toUri() << " accepted your invitation!");
+  _LOG_DEBUG(" " << identity.toUri() << " Accepted your invitation!");
   ndn::Ptr<const ndn::signature::Sha256WithRsa> sha256sig = boost::dynamic_pointer_cast<const ndn::signature::Sha256WithRsa> (data->getSignature());
   const ndn::Name & keyLocatorName = sha256sig->getKeyLocator().getKeyName();
   ndn::Ptr<ndn::security::IdentityCertificate> dskCertificate = m_invitationPolicyManager->getValidatedDskCertificate(keyLocatorName);
@@ -1018,7 +1017,6 @@ void
 ChatDialog::closeEvent(QCloseEvent *e)
 {
   hide();
-  _LOG_DEBUG("about to leave 1");
   emit closeChatDialog(m_chatroomPrefix);
 }
 

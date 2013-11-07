@@ -12,7 +12,7 @@
 #include "ui_addcontactpanel.h"
 
 #ifndef Q_MOC_RUN
-#include <cryptopp/base64.h>
+// #include <cryptopp/base64.h>
 // #include <ndn.cxx/helpers/der/der.h>
 #include <ndn.cxx/helpers/der/visitor/simple-visitor.h>
 #include "logging.h"
@@ -125,7 +125,13 @@ void
 AddContactPanel::onAddClicked()
 {
   ContactItem contactItem(*m_currentEndorseCertificate);
-  m_contactManager->getContactStorage()->addContact(contactItem);
+  try{
+    m_contactManager->getContactStorage()->addContact(contactItem);
+  }catch(exception& e){
+    m_warningDialog->setMsg(e.what());
+    m_warningDialog->show();
+    return;
+  }
   emit newContactAdded();
   this->close();
 }
@@ -216,11 +222,9 @@ AddContactPanel::displayContactInfo()
           Ptr<ContactItem> contact = m_contactManager->getContact(signerName);
           if(contact == NULL)
             continue;
-          _LOG_DEBUG("get contact: " << signerName.toUri());
 
           if(!contact->isIntroducer() || !contact->canBeTrustedFor(m_currentEndorseCertificate->getProfileData()->getIdentityName()))
             continue;
-          _LOG_DEBUG("contact can be trusted");
           
           if(!security::PolicyManager::verifySignature(*data, contact->getSelfEndorseCertificate().getPublicKeyInfo()))
             continue;
@@ -229,15 +233,10 @@ AddContactPanel::displayContactInfo()
           if(profileBlob != tmpProfileBlob)
             continue;
 
-           _LOG_DEBUG("Profile equal");
-
           const vector<string>& endorseList = endorseCert->getEndorseList();
           vector<string>::const_iterator it = endorseList.begin();
           for(; it != endorseList.end(); it++)
-            {
-              _LOG_DEBUG("Entry: " << *it);
-              endorseCount[*it] += 1;
-            }
+            endorseCount[*it] += 1;
         }
     }
 
