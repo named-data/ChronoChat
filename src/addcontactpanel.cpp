@@ -152,15 +152,9 @@ AddContactPanel::onContactKeyFetched(const EndorseCertificate& endorseCertificat
 {
   m_currentEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(endorseCertificate));
 
-  const Blob& keyBlob = endorseCertificate.getPublicKeyInfo().getKeyBlob();
-  string encoded;
-  CryptoPP::StringSource ss(reinterpret_cast<const unsigned char *>(keyBlob.buf()), keyBlob.size(), true,
-                            new CryptoPP::Base64Encoder(new CryptoPP::StringSink(encoded), true, 64));
-  
-  ui->infoView->setColumnCount(1);  
-  ui->infoView->insertRow(0);  
-  QTableWidgetItem *keyBits = new QTableWidgetItem(QString::fromUtf8(encoded.c_str()));
-  ui->infoView->setItem(0, 0, keyBits);
+  m_currentCollectEndorseReady = NULL;
+
+  displayContactInfo();
 }
 
 void

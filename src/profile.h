@@ -14,6 +14,7 @@
 #include <ndn.cxx/common.h>
 #include <ndn.cxx/fields/name.h>
 #include <ndn.cxx/fields/blob.h>
+#include <ndn.cxx/security/certificate/identity-certificate.h>
 #include <map>
 #include <string>
 
@@ -24,6 +25,8 @@ public:
   typedef std::map<std::string, ndn::Blob>::const_iterator const_iterator;
 public:
   Profile() {}
+
+  Profile(ndn::security::IdentityCertificate& identityCertificate);
 
   Profile(const ndn::Name& identityName);
 
@@ -68,6 +71,10 @@ public:
   inline const std::map<std::string, ndn::Blob>&
   getEntries() const
   { return m_entries; }
+
+  inline const ndn::Name&
+  getIdentityName() const
+  { return m_identityName; }
 
 protected:
   ndn::Name m_identityName;

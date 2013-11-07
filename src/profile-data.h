@@ -17,8 +17,7 @@
 class ProfileData : public ndn::Data
 {
 public:
-  ProfileData(const ndn::Name& identity,
-              const Profile& profile);
+  ProfileData(const Profile& profile);
 
   ProfileData(const ProfileData& profileData);
 

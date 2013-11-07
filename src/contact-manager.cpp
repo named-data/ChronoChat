@@ -185,13 +185,8 @@ void
 ContactManager::onKeyVerified(Ptr<Data> data, const Name& identity)
 {
   IdentityCertificate identityCertificate(*data);
-  Name keyName = identityCertificate.getPublicKeyName();
-  Profile profile(keyName.getPrefix(keyName.size()-1), 
-                  keyName.get(-2).toUri(),
-                  keyName.getPrefix(keyName.size()-2).toUri());
-  
-  Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(keyName.getPrefix(keyName.size()-1),
-                                                                  profile));
+
+  Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(Profile(identityCertificate)));
   
   Ptr<IdentityManager> identityManager = m_keychain->getIdentityManager();
   Name certificateName = identityManager->getDefaultCertificateName ();
@@ -313,7 +308,7 @@ ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
   if(0 == certificateName.size())
     return NULL;
 
-  Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(identity, profile));
+  Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(profile));
   identityManager->signByCertificate(*profileData, certificateName);
 
   Ptr<security::IdentityCertificate> signingCert = identityManager->getCertificate(certificateName);
