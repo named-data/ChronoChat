@@ -80,7 +80,6 @@ DnsStorage::updateDnsData(const ndn::Blob& data, const std::string& identity, co
 
   if(sqlite3_step (stmt) != SQLITE_ROW)
     {
-      _LOG_DEBUG("INSERT");
       sqlite3_finalize(stmt);
       sqlite3_prepare_v2 (m_db, "INSERT INTO DnsData (dns_identity, dns_name, dns_type, dns_value, data_name) VALUES (?, ?, ?, ?, ?)", -1, &stmt, 0);
       sqlite3_bind_text(stmt, 1, identity.c_str(), identity.size(), SQLITE_TRANSIENT);
@@ -93,7 +92,6 @@ DnsStorage::updateDnsData(const ndn::Blob& data, const std::string& identity, co
     }
   else
     {
-      _LOG_DEBUG("UPDATE");
       sqlite3_finalize(stmt);
       sqlite3_prepare_v2 (m_db, "UPDATE DnsData SET dns_value=?, data_name=? WHERE dns_identity=? and dns_name=?, dns_type=?", -1, &stmt, 0);
       sqlite3_bind_text(stmt, 1, data.buf(), data.size(), SQLITE_TRANSIENT);
@@ -148,10 +146,13 @@ DnsStorage::getData(const Name& dataName)
   
   if(sqlite3_step (stmt) == SQLITE_ROW)
     {
-      Blob dnsDataBlob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      boost::iostreams::stream
-        <boost::iostreams::array_source> is (dnsDataBlob.buf(), dnsDataBlob.size());
-      return Data::decodeFromWire(is);
+      Ptr<Blob> dnsDataBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
+      // boost::iostreams::stream
+      //   <boost::iostreams::array_source> is (dnsDataBlob.buf(), dnsDataBlob.size());
+      sqlite3_finalize(stmt);
+      return Data::decodeFromWire(dnsDataBlob);
     }
+  sqlite3_finalize(stmt);
+
   return NULL;
 }

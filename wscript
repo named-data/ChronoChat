@@ -2,9 +2,11 @@
 VERSION='0.1'
 APPNAME='QT-Test'
 
-from waflib import Configure
+from waflib import Configure, Utils
 
 def options(opt):
+    opt.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
+    
     opt.load('compiler_c compiler_cxx boost protoc qt4')
 
     opt.load('tinyxml', tooldir=['waf-tools'])
@@ -13,8 +15,19 @@ def options(opt):
 def configure(conf):
     conf.load("compiler_c compiler_cxx boost protoc qt4 tinyxml cryptopp")
 
-    conf.add_supported_cxxflags (cxxflags = ['-O0', '-g'])
-
+    if conf.options.debug:
+        conf.define ('_DEBUG', 1)
+        conf.add_supported_cxxflags (cxxflags = ['-O0',
+                                                 '-Wall',
+                                                 '-Wno-unused-variable',
+                                                 '-g3',
+                                                 '-Wno-unused-private-field', # only clang supports
+                                                 '-fcolor-diagnostics',       # only clang supports
+                                                 '-Qunused-arguments',        # only clang supports
+                                                 ])
+    else:
+        conf.add_supported_cxxflags (cxxflags = ['-O3', '-g', '-Wno-tautological-compare', '-Wno-unused-function'])
+        
     conf.check_tinyxml(path=conf.options.tinyxml_dir)
     conf.check_cfg(package='libndn.cxx', args=['--cflags', '--libs'], uselib_store='NDNCXX', mandatory=True)
     conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
@@ -46,6 +59,44 @@ def build (bld):
         use = "SQLITE3 NDNCXX BOOST BOOST_FILESYSTEM LOG4CXX",
         )
 
+    if Utils.unversioned_sys_platform () == "darwin":
+        app_plist = '''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
+<plist version="0.9">
+<dict>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleIconFile</key>
+    <string>demo.icns</string>
+    <key>CFBundleGetInfoString</key>
+    <string>Created by Waf</string>
+    <key>CFBundleIdentifier</key>
+    <string>edu.ucla.cs.irl.Contacts</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>NOTE</key>
+    <string>THIS IS A GENERATED FILE, DO NOT MODIFY</string>
+    <key>CFBundleExecutable</key>
+    <string>%s</string>
+    <key>LSUIElement</key>
+    <string>1</string>
+    <key>SUPublicDSAKeyFile</key>
+    <string>dsa_pub.pem</string>
+    <key>CFBundleIconFile</key>
+    <string>demo.icns</string>
+</dict>
+</plist>'''
+
+        qt.mac_app = "Contacts.app"
+        qt.mac_plist = app_plist % "Contacts"
+        qt.mac_resources = 'demo.icns'
+
+
+from waflib import TaskGen
+@TaskGen.extension('.mm')
+def m_hook(self, node):
+    """Alias .mm files to be compiled the same as .cc files, gcc/clang will do the right thing."""
+    return self.create_compiled_task('cxx', node)
 
 @Configure.conf
 def add_supported_cxxflags(self, cxxflags):

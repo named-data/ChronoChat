@@ -43,7 +43,7 @@ InviteListDialog::setInviteLabel(string label)
 { 
   string msg("invite to chatroom:\n");
   msg += label;
-  ui->inviteLabel->setText(QString::fromUtf8(msg.c_str())); 
+  ui->inviteLabel->setText(QString::fromStdString(msg)); 
   refreshContactList();
 }
 
@@ -54,7 +54,7 @@ InviteListDialog::refreshContactList()
   QStringList contactNameList;
   for(int i = 0; i < m_contactList.size(); i++)
     {
-      contactNameList << QString::fromUtf8(m_contactList[i]->getAlias().c_str());
+      contactNameList << QString::fromStdString(m_contactList[i]->getAlias());
     }
 
   m_contactListModel->setStringList(contactNameList);
@@ -65,7 +65,7 @@ InviteListDialog::inviteWrapper()
 {
   QModelIndexList selected = ui->contactListView->selectionModel()->selectedIndexes();
   QString text = m_contactListModel->data(selected.first(), Qt::DisplayRole).toString();
-  string alias = text.toUtf8().constData();
+  string alias = text.toStdString();
 
   int i = 0;
   for(; i < m_contactList.size(); i++)
@@ -74,7 +74,7 @@ InviteListDialog::inviteWrapper()
         break;
     }
 
-  QString invitedContactNamespace = QString::fromUtf8(m_contactList[i]->getNameSpace().toUri().c_str());
+  QString invitedContactNamespace = QString::fromStdString(m_contactList[i]->getNameSpace().toUri());
 
   bool isIntroducer = true;
 

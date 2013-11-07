@@ -40,10 +40,10 @@ InvitationDialog::setInvitation(const string& alias,
   m_inviterAlias = alias;
   string msg = alias;
   msg.append(" invites you to join the chat room: ");
-  ui->msgLabel->setText(QString::fromUtf8(msg.c_str()));
+  ui->msgLabel->setText(QString::fromStdString(msg));
 
   m_invitation = invitation;
-  ui->chatroomLine->setText(QString::fromUtf8(invitation->getChatroom().get(0).toUri().c_str()));
+  ui->chatroomLine->setText(QString::fromStdString(invitation->getChatroom().get(0).toUri()));
 
   m_identityCertificate = identityCertificate;
 }

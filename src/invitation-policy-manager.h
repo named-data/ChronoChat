@@ -24,8 +24,9 @@ class InvitationPolicyManager : public ndn::security::PolicyManager
 {
 public:
   InvitationPolicyManager(const std::string& chatroomName,
-                        int stepLimit = 10,
-                        ndn::Ptr<ndn::security::CertificateCache> certificateCache = NULL);
+                          const ndn::Name& signingIdentity,
+                          int stepLimit = 10,
+                          ndn::Ptr<ndn::security::CertificateCache> certificateCache = NULL);
   
   virtual
   ~InvitationPolicyManager();
@@ -73,6 +74,7 @@ private:
 
 private:
   std::string m_chatroomName;
+  ndn::Name m_signingIdentity;
 
   int m_stepLimit;
 

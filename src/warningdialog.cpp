@@ -30,7 +30,7 @@ WarningDialog::~WarningDialog()
 
 void
 WarningDialog::setMsg(const string& msg)
-{ ui->message->setText(QApplication::translate("WarningDialog",msg.c_str(), 0, QApplication::UnicodeUTF8)); }
+{ ui->message->setText(QString::fromStdString(msg)); }
 
 void
 WarningDialog::onOkClicked()

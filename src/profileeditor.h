@@ -31,6 +31,10 @@ public:
                          QWidget *parent = 0);
   
   ~ProfileEditor();
+
+  inline void
+  setCurrentIdentity(const ndn::Name& name)
+  { m_currentIdentity = name; }
   
 private slots:
   void
@@ -50,7 +54,6 @@ private:
   Ui::ProfileEditor *ui;
   QSqlTableModel* m_tableModel;
   ndn::Ptr<ContactManager> m_contactManager;
-  ndn::Name m_defaultIdentity;
   ndn::Name m_currentIdentity;
 };
 

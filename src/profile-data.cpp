@@ -57,7 +57,6 @@ ProfileData::ProfileData(const ProfileData& profileData)
 ProfileData::ProfileData(const Data& data)
   : Data()
 {
-  // _LOG_DEBUG("ProfileData constructor");
   const Name& dataName = data.getName();
   name::Component appFlag(string("PROFILE"));  
 
@@ -91,7 +90,7 @@ ProfileData::ProfileData(const Data& data)
   setSignature(newSig);
   setContent(data.getContent());
   setSignedBlob(newSignedBlob);
-  // _LOG_DEBUG("Decode Profile");
+
   m_profile = *Profile::fromDerBlob(data.content());
-  // _LOG_DEBUG("Profile Decoded");
+
 }

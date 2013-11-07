@@ -130,6 +130,7 @@ AddContactPanel::onAddClicked()
   }catch(exception& e){
     m_warningDialog->setMsg(e.what());
     m_warningDialog->show();
+    _LOG_ERROR("Exception: " << e.what());
     return;
   }
   emit newContactAdded();
@@ -139,7 +140,14 @@ AddContactPanel::onAddClicked()
 void 
 AddContactPanel::selfEndorseCertificateFetched(const EndorseCertificate& endorseCertificate)
 {
-  m_currentEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(endorseCertificate));
+  try{
+    m_currentEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(endorseCertificate));
+  }catch(exception& e){
+    m_warningDialog->setMsg(e.what());
+    m_warningDialog->show();
+    _LOG_ERROR("Exception: " << e.what());
+    return;
+  }
   m_currentEndorseCertificateReady = true;
 
   if(m_currentCollectEndorseReady == true)
@@ -156,7 +164,14 @@ AddContactPanel::selfEndorseCertificateFetchFailed(const Name& identity)
 void
 AddContactPanel::onContactKeyFetched(const EndorseCertificate& endorseCertificate)
 {
-  m_currentEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(endorseCertificate));
+  try{
+    m_currentEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(endorseCertificate));
+  }catch(exception& e){
+    m_warningDialog->setMsg(e.what());
+    m_warningDialog->show();
+    _LOG_ERROR("Exception: " << e.what());
+    return;
+  }
 
   m_currentCollectEndorseReady = NULL;
 
@@ -193,7 +208,7 @@ AddContactPanel::onCollectEndorseFetchFailed(const Name& identity)
 void
 AddContactPanel::displayContactInfo()
 {
-  _LOG_TRACE("displayContactInfo");
+  // _LOG_TRACE("displayContactInfo");
   const Profile& profile = m_currentEndorseCertificate->getProfileData()->getProfile();
   const Blob& profileBlob = m_currentEndorseCertificate->getProfileData()->content();
 
@@ -201,7 +216,6 @@ AddContactPanel::displayContactInfo()
 
   if(m_currentCollectEndorse != NULL)
     {
-      _LOG_DEBUG("CollectEndorse fetched");
       boost::iostreams::stream
         <boost::iostreams::array_source> is (m_currentCollectEndorse->content().buf(), m_currentCollectEndorse->content().size());
   
@@ -212,10 +226,16 @@ AddContactPanel::displayContactInfo()
       for(int i = 0; i < children.size(); i++)
         {
           Ptr<Blob> dataBlob = boost::any_cast<Ptr<Blob> >(children[i]->accept(simpleVisitor));
-          Ptr<Data> data = Data::decodeFromWire(dataBlob);
-          Ptr<EndorseCertificate> endorseCert = Ptr<EndorseCertificate>(new EndorseCertificate(*data));
-          _LOG_DEBUG("endorseCert name: " << endorseCert->getName().toUri());
           
+          Ptr<Data> data = NULL;
+          Ptr<EndorseCertificate> endorseCert = NULL;
+          try{
+            data = Data::decodeFromWire(dataBlob);
+            endorseCert = Ptr<EndorseCertificate>(new EndorseCertificate(*data));
+          }catch(exception& e){
+            continue;
+          }
+
           Name signerKeyName = endorseCert->getSigner();
           Name signerName = signerKeyName.getPrefix(signerKeyName.size()-1);
           
@@ -239,12 +259,6 @@ AddContactPanel::displayContactInfo()
             endorseCount[*it] += 1;
         }
     }
-
-  // map<string, int>::iterator tmp_it = endorseCount.begin();
-  // for(; tmp_it != endorseCount.end(); tmp_it++)
-  //   {
-  //     _LOG_DEBUG("Entry: " << tmp_it->first << " " << tmp_it->second);
-  //   }
   
   ui->infoView->setColumnCount(3);
   Profile::const_iterator it = profile.begin();

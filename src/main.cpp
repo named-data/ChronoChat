@@ -11,7 +11,6 @@
 #include <QApplication>
 #include <QSystemTrayIcon>
 
-#include "chronochat.h"
 #include "contactpanel.h"
 #include "contact-storage.h"
 #include "dns-storage.h"
@@ -54,13 +53,15 @@ int main(int argc, char *argv[])
   // app.setWindowIcon(QIcon(":/demo.icns"));
 
   Ptr<ContactStorage> contactStorage = NULL;
+  Ptr<DnsStorage> dnsStorage = NULL;
   try{
     contactStorage = Ptr<ContactStorage>::Create();
+    dnsStorage = Ptr<DnsStorage>::Create();
   }catch(std::exception& e){
     std::cerr << e.what() << std::endl;
     exit(1);
   }
-  Ptr<DnsStorage> dnsStorage = Ptr<DnsStorage>::Create();
+
   Ptr<ContactManager> contactManager = Ptr<ContactManager>(new ContactManager(contactStorage, dnsStorage));
   
   ContactPanel contactPanel(contactManager);

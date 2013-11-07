@@ -57,8 +57,6 @@ class EndorseCertificate : public ndn::security::Certificate
 public:
   EndorseCertificate() {}
 
-  // EndorseCertificate(const ndn::security::IdentityCertificate& kskCertificate);
-
   EndorseCertificate(const ndn::security::IdentityCertificate& kskCertificate,
                      ndn::Ptr<ProfileData> profileData,
                      const std::vector<std::string>& endorseList = std::vector<std::string>());

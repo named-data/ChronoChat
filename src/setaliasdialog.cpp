@@ -38,7 +38,7 @@ void
 SetAliasDialog::onOkClicked()
 {
   QString text = ui->aliasInput->text();
-  string alias = text.toUtf8().constData();
+  string alias = text.toStdString();
   
   m_contactManager->getContactStorage()->updateAlias(Name(m_target), alias);
 
@@ -57,7 +57,7 @@ SetAliasDialog::setTargetIdentity(const string& name)
   m_target = name; 
   string msg("Set alias for ");
   msg.append(name).append(":");
-  ui->introLabel->setText(QString::fromUtf8(msg.c_str()));
+  ui->introLabel->setText(QString::fromStdString(msg));
   ui->aliasInput->clear();
 }
 

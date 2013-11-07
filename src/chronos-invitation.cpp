@@ -42,8 +42,6 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
     throw LnException("Wrong ChronosInvitation Name, No chatroom tag");
   m_inviteeNameSpace = interestName.getSubName(inviteeBegin, i - inviteeBegin);
 
-  _LOG_DEBUG(m_inviteeNameSpace.toUri());
-
   string inviterPrefixStr("inviter-prefix");
   int chatroomBegin = (++i);
   for(; i < size;  i++)
@@ -53,8 +51,6 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
   if(i > size)
     throw LnException("Wrong ChronosInvitation Name, No inviter-prefix tag");
   m_chatroom = interestName.getSubName(chatroomBegin, i - chatroomBegin);
-
-  _LOG_DEBUG(m_chatroom.toUri());
 
   string inviterStr("inviter");
   int inviterPrefixBegin = (++i);
@@ -66,12 +62,8 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
     throw LnException("Wrong ChronosInvitation Name, No inviter tag");
   m_inviterPrefix = interestName.getSubName(inviterPrefixBegin, i - inviterPrefixBegin);
 
-  _LOG_DEBUG(m_inviterPrefix.toUri());
-
   int inviterCertBegin = (++i);
   m_inviterCertificateName = interestName.getSubName(inviterCertBegin, size - 1 - inviterCertBegin);
-
-  _LOG_DEBUG(m_inviterCertificateName.toUri());
   
   string signature = interestName.get(-1).toBlob();
   m_signatureBits.insert(m_signatureBits.end(), signature.begin(), signature.end());
