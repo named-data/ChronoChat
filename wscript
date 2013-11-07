@@ -1,6 +1,6 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
-VERSION='0.1'
-APPNAME='QT-Test'
+VERSION='1.0'
+APPNAME='ChronoChat'
 
 from waflib import Configure, Utils
 
@@ -42,7 +42,7 @@ def configure(conf):
 		
 def build (bld):
     qt = bld (
-        target = "Contacts",
+        target = "ChronoChat",
         features = "qt4 cxx cxxprogram",
         defines = "WAF",
         source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', 'logging.cc', 'src/*.proto']),
@@ -71,7 +71,7 @@ def build (bld):
     <key>CFBundleGetInfoString</key>
     <string>Created by Waf</string>
     <key>CFBundleIdentifier</key>
-    <string>edu.ucla.cs.irl.Contacts</string>
+    <string>edu.ucla.cs.irl.ChronoChat</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>NOTE</key>
@@ -87,8 +87,8 @@ def build (bld):
 </dict>
 </plist>'''
 
-        qt.mac_app = "Contacts.app"
-        qt.mac_plist = app_plist % "Contacts"
+        qt.mac_app = "ChronoChat.app"
+        qt.mac_plist = app_plist % "ChronoChat"
         qt.mac_resources = 'demo.icns'
 
 
