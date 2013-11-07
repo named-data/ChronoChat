@@ -408,12 +408,9 @@ ContactPanel::updateSelection(const QItemSelection &selected,
     }
   
   m_currentSelectedContact = m_contactList[i];
-  QString name = QString::fromStdString(m_currentSelectedContact->getName());
-  QString institution = QString::fromStdString(m_currentSelectedContact->getInstitution());
-  QString nameSpace = QString::fromStdString(m_currentSelectedContact->getNameSpace().toUri());
-  ui->NameData->setText(name);
-  ui->NameSpaceData->setText(nameSpace);
-  ui->InstitutionData->setText(institution);
+  ui->NameData->setText(QString::fromStdString(m_currentSelectedContact->getName()));
+  ui->NameSpaceData->setText(QString::fromStdString(m_currentSelectedContact->getNameSpace().toUri()));
+  ui->InstitutionData->setText(QString::fromStdString(m_currentSelectedContact->getInstitution()));
 
   if(m_currentSelectedContact->isIntroducer())
     {
@@ -512,7 +509,7 @@ ContactPanel::refreshContactList()
   m_contactList = m_contactManager->getContactItemList();
   QStringList contactNameList;
   for(int i = 0; i < m_contactList.size(); i++)
-    contactNameList << QString::fromUtf8(m_contactList[i]->getAlias().c_str());
+    contactNameList << QString::fromStdString(m_contactList[i]->getAlias());
 
   m_contactListModel->setStringList(contactNameList);
 }
@@ -524,6 +521,7 @@ ContactPanel::showContextMenu(const QPoint& pos)
   menu.addAction(m_menuInvite);
   connect(m_menuInvite, SIGNAL(triggered()),
           this, SLOT(openStartChatDialog()));
+  menu.addSeparator();
   menu.addAction(m_menuAlias);
   connect(m_menuAlias, SIGNAL(triggered()),
           this, SLOT(openSetAliasDialog()));
@@ -548,10 +546,6 @@ ContactPanel::openSettingDialog()
 void
 ContactPanel::openStartChatDialog()
 {
-  // TimeInterval ti = time::NowUnixTimestamp();
-  // ostringstream oss;
-  // oss << ti.total_seconds();
-
   Name chatroom("/ndn/broadcast/chronos");
   chatroom.append(string("chatroom-") + getRandomString());
 
@@ -563,10 +557,6 @@ ContactPanel::openStartChatDialog()
 void
 ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, bool isIntroducer)
 {
-  _LOG_DEBUG("room: " << chatroom.toUtf8().constData());
-  _LOG_DEBUG("invitee: " << invitee.toUtf8().constData());
-  _LOG_DEBUG("introducer: " << std::boolalpha << isIntroducer);
-
   Name chatroomName(chatroom.toUtf8().constData());
   ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName);
   m_chatDialogs.insert(pair <Name, ChatDialog*> (chatroomName, chatDialog));
@@ -588,23 +578,20 @@ void
 ContactPanel::startChatroom2(const ChronosInvitation& invitation, 
                              const security::IdentityCertificate& identityCertificate)
 {
-  _LOG_DEBUG("room: " << invitation.getChatroom().toUri());
-  _LOG_DEBUG("inviter: " << invitation.getInviterNameSpace().toUri());
-
   Name chatroomName("/ndn/broadcast/chronos");
   chatroomName.append(invitation.getChatroom());
   ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName, true);
+
   connect(chatDialog, SIGNAL(closeChatDialog(const ndn::Name&)),
           this, SLOT(removeChatDialog(const ndn::Name&)));
 
   chatDialog->addChatDataRule(invitation.getInviterPrefix(), identityCertificate, true);
+  chatDialog->publishIntroCert(identityCertificate, true);
 
   Ptr<ContactItem> inviterItem = m_contactManager->getContact(invitation.getInviterNameSpace());
   chatDialog->addTrustAnchor(inviterItem->getSelfEndorseCertificate());
   
   m_chatDialogs.insert(pair <Name, ChatDialog*> (chatroomName, chatDialog));
-
-
 
   chatDialog->show();
 }
@@ -614,10 +601,7 @@ ContactPanel::acceptInvitation(const ChronosInvitation& invitation,
                                const security::IdentityCertificate& identityCertificate)
 {
   string prefix = m_localPrefix.toUri();
-
   m_handler->publishDataByIdentity (invitation.getInterestName(), prefix);
-  //TODO:: open chat dialog
-  _LOG_DEBUG("TO open chat dialog");
   startChatroom2(invitation, identityCertificate);
 }
 
@@ -639,7 +623,6 @@ ContactPanel::isIntroducerChanged(int state)
       
       string filter("contact_namespace = '");
       filter.append(m_currentSelectedContact->getNameSpace().toUri()).append("'");
-      _LOG_DEBUG("filter: " << filter);
 
       m_trustScopeModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
       m_trustScopeModel->setTable("TrustScope");
@@ -648,8 +631,6 @@ ContactPanel::isIntroducerChanged(int state)
       m_trustScopeModel->setHeaderData(0, Qt::Horizontal, QObject::tr("ID"));
       m_trustScopeModel->setHeaderData(1, Qt::Horizontal, QObject::tr("Contact"));
       m_trustScopeModel->setHeaderData(2, Qt::Horizontal, QObject::tr("TrustScope"));
-      _LOG_DEBUG("row count: " << m_trustScopeModel->rowCount());
-
 
       ui->trustScopeList->setModel(m_trustScopeModel);
       ui->trustScopeList->setColumnHidden(0, true);
@@ -713,9 +694,7 @@ ContactPanel::deleteScopeClicked()
 
 void
 ContactPanel::saveScopeClicked()
-{
-  m_trustScopeModel->submitAll();
-}
+{ m_trustScopeModel->submitAll(); }
 
 void
 ContactPanel::endorseButtonClicked()
@@ -728,15 +707,15 @@ void
 ContactPanel::removeChatDialog(const ndn::Name& chatroomName)
 {
   map<Name, ChatDialog*>::iterator it = m_chatDialogs.find(chatroomName);
-  _LOG_DEBUG("about to leave 2!");
-  ChatDialog* deletedChat;
+
+  ChatDialog* deletedChat = NULL;
   if(it != m_chatDialogs.end())
     {
-      _LOG_DEBUG("about to leave 3!");
       deletedChat = it->second;
       m_chatDialogs.erase(it);      
     }
-  delete deletedChat;
+  if (deletedChat != NULL)
+    delete deletedChat;
 }
 
 #if WAF

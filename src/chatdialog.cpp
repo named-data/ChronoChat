@@ -78,6 +78,9 @@ ChatDialog::ChatDialog(ndn::Ptr<ContactManager> contactManager,
   m_rosterModel = new QStringListModel(this);
   ui->listView->setModel(m_rosterModel);
 
+  createActions();
+  createTrayIcon();
+
   m_timer = new QTimer(this);
 
   setWrapper(trial);
@@ -98,114 +101,33 @@ ChatDialog::ChatDialog(ndn::Ptr<ContactManager> contactManager,
           this, SLOT(replot()));
   connect(m_scene, SIGNAL(replot()), 
           this, SLOT(replot()));
-  // TODO: TrayIcon
-  // connect(trayIcon, SIGNAL(messageClicked()), 
-  //         this, SLOT(showNormal()));
-  // connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), 
-  //         this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
+  connect(trayIcon, SIGNAL(messageClicked()), 
+          this, SLOT(showNormal()));
+  connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), 
+          this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
   connect(m_scene, SIGNAL(rosterChanged(QStringList)), 
           this, SLOT(updateRosterList(QStringList)));
 
-  // m_identityManager = ndn::Ptr<ndn::security::IdentityManager>::Create();
-  // // ndn::Ptr<ndn::security::EncryptionManager> encryptionManager = ndn::Ptr<ndn::security::EncryptionManager>(new ndn::security::BasicEncryptionManager(privateStorage, "/tmp/encryption.db"));
-
-  // ndn::Name certificateName = m_identityManager->getDefaultCertificateNameByIdentity(m_defaultIdentity);
-  // m_syncPolicyManager = ndn::Ptr<SyncPolicyManager>(new SyncPolicyManager(m_defaultIdentity, certificateName, m_chatroomPrefix));
 
   initializeSync();
 }
 
-// ChatDialog::ChatDialog(const ndn::Name& chatroomPrefix,
-// 		       const ndn::Name& localPrefix,
-//                        const ndn::Name& defaultIdentity,
-//                        const ndn::security::IdentityCertificate& identityCertificate,
-// 		       QWidget *parent) 
-//     : QDialog(parent)
-//     , ui(new Ui::ChatDialog)
-//     , m_chatroomPrefix(chatroomPrefix)
-//     , m_localPrefix(localPrefix)
-//     , m_defaultIdentity(defaultIdentity)
-//     , m_invitationPolicyManager(ndn::Ptr<InvitationPolicyManager>(new InvitationPolicyManager(m_chatroomPrefix.get(-1).toUri())))
-
-//     , m_sock(NULL)
-//     , m_lastMsgTime(0)
-//     // , m_historyInitialized(false)
-//     , m_joined(false)
-// {
-//   qRegisterMetaType<std::vector<Sync::MissingDataInfo> >("std::vector<Sync::MissingDataInfo>");
-//   qRegisterMetaType<size_t>("size_t");
-
-//   ui->setupUi(this);
-
-//   m_localChatPrefix = m_localPrefix;
-//   m_localChatPrefix.append("FH").append(m_defaultIdentity);
-//   m_localChatPrefix.append("chronos").append(m_chatroomPrefix.get(-1));
-
-//   m_session = time(NULL);
-//   m_scene = new DigestTreeScene(this);
-
-//   initializeSetting();
-//   updateLabels();
-
-//   ui->treeViewer->setScene(m_scene);
-//   ui->treeViewer->hide();
-//   m_scene->plot("Empty");
-//   QRectF rect = m_scene->itemsBoundingRect();
-//   m_scene->setSceneRect(rect);
-
-//   m_rosterModel = new QStringListModel(this);
-//   ui->listView->setModel(m_rosterModel);
-
-//   m_timer = new QTimer(this);
-
-//   setWrapper();
-
-//   connect(ui->lineEdit, SIGNAL(returnPressed()), 
-//           this, SLOT(returnPressed()));
-//   connect(ui->treeButton, SIGNAL(pressed()), 
-//           this, SLOT(treeButtonPressed()));
-//   connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool, bool)), 
-//           this, SLOT(processData(QString, const char *, size_t, bool, bool)));
-//   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), 
-//           this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
-//   connect(m_timer, SIGNAL(timeout()), 
-//           this, SLOT(replot()));
-//   connect(m_scene, SIGNAL(replot()), 
-//           this, SLOT(replot()));
-//   // TODO: TrayIcon
-//   // connect(trayIcon, SIGNAL(messageClicked()), 
-//   //         this, SLOT(showNormal()));
-//   // connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), 
-//   //         this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
-//   connect(m_scene, SIGNAL(rosterChanged(QStringList)), 
-//           this, SLOT(updateRosterList(QStringList)));
-
-//   // m_identityManager = ndn::Ptr<ndn::security::IdentityManager>::Create();
-//   // // ndn::Ptr<ndn::security::EncryptionManager> encryptionManager = ndn::Ptr<ndn::security::EncryptionManager>(new ndn::security::BasicEncryptionManager(privateStorage, "/tmp/encryption.db"));
-
-//   // ndn::Name certificateName = m_identityManager->getDefaultCertificateNameByIdentity(m_defaultIdentity);
-//   // m_syncPolicyManager = ndn::Ptr<SyncPolicyManager>(new SyncPolicyManager(m_defaultIdentity, certificateName, m_chatroomPrefix));
-
-//   initializeSync();
-// }
 
 ChatDialog::~ChatDialog()
 {
-  _LOG_DEBUG("about to leave 4!");
   if(m_sock != NULL)
     {
       sendLeave();
       delete m_sock;
       m_sock = NULL;
     }
-  // m_handler->shutdown();
+  m_handler->shutdown();
 }
 
 void
 ChatDialog::setWrapper(bool trial)
 {
   m_identityManager = ndn::Ptr<ndn::security::IdentityManager>::Create();
-  // ndn::Ptr<ndn::security::EncryptionManager> encryptionManager = ndn::Ptr<ndn::security::EncryptionManager>(new ndn::security::BasicEncryptionManager(privateStorage, "/tmp/encryption.db"));
 
   ndn::Name certificateName = m_identityManager->getDefaultCertificateNameByIdentity(m_defaultIdentity);
   m_syncPolicyManager = ndn::Ptr<SyncPolicyManager>(new SyncPolicyManager(m_defaultIdentity, certificateName, m_chatroomPrefix));
@@ -235,7 +157,6 @@ ChatDialog::setWrapper(bool trial)
 void
 ChatDialog::initializeSetting()
 {
-  // TODO: nick name may be changed.
   m_user.setNick(QString::fromStdString(m_nick));
   m_user.setChatroom(QString::fromStdString(m_chatroomPrefix.get(-1).toUri()));
   m_user.setOriginPrefix(QString::fromStdString(m_localPrefix.toUri()));
@@ -288,7 +209,6 @@ ChatDialog::sendInvitation(ndn::Ptr<ContactItem> contact, bool isIntroducer)
   interestName.append(sigBits.buf(), sigBits.size());
   interestName.appendVersion();
 
-
   ndn::Ptr<ndn::Interest> interest = ndn::Ptr<ndn::Interest>(new ndn::Interest(interestName));
   ndn::Ptr<ndn::Closure> closure = ndn::Ptr<ndn::Closure>(new ndn::Closure(boost::bind(&ChatDialog::onInviteReplyVerified,
                                                                                        this,
@@ -319,14 +239,14 @@ ChatDialog::addChatDataRule(const ndn::Name& prefix,
 { m_syncPolicyManager->addChatDataRule(prefix, identityCertificate, isIntroducer); }
 
 void
-ChatDialog::publishIntroCert(ndn::Ptr<ndn::security::IdentityCertificate> dskCertificate, bool isIntroducer)
+ChatDialog::publishIntroCert(const ndn::security::IdentityCertificate& dskCertificate, bool isIntroducer)
 {
   SyncIntroCertificate syncIntroCertificate(m_chatroomPrefix,
-                                            dskCertificate->getPublicKeyName(),
+                                            dskCertificate.getPublicKeyName(),
                                             m_identityManager->getDefaultKeyNameForIdentity(m_defaultIdentity),
-                                            dskCertificate->getNotBefore(),
-                                            dskCertificate->getNotAfter(),
-                                            dskCertificate->getPublicKeyInfo(),
+                                            dskCertificate.getNotBefore(),
+                                            dskCertificate.getNotAfter(),
+                                            dskCertificate.getPublicKeyInfo(),
                                             (isIntroducer ? SyncIntroCertificate::INTRODUCER : SyncIntroCertificate::PRODUCER));
   ndn::Name certName = m_identityManager->getDefaultCertificateNameByIdentity(m_defaultIdentity);
   _LOG_DEBUG("publishIntroCert: " << syncIntroCertificate.getName());
@@ -349,7 +269,7 @@ ChatDialog::invitationAccepted(const ndn::Name& identity, ndn::Ptr<ndn::Data> da
   const ndn::Name & keyLocatorName = sha256sig->getKeyLocator().getKeyName();
   ndn::Ptr<ndn::security::IdentityCertificate> dskCertificate = m_invitationPolicyManager->getValidatedDskCertificate(keyLocatorName);
   m_syncPolicyManager->addChatDataRule(inviteePrefix, *dskCertificate, isIntroducer);
-  publishIntroCert(dskCertificate, isIntroducer);
+  publishIntroCert(*dskCertificate, isIntroducer);
 }
 
 void 
@@ -775,6 +695,83 @@ ChatDialog::updateRosterList(QStringList staleUserList)
 }
 
 void
+ChatDialog::iconActivated(QSystemTrayIcon::ActivationReason reason)
+{
+  switch (reason)
+  {
+  case QSystemTrayIcon::Trigger:
+  case QSystemTrayIcon::DoubleClick:
+    break;
+  case QSystemTrayIcon::MiddleClick:
+    // showMessage();
+    break;
+  default:;
+  }
+}
+
+
+void
+ChatDialog::messageClicked()
+{
+  this->showMaximized();
+}
+
+
+void
+ChatDialog::createActions()
+{
+  // minimizeAction = new QAction(tr("Mi&nimize"), this);
+  // connect(minimizeAction, SIGNAL(triggered()), this, SLOT(hide()));
+
+  // maximizeAction = new QAction(tr("Ma&ximize"), this);
+  // connect(maximizeAction, SIGNAL(triggered()), this, SLOT(showMaximized()));
+
+  // restoreAction = new QAction(tr("&Restore"), this);
+  // connect(restoreAction, SIGNAL(triggered()), this, SLOT(showNormal()));
+
+  // settingsAction = new QAction(tr("Settings"), this);
+  // connect (settingsAction, SIGNAL(triggered()), this, SLOT(buttonPressed()));
+
+  // settingsAction->setMenuRole (QAction::PreferencesRole);
+
+  // updateLocalPrefixAction = new QAction(tr("Update local prefix"), this);
+  // connect (updateLocalPrefixAction, SIGNAL(triggered()), this, SLOT(updateLocalPrefix()));
+
+  // quitAction = new QAction(tr("Quit"), this);
+  // connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
+}
+
+void
+ChatDialog::createTrayIcon()
+{
+  // trayIconMenu = new QMenu(this);
+  // trayIconMenu->addAction(minimizeAction);
+  // trayIconMenu->addAction(maximizeAction);
+  // trayIconMenu->addAction(restoreAction);
+  // trayIconMenu->addSeparator();
+  // trayIconMenu->addAction(settingsAction);
+  // trayIconMenu->addSeparator();
+  // trayIconMenu->addAction(updateLocalPrefixAction);
+  // trayIconMenu->addSeparator();
+  // trayIconMenu->addAction(quitAction);
+
+  trayIcon = new QSystemTrayIcon(this);
+  // trayIcon->setContextMenu(trayIconMenu);
+
+  QIcon icon(":/images/icon_small.png");
+  trayIcon->setIcon(icon);
+  setWindowIcon(icon);
+  trayIcon->setToolTip("ChronoChat System Tray Icon");
+  trayIcon->setVisible(true);
+
+  // // QApplication::getMenu ()->addMenu (trayIconMenu);
+  // QMenuBar *bar = new QMenuBar ();
+  // bar->setMenu (trayIconMenu);
+  // setMenuBar (bar);
+}
+
+
+void
 ChatDialog::resizeEvent(QResizeEvent *e)
 {
   fitView();
@@ -813,6 +810,22 @@ ChatDialog::formControlMessage(SyncDemo::ChatMessage &msg, SyncDemo::ChatMessage
   time_t seconds = time(NULL);
   msg.set_timestamp(seconds);
   msg.set_type(type);
+}
+
+void
+ChatDialog::changeEvent(QEvent *e)
+{
+  switch(e->type())
+  {
+  case QEvent::ActivationChange:
+    if (isActiveWindow())
+    {
+      trayIcon->setIcon(QIcon(":/images/icon_small.png"));
+    }
+    break;
+  default:
+    break;
+  }
 }
 
 void
@@ -952,9 +965,8 @@ ChatDialog::showMessage(QString from, QString data)
 {
   if (!isActiveWindow())
   {
-    //TODO: Notification to be done
-    // trayIcon->showMessage(QString("Chatroom %1 has a new message").arg(m_user.getChatroom()), QString("<%1>: %2").arg(from).arg(data), QSystemTrayIcon::Information, 20000);
-    // trayIcon->setIcon(QIcon(":/images/note.png"));
+    trayIcon->showMessage(QString("Chatroom %1 has a new message").arg(m_user.getChatroom()), QString("<%1>: %2").arg(from).arg(data), QSystemTrayIcon::Information, 20000);
+    trayIcon->setIcon(QIcon(":/images/note.png"));
   }
 }
 
