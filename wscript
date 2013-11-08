@@ -47,7 +47,7 @@ def build (bld):
         target = "ChronoChat",
         features = "qt4 cxx cxxprogram",
         defines = "WAF",
-        source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', 'logging.cc', 'src/*.proto']),
+        source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', '*.qrc', 'logging.cc', 'src/*.proto']),
         includes = "src .",
         use = "QTCORE QTGUI QTSQL SQLITE3 NDNCXX BOOST BOOST_FILESYSTEM LOG4CXX CRYPTOPP SYNC",
         )
