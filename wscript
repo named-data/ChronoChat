@@ -1,12 +1,12 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
-VERSION='1.0'
+VERSION='0.4'
 APPNAME='ChronoChat'
 
 from waflib import Configure, Utils
 
 def options(opt):
     opt.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
-    opt.add_option('--no-log4cxx',action='store_false',default=True,dest='log4cxx',help='''Disable log4cxx''')
+    opt.add_option('--log4cxx',action='store_true',default=False,dest='log4cxx',help='''Enable log4cxx''')
     
     opt.load('compiler_c compiler_cxx boost protoc qt4')
 
@@ -30,7 +30,6 @@ def configure(conf):
     else:
         conf.add_supported_cxxflags (cxxflags = ['-O3', '-g', '-Wno-tautological-compare', '-Wno-unused-function'])
         
-    # conf.check_tinyxml(path=conf.options.tinyxml_dir)
     conf.check_cfg(package='libndn.cxx', args=['--cflags', '--libs'], uselib_store='NDNCXX', mandatory=True)
     conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
     if conf.options.log4cxx:
@@ -49,7 +48,7 @@ def build (bld):
         defines = "WAF",
         source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', '*.qrc', 'logging.cc', 'src/*.proto']),
         includes = "src .",
-        use = "QTCORE QTGUI QTSQL SQLITE3 NDNCXX BOOST BOOST_FILESYSTEM LOG4CXX CRYPTOPP SYNC",
+        use = "QTCORE QTGUI QTWIDGETS QTSQL SQLITE3 NDNCXX BOOST BOOST_FILESYSTEM LOG4CXX CRYPTOPP SYNC",
         )
 
     # if bld.env['DEBUG']:

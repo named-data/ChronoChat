@@ -34,7 +34,7 @@ def codesign(path):
   if hasattr(path, 'isalpha'):
     path = (path,)
   for p in path:
-    p = Popen(('codesign', '--keychain', options.codesign_keychain, '--signature-size', '6400', '-vvvv', '-s', options.codesign, p))
+    p = Popen(('codesign', '-vvvv', '--deep', '--force', '--sign', options.codesign, p))
     retval = p.wait()
     if retval != 0:
       return retval
@@ -61,6 +61,8 @@ class AppBundle(object):
     if lib.startswith('/System/Library/'):
       return True
     if lib.startswith('/usr/lib/'):
+      return True
+    if lib.startswith('/usr/local/ndn/lib/'):
       return True
 
     return False
@@ -177,6 +179,20 @@ class AppBundle(object):
             os.system('install_name_tool -id @executable_path/../Frameworks/%s %s' % (rel, abs))
             self.handled_libs[basename] = True
             self.handle_binary_libs(abs)
+            
+            try:
+              f=open("%s/Resources/Info.plist" % dst, 'w')
+              w.write('''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+</dict>
+</plist>''')
+            except:
+              pass
+
         os.chmod(macho, 0755)
         os.system('install_name_tool -change %s @executable_path/../Frameworks/%s %s' % (lib, rel, macho))
 
@@ -348,7 +364,6 @@ if __name__ == '__main__':
   parser.add_option('-s', '--snapshot', dest='snapshot', help='Build a snapshot release. This determines the \'snapshot version\'.')
   parser.add_option('-g', '--git', dest='git', help='Build a snapshot release. Use the git revision number as the \'snapshot version\'.', action='store_true', default=False)
   parser.add_option('--codesign', dest='codesign', help='Identity to use for code signing. (If not set, no code signing will occur)')
-  parser.add_option('--codesign-keychain', dest='codesign_keychain', help='The keychain to use when invoking the codesign utility.')
 
   options, args = parser.parse_args()
 
@@ -379,7 +394,7 @@ if __name__ == '__main__':
   if options.codesign:
     print ' * Signing binaries with identity `%s\'' % options.codesign
     binaries = (
-      'build/ChronoChat.app',
+      'build/%s/ChronoChat.app' % BINARY_POSTFIX,
     )
 
     codesign(binaries)

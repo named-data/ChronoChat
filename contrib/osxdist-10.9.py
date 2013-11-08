@@ -16,8 +16,8 @@ if platform.system () != 'Darwin':
   print "This script is indended to be run only on OSX platform"
   exit (1)
 
-SUPPORTED_VERSION = "10.8"
-BINARY_POSTFIX = "MountainLion-10.8"
+SUPPORTED_VERSION = "10.9"
+BINARY_POSTFIX = "Mavericks-10.9"
 
 if '.'.join (platform.mac_ver()[0].split('.')[0:2]) != SUPPORTED_VERSION:
   print "This script is indended to be run only on OSX %s platform" % SUPPORTED_VERSION
@@ -33,6 +33,7 @@ def codesign(path):
 
   if hasattr(path, 'isalpha'):
     path = (path,)
+
   for p in path:
     p = Popen(('codesign', '-vvvv', '--deep', '--force', '--sign', options.codesign, p))
     retval = p.wait()
@@ -179,7 +180,7 @@ class AppBundle(object):
             os.system('install_name_tool -id @executable_path/../Frameworks/%s %s' % (rel, abs))
             self.handled_libs[basename] = True
             self.handle_binary_libs(abs)
-            
+
             try:
               f=open("%s/Resources/Info.plist" % dst, 'w')
               w.write('''<?xml version="1.0" encoding="UTF-8"?>
@@ -192,7 +193,7 @@ class AppBundle(object):
 </plist>''')
             except:
               pass
-
+            
         os.chmod(macho, 0755)
         os.system('install_name_tool -change %s @executable_path/../Frameworks/%s %s' % (lib, rel, macho))
 
@@ -364,6 +365,7 @@ if __name__ == '__main__':
   parser.add_option('-s', '--snapshot', dest='snapshot', help='Build a snapshot release. This determines the \'snapshot version\'.')
   parser.add_option('-g', '--git', dest='git', help='Build a snapshot release. Use the git revision number as the \'snapshot version\'.', action='store_true', default=False)
   parser.add_option('--codesign', dest='codesign', help='Identity to use for code signing. (If not set, no code signing will occur)')
+  # parser.add_option('--codesign-keychain', dest='codesign_keychain', help='The keychain to use when invoking the codesign utility.')
 
   options, args = parser.parse_args()
 
@@ -394,7 +396,7 @@ if __name__ == '__main__':
   if options.codesign:
     print ' * Signing binaries with identity `%s\'' % options.codesign
     binaries = (
-      'build/%s/ChronoChat.app' % BINARY_POSTFIX,
+      'build/%s/ChronoChat.app' % (BINARY_POSTFIX),
     )
 
     codesign(binaries)
