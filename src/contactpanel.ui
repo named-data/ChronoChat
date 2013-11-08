@@ -20,7 +20,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Contacts</string>
+   <string>ChronoChat Contacts</string>
   </property>
   <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
