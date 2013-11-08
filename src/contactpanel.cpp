@@ -623,7 +623,7 @@ ContactPanel::acceptInvitation(const ChronosInvitation& invitation,
 void
 ContactPanel::rejectInvitation(const ChronosInvitation& invitation)
 {
-  string empty;
+  string empty("nack");
   m_handler->publishDataByIdentity (invitation.getInterestName(), empty);
 }
 

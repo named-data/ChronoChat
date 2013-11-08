@@ -277,7 +277,7 @@ void
 ChatDialog::onInviteReplyVerified(ndn::Ptr<ndn::Data> data, const ndn::Name& identity, bool isIntroducer)
 {
   string content(data->content().buf(), data->content().size());
-  if(content.empty())
+  if(content == string("nack"))
     invitationRejected(identity);
   else
     invitationAccepted(identity, data, content, isIntroducer);
