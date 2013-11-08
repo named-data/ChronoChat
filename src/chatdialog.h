@@ -18,6 +18,7 @@
 #include <QStringListModel>
 #include <QTimer>
 #include <QSystemTrayIcon>
+#include <QMenu>
 
 #include "invitelistdialog.h"
 
@@ -249,6 +250,9 @@ private slots:
   
   void
   sendInvitationWrapper(QString, bool);
+
+  void
+  quit();
     
 private:
   Ui::ChatDialog *ui;
@@ -275,6 +279,12 @@ private:
   QTimer *m_timer;
   QStringListModel *m_rosterModel;
   QSystemTrayIcon *trayIcon;
+
+  QAction *minimizeAction;
+  QAction *maximizeAction;
+  QAction *restoreAction;
+  QAction *quitAction;
+  QMenu *trayIconMenu;
 
   // QQueue<SyncDemo::ChatMessage> m_history;
   // bool m_historyInitialized;

@@ -14,6 +14,8 @@
 #include "ui_chatdialog.h"
 
 #include <QScrollBar>
+#include <QMessageBox>
+#include <QCloseEvent>
 
 #ifndef Q_MOC_RUN
 #include <ndn.cxx/security/identity/identity-manager.h>
@@ -718,14 +720,14 @@ ChatDialog::messageClicked()
 void
 ChatDialog::createActions()
 {
-  // minimizeAction = new QAction(tr("Mi&nimize"), this);
-  // connect(minimizeAction, SIGNAL(triggered()), this, SLOT(hide()));
+  minimizeAction = new QAction(tr("Mi&nimize"), this);
+  connect(minimizeAction, SIGNAL(triggered()), this, SLOT(hide()));
 
-  // maximizeAction = new QAction(tr("Ma&ximize"), this);
-  // connect(maximizeAction, SIGNAL(triggered()), this, SLOT(showMaximized()));
+  maximizeAction = new QAction(tr("Ma&ximize"), this);
+  connect(maximizeAction, SIGNAL(triggered()), this, SLOT(showMaximized()));
 
-  // restoreAction = new QAction(tr("&Restore"), this);
-  // connect(restoreAction, SIGNAL(triggered()), this, SLOT(showNormal()));
+  restoreAction = new QAction(tr("&Restore"), this);
+  connect(restoreAction, SIGNAL(triggered()), this, SLOT(showNormal()));
 
   // settingsAction = new QAction(tr("Settings"), this);
   // connect (settingsAction, SIGNAL(triggered()), this, SLOT(buttonPressed()));
@@ -735,37 +737,32 @@ ChatDialog::createActions()
   // updateLocalPrefixAction = new QAction(tr("Update local prefix"), this);
   // connect (updateLocalPrefixAction, SIGNAL(triggered()), this, SLOT(updateLocalPrefix()));
 
-  // quitAction = new QAction(tr("Quit"), this);
-  // connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
+  quitAction = new QAction(tr("Quit"), this);
+  connect(quitAction, SIGNAL(triggered()), this, SLOT(quit()));
 }
 
 void
 ChatDialog::createTrayIcon()
 {
-  // trayIconMenu = new QMenu(this);
-  // trayIconMenu->addAction(minimizeAction);
-  // trayIconMenu->addAction(maximizeAction);
-  // trayIconMenu->addAction(restoreAction);
+  trayIconMenu = new QMenu(this);
+  trayIconMenu->addAction(minimizeAction);
+  trayIconMenu->addAction(maximizeAction);
+  trayIconMenu->addAction(restoreAction);
   // trayIconMenu->addSeparator();
   // trayIconMenu->addAction(settingsAction);
   // trayIconMenu->addSeparator();
   // trayIconMenu->addAction(updateLocalPrefixAction);
-  // trayIconMenu->addSeparator();
-  // trayIconMenu->addAction(quitAction);
+  trayIconMenu->addSeparator();
+  trayIconMenu->addAction(quitAction);
 
   trayIcon = new QSystemTrayIcon(this);
-  // trayIcon->setContextMenu(trayIconMenu);
+  trayIcon->setContextMenu(trayIconMenu);
 
   QIcon icon(":/images/icon_small.png");
   trayIcon->setIcon(icon);
   setWindowIcon(icon);
   trayIcon->setToolTip("ChronoChat System Tray Icon");
   trayIcon->setVisible(true);
-
-  // // QApplication::getMenu ()->addMenu (trayIconMenu);
-  // QMenuBar *bar = new QMenuBar ();
-  // bar->setMenu (trayIconMenu);
-  // setMenuBar (bar);
 }
 
 
@@ -1014,6 +1011,21 @@ ChatDialog::sendInvitationWrapper(QString invitee, bool isIntroducer)
 
 void
 ChatDialog::closeEvent(QCloseEvent *e)
+{
+  if (trayIcon->isVisible())
+  {
+    QMessageBox::information(this, tr("Chronos"),
+                             tr("The program will keep running in the "
+                                "system tray. To terminate the program"
+                                "choose <b>Quit</b> in the context memu"
+                                "of the system tray entry."));
+    hide();
+    e->ignore();
+  }
+}
+
+void
+ChatDialog::quit()
 {
   hide();
   emit closeChatDialog(m_chatroomPrefix);
