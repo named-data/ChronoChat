@@ -61,11 +61,12 @@ InvitationDialog::onCancelClicked()
   ui->msgLabel->clear();
   ui->chatroomLine->clear();
 
+  emit invitationRejected(*m_invitation); 
+
   m_invitation = NULL;
   m_identityCertificate = NULL;
   m_inviterAlias.clear();
 
-  emit invitationRejected(*m_invitation); 
   this->close();
 }
 
