@@ -306,6 +306,35 @@ ContactStorage::getSelfProfile(const Name& identity)
 
   return profile;
 }
+
+void 
+ContactStorage::removeContact(const Name& contactNameSpace)
+{
+  Ptr<ContactItem> contact = getContact(contactNameSpace);
+  string identity = contactNameSpace.toUri();
+  
+  if(contact == NULL)
+    return;
+
+  sqlite3_stmt *stmt;  
+  sqlite3_prepare_v2 (m_db, "DELETE FROM Contact WHERE contact_namespace=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.c_str(), identity.size (), SQLITE_TRANSIENT);
+  int res = sqlite3_step (stmt);
+  sqlite3_finalize (stmt);
+
+  sqlite3_prepare_v2 (m_db, "DELETE FROM ContactProfile WHERE profile_identity=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.c_str(),  identity.size (), SQLITE_TRANSIENT);
+  res = sqlite3_step (stmt);
+  sqlite3_finalize (stmt);
+  
+  if(contact->isIntroducer())
+    {
+      sqlite3_prepare_v2 (m_db, "DELETE FROM TrustScope WHERE contact_namespace=?", -1, &stmt, 0);
+      sqlite3_bind_text(stmt, 1, identity.c_str(),  identity.size (), SQLITE_TRANSIENT);
+      res = sqlite3_step (stmt);
+      sqlite3_finalize (stmt);         
+    }
+}
   
 void
 ContactStorage::addContact(const ContactItem& contact)

@@ -24,6 +24,7 @@
 #include "settingdialog.h"
 #include "chatdialog.h"
 #include "endorse-combobox-delegate.h"
+#include "browsecontactdialog.h"
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
@@ -112,6 +113,9 @@ signals:
   void
   newInvitationReady();
 
+  void
+  refreshCertDirectory();
+
 private slots:
   void
   updateSelection(const QItemSelection &selected,
@@ -126,9 +130,15 @@ private slots:
 
   void
   openAddContactPanel();
+  
+  void
+  openBrowseContactDialog();
 
   void
   openSetAliasDialog();
+
+  void
+  removeContactButton();
   
   void
   openStartChatDialog();
@@ -187,6 +197,7 @@ private:
   QStringListModel* m_contactListModel;
   ProfileEditor* m_profileEditor;
   AddContactPanel* m_addContactPanel;
+  BrowseContactDialog* m_browseContactDialog;
   SetAliasDialog* m_setAliasDialog;
   StartChatDialog* m_startChatDialog;
   InvitationDialog* m_invitationDialog;

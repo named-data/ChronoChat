@@ -43,6 +43,9 @@ public:
   fetchCollectEndorse(const ndn::Name& identity);
 
   void
+  fetchIdCertificate(const ndn::Name& certName);
+
+  void
   updateProfileData(const ndn::Name& identity);
 
   void
@@ -72,6 +75,13 @@ public:
 
   void
   publishEndorsedDataInDns(const ndn::Name& identity);
+
+  inline void
+  setDefaultIdentity(const ndn::Name& identity)
+  { m_defaultIdentity = identity; }
+
+  void
+  addContact(const ndn::security::IdentityCertificate& idCert, const Profile& profile);
 
 private:
   void
@@ -116,6 +126,14 @@ private:
   void
   onDnsCollectEndorseUnverified(ndn::Ptr<ndn::Data> data, const ndn::Name& identity);
 
+  void
+  onIdCertificateVerified(ndn::Ptr<ndn::Data> data, const ndn::Name& identity);
+
+  void
+  onIdCertificateUnverified(ndn::Ptr<ndn::Data> data, const ndn::Name& identity);
+
+  void
+  onIdCertificateTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest, const ndn::Name& identity, int retry);
   
 
 signals:
@@ -132,10 +150,19 @@ signals:
   contactKeyFetchFailed(const ndn::Name& identity);
 
   void 
+  contactCertificateFetched(const ndn::security::IdentityCertificate& identityCertificate);
+  
+  void
+  contactCertificateFetchFailed(const ndn::Name& identity);
+
+  void 
   collectEndorseFetched(const ndn::Data& data);
 
   void
   collectEndorseFetchFailed(const ndn::Name& identity);
+
+  void
+  warning(QString msg);
 
 private slots:
   
@@ -145,6 +172,7 @@ private:
   ndn::Ptr<DnsStorage> m_dnsStorage;
   ndn::Ptr<ndn::security::Keychain> m_keychain;
   ndn::Ptr<ndn::Wrapper> m_wrapper;
+  ndn::Name m_defaultIdentity;
 };
 
 #endif
