@@ -192,6 +192,7 @@ ContactManager::fetchKey(const ndn::Name& certName)
   
   Ptr<Interest> interestPtr = Ptr<Interest>(new Interest(interestName));
   interestPtr->setChildSelector(Interest::CHILD_RIGHT);
+  interestPtr->setInterestLifetime(1);
   Ptr<Closure> closure = Ptr<Closure> (new Closure(boost::bind(&ContactManager::onKeyVerified, 
                                                                this,
                                                                _1,
@@ -203,6 +204,31 @@ ContactManager::fetchKey(const ndn::Name& certName)
                                                                certName,
                                                                0),
 						   boost::bind(&ContactManager::onKeyUnverified,
+                                                               this,
+                                                               _1,
+                                                               certName)));
+  m_wrapper->sendInterest(interestPtr, closure);
+}
+
+void
+ContactManager::fetchIdCertificate(const ndn::Name& certName)
+{
+  Name interestName = certName;
+  
+  Ptr<Interest> interestPtr = Ptr<Interest>(new Interest(interestName));
+  interestPtr->setChildSelector(Interest::CHILD_RIGHT);
+  interestPtr->setInterestLifetime(1);
+  Ptr<Closure> closure = Ptr<Closure> (new Closure(boost::bind(&ContactManager::onIdCertificateVerified, 
+                                                               this,
+                                                               _1,
+                                                               certName),
+						   boost::bind(&ContactManager::onIdCertificateTimeout,
+                                                               this,
+                                                               _1, 
+                                                               _2,
+                                                               certName,
+                                                               0),
+						   boost::bind(&ContactManager::onIdCertificateUnverified,
                                                                this,
                                                                _1,
                                                                certName)));
@@ -252,6 +278,21 @@ ContactManager::onKeyUnverified(Ptr<Data> data, const Name& identity)
 void
 ContactManager::onKeyTimeout(Ptr<Closure> closure, Ptr<Interest> interest, const Name& identity, int retry)
 { emit contactKeyFetchFailed(identity); }
+
+void
+ContactManager::onIdCertificateVerified(Ptr<Data> data, const Name& identity)
+{
+  IdentityCertificate identityCertificate(*data);
+  emit contactCertificateFetched(identityCertificate);
+}
+
+void
+ContactManager::onIdCertificateUnverified(Ptr<Data> data, const Name& identity)
+{ emit contactCertificateFetchFailed (identity); }
+
+void
+ContactManager::onIdCertificateTimeout(Ptr<Closure> closure, Ptr<Interest> interest, const Name& identity, int retry)
+{ emit contactCertificateFetchFailed (identity); }
 
 void
 ContactManager::updateProfileData(const Name& identity)
@@ -546,6 +587,37 @@ ContactManager::publishEndorsedDataInDns(const Name& identity)
 
   m_wrapper->putToNdnd(*dnsBlob);
 }
+
+void
+ContactManager::addContact(const IdentityCertificate& identityCertificate, const Profile& profile)
+{
+  Ptr<ProfileData> profileData = Ptr<ProfileData>(new ProfileData(profile));
+  
+  Ptr<IdentityManager> identityManager = m_keychain->getIdentityManager();
+  Name certificateName = identityManager->getDefaultCertificateNameByIdentity (m_defaultIdentity);
+  identityManager->signByCertificate(*profileData, certificateName);
+
+  Ptr<EndorseCertificate> endorseCertificate = NULL;
+  try{
+    endorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(identityCertificate, profileData));
+  }catch(exception& e){
+    _LOG_ERROR("Exception: " << e.what());
+    return;
+  }
+
+  identityManager->signByCertificate(*endorseCertificate, certificateName);
+
+  ContactItem contactItem(*endorseCertificate);
+
+  try{
+    m_contactStorage->addContact(contactItem);
+  }catch(exception& e){
+    emit warning(e.what());
+    _LOG_ERROR("Exception: " << e.what());
+    return;
+  }
+}
+
 
 
 #if WAF

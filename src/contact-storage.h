@@ -34,6 +34,9 @@ public:
   getSelfProfile(const ndn::Name& identity);
 
   void
+  removeContact(const ndn::Name& identity);
+
+  void
   addContact(const ContactItem& contactItem);
 
   void

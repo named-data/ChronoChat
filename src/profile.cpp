@@ -26,9 +26,10 @@ static string homepageOid("2.5.4.3");
 static string advisor("2.5.4.80");
 static string emailOid("1.2.840.113549.1.9.1");
 
-Profile::Profile(security::IdentityCertificate& identityCertificate)
+Profile::Profile(const security::IdentityCertificate& oldIdentityCertificate)
 {
   using namespace ndn::security;
+  security::IdentityCertificate identityCertificate(oldIdentityCertificate);
 
   Name keyName = identityCertificate.getPublicKeyName();
   m_identityName = keyName.getPrefix(keyName.size()-1);

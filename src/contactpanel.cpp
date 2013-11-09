@@ -64,6 +64,7 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   setKeychain();
 
   m_defaultIdentity = m_keychain->getDefaultIdentity();
+  m_contactManager->setDefaultIdentity(m_defaultIdentity);
   m_nickName = m_defaultIdentity.get(-1).toUri();
   m_settingDialog->setIdentity(m_defaultIdentity.toUri(), m_nickName);
 
@@ -71,6 +72,7 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   m_profileEditor->setCurrentIdentity(m_defaultIdentity);
 
   m_addContactPanel = new AddContactPanel(contactManager);
+  m_browseContactDialog = new BrowseContactDialog(contactManager);
   m_setAliasDialog = new SetAliasDialog(contactManager);
  
   ui->setupUi(this);
@@ -95,13 +97,21 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   connect(ui->EditProfileButton, SIGNAL(clicked()), 
           this, SLOT(openProfileEditor()));
 
+  // connect(ui->AddContactButton, SIGNAL(clicked()),
+  //         this, SLOT(openAddContactPanel()));
   connect(ui->AddContactButton, SIGNAL(clicked()),
-          this, SLOT(openAddContactPanel()));
+          this, SLOT(openBrowseContactDialog()));
+
+  connect(this, SIGNAL(refreshCertDirectory()),
+          m_browseContactDialog, SLOT(refreshList()));
+
+  connect(ui->DeleteContactButton, SIGNAL(clicked()),
+          this, SLOT(removeContactButton()));
    
   connect(ui->settingButton, SIGNAL(clicked()),
           this, SLOT(openSettingDialog()));
    
-  connect(m_addContactPanel, SIGNAL(newContactAdded()),
+  connect(m_browseContactDialog, SIGNAL(newContactAdded()),
           this, SLOT(refreshContactList()));
   connect(m_setAliasDialog, SIGNAL(aliasChanged()),
           this, SLOT(refreshContactList()));
@@ -144,6 +154,7 @@ ContactPanel::~ContactPanel()
 
   delete m_profileEditor;
   delete m_addContactPanel;
+  delete m_browseContactDialog;
   delete m_setAliasDialog;
 
   delete m_trustScopeModel;
@@ -499,6 +510,7 @@ ContactPanel::updateDefaultIdentity(const QString& identity, const QString& nick
   m_profileEditor->setCurrentIdentity(m_defaultIdentity);
   m_nickName = nickName.toStdString();
   m_handler->clearInterestFilter(m_inviteListenPrefix);
+  m_contactManager->setDefaultIdentity(m_defaultIdentity);
   setInvitationListener();
   collectEndorsement();
 }
@@ -510,6 +522,36 @@ ContactPanel::openProfileEditor()
 void
 ContactPanel::openAddContactPanel()
 { m_addContactPanel->show(); }
+
+void
+ContactPanel::openBrowseContactDialog()
+{ 
+  m_browseContactDialog->show(); 
+  emit refreshCertDirectory();
+}
+
+void
+ContactPanel::removeContactButton()
+{
+  QItemSelectionModel* selectionModel = ui->ContactList->selectionModel();
+  QModelIndexList selectedList = selectionModel->selectedIndexes();
+  QModelIndexList::iterator it = selectedList.begin();
+  for(; it != selectedList.end(); it++)
+    {
+      string alias =  m_contactListModel->data(*it, Qt::DisplayRole).toString().toStdString();
+      vector<Ptr<ContactItem> >::iterator contactIt = m_contactList.begin();
+      for(; contactIt != m_contactList.end(); contactIt++)
+        {
+          if((*contactIt)->getAlias() == alias)
+            {
+              m_contactManager->getContactStorage()->removeContact((*contactIt)->getNameSpace());
+              m_contactList.erase(contactIt);
+              break;
+            }
+        }
+    }
+  refreshContactList();
+}
 
 void
 ContactPanel::openInvitationDialog()
