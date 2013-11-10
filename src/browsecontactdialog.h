@@ -44,8 +44,8 @@ protected:
   typedef boost::unique_lock<RecLock> UniqueRecLock;
 
 private:
-  std::vector<std::string>
-  getCertName();
+  void
+  getCertNames(std::vector<std::string> &names);
 
   void
   updateCertificateMap(bool filter = false);
