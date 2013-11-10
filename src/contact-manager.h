@@ -27,11 +27,12 @@ class ContactManager : public QObject
   Q_OBJECT
 
 public:
-  ContactManager(ndn::Ptr<ContactStorage> contactStorage,
-                 ndn::Ptr<DnsStorage> dnsStorage,
-                 QObject* parent = 0);
+  ContactManager(QObject* parent = 0);
 
   ~ContactManager();
+
+  void
+  setWrapper();
 
   void
   fetchSelfEndorseCertificate(const ndn::Name& identity);
@@ -137,6 +138,9 @@ private:
   
 
 signals:
+  void
+  noNdnConnection(const QString& msg);
+  
   void 
   contactFetched(const EndorseCertificate& endorseCertificate);
   

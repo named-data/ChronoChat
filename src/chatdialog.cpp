@@ -136,7 +136,12 @@ ChatDialog::setWrapper(bool trial)
 
   m_keychain = ndn::Ptr<ndn::security::Keychain>(new ndn::security::Keychain(m_identityManager, m_invitationPolicyManager, NULL));
 
-  m_handler = ndn::Ptr<ndn::Wrapper>(new ndn::Wrapper(m_keychain));
+  try{
+    m_handler = ndn::Ptr<ndn::Wrapper>(new ndn::Wrapper(m_keychain));
+  }catch(ndn::Error::ndnOperation& e){
+    emit noNdnConnection(QString::fromStdString("Cannot conect to ndnd!\n Have you started your ndnd?"));
+  }
+
 
   if(trial == true)
     {

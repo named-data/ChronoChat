@@ -26,20 +26,27 @@ using namespace ndn::security;
 
 INIT_LOGGER("ContactManager");
 
-ContactManager::ContactManager(Ptr<ContactStorage> contactStorage,
-                               Ptr<DnsStorage> dnsStorage,
-                               QObject* parent)
+ContactManager::ContactManager(QObject* parent)
   : QObject(parent)
-  , m_contactStorage(contactStorage)
-  , m_dnsStorage(dnsStorage)
 {
-  setKeychain();
+  m_contactStorage = Ptr<ContactStorage>::Create();
+  m_dnsStorage = Ptr<DnsStorage>::Create();
 
-  m_wrapper = Ptr<Wrapper>(new Wrapper(m_keychain));
+  setKeychain();
 }
 
 ContactManager::~ContactManager()
 {
+}
+
+void
+ContactManager::setWrapper()
+{
+  try{
+    m_wrapper = Ptr<Wrapper>(new Wrapper(m_keychain));
+  }catch(ndn::Error::ndnOperation& e){
+    emit noNdnConnection(QString::fromStdString("Cannot conect to ndnd!\n Have you started your ndnd?"));
+  }
 }
 
 void

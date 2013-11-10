@@ -15,6 +15,7 @@
 #include <QStringListModel>
 #include <QtSql/QSqlDatabase>
 #include <QMenu>
+#include <QMessageBox>
 
 #include "profileeditor.h"
 #include "addcontactpanel.h"
@@ -25,6 +26,7 @@
 #include "chatdialog.h"
 #include "endorse-combobox-delegate.h"
 #include "browsecontactdialog.h"
+#include "warningDialog.h"
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
@@ -42,8 +44,7 @@ class ContactPanel : public QDialog
   Q_OBJECT
 
 public:
-  explicit ContactPanel(ndn::Ptr<ContactManager> contactManager, 
-                        QWidget *parent = 0);
+  explicit ContactPanel(QWidget *parent = 0);
 
   ~ContactPanel();
 
@@ -117,6 +118,9 @@ signals:
   refreshCertDirectory();
 
 private slots:
+  void
+  showError(const QString& msg);
+
   void
   updateSelection(const QItemSelection &selected,
                   const QItemSelection &deselected);
@@ -193,6 +197,7 @@ private slots:
 
 private:
   Ui::ContactPanel *ui;
+  WarningDialog* m_warningDialog;
   ndn::Ptr<ContactManager> m_contactManager;
   QStringListModel* m_contactListModel;
   ProfileEditor* m_profileEditor;
