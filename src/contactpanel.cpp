@@ -73,6 +73,10 @@ ContactPanel::ContactPanel(QWidget *parent)
   m_contactManager->setDefaultIdentity(m_defaultIdentity);
   m_nickName = m_defaultIdentity.get(-1).toUri();
   m_settingDialog->setIdentity(m_defaultIdentity.toUri(), m_nickName);
+  Name defaultCertName = m_keychain->getIdentityManager()->getDefaultCertificateNameByIdentity(m_defaultIdentity);
+  if(defaultCertName.size() == 0)
+    showError(QString::fromStdString("Corresponding certificate is missing!\nHave you installed the certificate?"));
+  
 
   m_profileEditor = new ProfileEditor(m_contactManager);
   m_profileEditor->setCurrentIdentity(m_defaultIdentity);
@@ -107,6 +111,9 @@ ContactPanel::ContactPanel(QWidget *parent)
 
   connect(ui->EditProfileButton, SIGNAL(clicked()), 
           this, SLOT(openProfileEditor()));
+
+  connect(m_profileEditor, SIGNAL(noKeyOrCert(const QString&)),
+          this, SLOT(showError(const QString&)));
 
   // connect(ui->AddContactButton, SIGNAL(clicked()),
   //         this, SLOT(openAddContactPanel()));
@@ -523,7 +530,14 @@ ContactPanel::updateSelection(const QItemSelection &selected,
 void
 ContactPanel::updateDefaultIdentity(const QString& identity, const QString& nickName)
 { 
+  // _LOG_DEBUG(identity.toStdString());
   m_defaultIdentity = Name(identity.toStdString());
+  Name defaultKeyName = m_keychain->getIdentityManager()->getPublicStorage()->getDefaultKeyNameForIdentity(m_defaultIdentity);
+  if(defaultKeyName.size() == 0)
+    showError(QString::fromStdString("Corresponding key is missing!\nHave you created the key?"));
+  Name defaultCertName = m_keychain->getIdentityManager()->getPublicStorage()->getDefaultCertificateNameForKey(defaultKeyName);
+  if(defaultCertName.size() == 0)
+    showError(QString::fromStdString("Corresponding certificate is missing!\nHave you installed the certificate?"));
   m_profileEditor->setCurrentIdentity(m_defaultIdentity);
   m_nickName = nickName.toStdString();
   m_handler->clearInterestFilter(m_inviteListenPrefix);
