@@ -75,7 +75,7 @@ ContactPanel::ContactPanel(QWidget *parent)
   m_settingDialog->setIdentity(m_defaultIdentity.toUri(), m_nickName);
   Name defaultCertName = m_keychain->getIdentityManager()->getDefaultCertificateNameByIdentity(m_defaultIdentity);
   if(defaultCertName.size() == 0)
-    showError(QString::fromStdString("Corresponding certificate is missing!\nHave you installed the certificate?"));
+    showError(QString::fromStdString("certificate of ") + QString::fromStdString(m_defaultIdentity.toUri()) + " is missing!\nHave you installed the certificate?");
   
 
   m_profileEditor = new ProfileEditor(m_contactManager);
