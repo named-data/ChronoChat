@@ -113,7 +113,7 @@ ContactPanel::ContactPanel(QWidget *parent)
           this, SLOT(openProfileEditor()));
 
   connect(m_profileEditor, SIGNAL(noKeyOrCert(const QString&)),
-          this, SLOT(showError(const QString&)));
+          this, SLOT(showWarning(const QString&)));
 
   // connect(ui->AddContactButton, SIGNAL(clicked()),
   //         this, SLOT(openAddContactPanel()));
@@ -252,6 +252,7 @@ ContactPanel::onLocalPrefixVerified(Ptr<Data> data)
   string prefix = QString::fromStdString (originPrefix).trimmed ().toUtf8().constData();
   string randomSuffix = getRandomString();
   m_localPrefix = Name(prefix);
+  
 }
 
 void
@@ -439,6 +440,11 @@ ContactPanel::showError(const QString& msg){
 }
 
 void
+ContactPanel::showWarning(const QString& msg){
+  QMessageBox::information(this, tr("Chronos"), msg);
+}
+
+void
 ContactPanel::updateSelection(const QItemSelection &selected,
 			      const QItemSelection &deselected)
 {
@@ -531,13 +537,20 @@ void
 ContactPanel::updateDefaultIdentity(const QString& identity, const QString& nickName)
 { 
   // _LOG_DEBUG(identity.toStdString());
-  m_defaultIdentity = Name(identity.toStdString());
-  Name defaultKeyName = m_keychain->getIdentityManager()->getPublicStorage()->getDefaultKeyNameForIdentity(m_defaultIdentity);
+  Name defaultIdentity = Name(identity.toStdString());
+  Name defaultKeyName = m_keychain->getIdentityManager()->getPublicStorage()->getDefaultKeyNameForIdentity(defaultIdentity);
   if(defaultKeyName.size() == 0)
-    showError(QString::fromStdString("Corresponding key is missing!\nHave you created the key?"));
+    {
+      showWarning(QString::fromStdString("Corresponding key is missing!\nHave you created the key?"));
+      return;
+    }
   Name defaultCertName = m_keychain->getIdentityManager()->getPublicStorage()->getDefaultCertificateNameForKey(defaultKeyName);
   if(defaultCertName.size() == 0)
-    showError(QString::fromStdString("Corresponding certificate is missing!\nHave you installed the certificate?"));
+    {
+      showWarning(QString::fromStdString("Corresponding certificate is missing!\nHave you installed the certificate?"));
+      return;
+    }
+  m_defaultIdentity = defaultIdentity;
   m_profileEditor->setCurrentIdentity(m_defaultIdentity);
   m_nickName = nickName.toStdString();
   m_handler->clearInterestFilter(m_inviteListenPrefix);

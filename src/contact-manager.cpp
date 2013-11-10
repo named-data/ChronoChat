@@ -45,7 +45,7 @@ ContactManager::setWrapper()
   try{
     m_wrapper = Ptr<Wrapper>(new Wrapper(m_keychain));
   }catch(ndn::Error::ndnOperation& e){
-    emit noNdnConnection(QString::fromStdString("Cannot conect to ndnd!\n Have you started your ndnd?"));
+    emit noNdnConnection(QString::fromStdString("Cannot conect to ndnd!\nHave you started your ndnd?"));
   }
 }
 

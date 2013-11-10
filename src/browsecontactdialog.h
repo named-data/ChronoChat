@@ -14,6 +14,7 @@
 
 #include <QDialog>
 #include <QStringListModel>
+#include <QCloseEvent>
 #include "warningdialog.h"
 
 
@@ -55,6 +56,10 @@ private:
 
   void
   fetchCertificate();
+
+protected:
+  void
+  closeEvent(QCloseEvent *e);
 
 private slots:
   void

@@ -11,6 +11,7 @@
 
 #include "browsecontactdialog.h"
 #include "ui_browsecontactdialog.h"
+#include <QMessageBox>
 
 #ifndef Q_MOC_RUN
 #include <boost/asio.hpp>
@@ -73,8 +74,7 @@ BrowseContactDialog::getCertNames(std::vector<std::string> &names)
     request_stream.connect("ndncert.named-data.net","80");
     if(!request_stream)
       {
-	m_warningDialog->setMsg("Fail to fetch certificate directory! #1");
-	m_warningDialog->show();
+	QMessageBox::information(this, tr("Chronos"), QString::fromStdString("Fail to fetch certificate directory! #1"));
 	return;
       }
     request_stream << "GET /cert/list/ HTTP/1.0\r\n";
@@ -85,8 +85,7 @@ BrowseContactDialog::getCertNames(std::vector<std::string> &names)
     std::getline(request_stream,line1);
     if (!request_stream)
       {
-	m_warningDialog->setMsg("Fail to fetch certificate directory! #2");
-	m_warningDialog->show();
+	QMessageBox::information(this, tr("Chronos"), QString::fromStdString("Fail to fetch certificate directory! #2"));
 	return;
       }
 
@@ -100,14 +99,12 @@ BrowseContactDialog::getCertNames(std::vector<std::string> &names)
 
     if (!response_stream||http_version.substr(0,5)!="HTTP/")
       {
-    	m_warningDialog->setMsg("Fail to fetch certificate directory! #3");
-	m_warningDialog->show();
+    	QMessageBox::information(this, tr("Chronos"), QString::fromStdString("Fail to fetch certificate directory! #3"));
 	return;
       }
     if (status_code!=200)
       {
-    	m_warningDialog->setMsg("Fail to fetch certificate directory! #4");
-	m_warningDialog->show();
+    	QMessageBox::information(this, tr("Chronos"), QString::fromStdString("Fail to fetch certificate directory! #4"));
 	return;
       }
     vector<string> headers;
@@ -135,13 +132,11 @@ BrowseContactDialog::getCertNames(std::vector<std::string> &names)
           it++;
         }
     }catch (exception &e){
-      m_warningDialog->setMsg("Fail to fetch certificate directory! #5");
-      m_warningDialog->show();
+      QMessageBox::information(this, tr("Chronos"), QString::fromStdString("Fail to fetch certificate directory! #5"));
     }
 
   }catch(std::exception &e){
-    m_warningDialog->setMsg("Fail to fetch certificate directory! #N");
-    m_warningDialog->show();
+    QMessageBox::information(this, tr("Chronos"), QString::fromStdString("Fail to fetch certificate directory! #N"));
   }
 }
 
@@ -189,7 +184,8 @@ BrowseContactDialog::updateCertificateMap(bool filter)
       for(; it != certNameList.end(); it++)
 	{
           try{
-            m_certificateNameList.push_back(Name (*it));
+            Name name(*it);
+            m_certificateNameList.push_back(name);
           }
           catch(error::Name)
             {
@@ -259,6 +255,8 @@ BrowseContactDialog::updateSelection(const QItemSelection &selected,
   for(int i = ui->InfoTable->rowCount() - 1; i >= 0 ; i--)
     ui->InfoTable->removeRow(i);
 
+  ui->InfoTable->horizontalHeader()->show();
+
   map<Name, Profile>::iterator it = m_profileMap.find(certName);
   if(it != m_profileMap.end())
     {
@@ -316,6 +314,18 @@ BrowseContactDialog::onAddClicked()
 void
 BrowseContactDialog::onCancelClicked()
 { this->close(); }
+
+void
+BrowseContactDialog::closeEvent(QCloseEvent *e)
+{
+  ui->InfoTable->clear();
+  for(int i = ui->InfoTable->rowCount() - 1; i >= 0 ; i--)
+      ui->InfoTable->removeRow(i);
+  ui->InfoTable->horizontalHeader()->hide();
+
+  hide();
+  e->ignore();
+}
 
 #if WAF
 #include "browsecontactdialog.moc"

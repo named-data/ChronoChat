@@ -10,6 +10,7 @@
 
 #include "addcontactpanel.h"
 #include "ui_addcontactpanel.h"
+#include <QMessageBox>
 
 #ifndef Q_MOC_RUN
 // #include <cryptopp/base64.h>
@@ -90,8 +91,7 @@ AddContactPanel::onSearchClicked()
         m_contactManager->fetchKey(m_searchIdentity);
       else
         {
-          m_warningDialog->setMsg("Wrong key certificate name!");
-          m_warningDialog->show();
+          QMessageBox::information(this, tr("Chronos"), QString::fromStdString("Wrong key certificate name!"));
         }
     }
 }
@@ -128,8 +128,7 @@ AddContactPanel::onAddClicked()
   try{
     m_contactManager->getContactStorage()->addContact(contactItem);
   }catch(exception& e){
-    m_warningDialog->setMsg(e.what());
-    m_warningDialog->show();
+    QMessageBox::information(this, tr("Chronos"), QString::fromStdString(e.what()));
     _LOG_ERROR("Exception: " << e.what());
     return;
   }
@@ -143,8 +142,7 @@ AddContactPanel::selfEndorseCertificateFetched(const EndorseCertificate& endorse
   try{
     m_currentEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(endorseCertificate));
   }catch(exception& e){
-    m_warningDialog->setMsg(e.what());
-    m_warningDialog->show();
+    QMessageBox::information(this, tr("Chronos"), QString::fromStdString(e.what()));
     _LOG_ERROR("Exception: " << e.what());
     return;
   }
@@ -157,8 +155,7 @@ AddContactPanel::selfEndorseCertificateFetched(const EndorseCertificate& endorse
 void
 AddContactPanel::selfEndorseCertificateFetchFailed(const Name& identity)
 {
-  m_warningDialog->setMsg("Cannot fetch contact profile");
-  m_warningDialog->show();
+  QMessageBox::information(this, tr("Chronos"), QString::fromStdString("Cannot fetch contact profile"));
 }
 
 void
@@ -167,8 +164,7 @@ AddContactPanel::onContactKeyFetched(const EndorseCertificate& endorseCertificat
   try{
     m_currentEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(endorseCertificate));
   }catch(exception& e){
-    m_warningDialog->setMsg(e.what());
-    m_warningDialog->show();
+    QMessageBox::information(this, tr("Chronos"), QString::fromStdString(e.what()));
     _LOG_ERROR("Exception: " << e.what());
     return;
   }
@@ -181,8 +177,7 @@ AddContactPanel::onContactKeyFetched(const EndorseCertificate& endorseCertificat
 void
 AddContactPanel::onContactKeyFetchFailed(const Name& identity)
 {
-  m_warningDialog->setMsg("Cannot fetch contact ksk certificate");
-  m_warningDialog->show();
+  QMessageBox::information(this, tr("Chronos"), QString::fromStdString("Cannot fetch contact ksk certificate"));
 }
 
 void
