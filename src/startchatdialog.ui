@@ -81,7 +81,7 @@
     <string>Set invitee as introducer</string>
    </property>
    <property name="checkable">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
   </widget>
  </widget>
