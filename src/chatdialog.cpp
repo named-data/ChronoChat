@@ -691,6 +691,7 @@ ChatDialog::updateRosterList(QStringList staleUserList)
 void
 ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
 {
+  _LOG_DEBUG("called");
   QString randString = getRandomString();
   bool needWrite = false;
   bool needFresh = false;
@@ -917,7 +918,7 @@ ChatDialog::updateLocalPrefix()
       boost::this_thread::sleep(boost::posix_time::milliseconds(100));
 #endif
     }
-  _LOG_DEBUG("now the prefix is " << m_localPrefix.toUri());
+  _LOG_DEBUG("now the prefix is " << m_newLocalPrefix.toUri());
   _LOG_DEBUG("in use prefix is " << m_user.getOriginPrefix().toStdString());
   QString originPrefix = QString::fromStdString(m_newLocalPrefix.toUri());
     

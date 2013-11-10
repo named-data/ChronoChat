@@ -307,8 +307,25 @@ ContactPanel::onInvitation(Ptr<Interest> interest)
   if(NULL != keyPtr && security::PolicyManager::verifySignature(invitation->getSignedBlob(), invitation->getSignatureBits(), *keyPtr))
     {
       Ptr<security::IdentityCertificate> certificate = Ptr<security::IdentityCertificate>::Create();
-      // hack: incomplete certificate, we don't send it to the wire nor store it anywhere
+      // hack: incomplete certificate, we don't send it to the wire nor store it anywhere, we only use it to carry information
       certificate->setName(invitation->getInviterCertificateName());
+      bool findCert = false;
+      vector<Ptr<ContactItem> >::const_iterator it = m_contactList.begin();
+      for(; it != m_contactList.end(); it++)
+        {
+          if((*it)->getNameSpace() == invitation->getInviterNameSpace())
+            {
+              certificate->setNotBefore((*it)->getSelfEndorseCertificate().getNotBefore());
+              certificate->setNotAfter((*it)->getSelfEndorseCertificate().getNotAfter());
+              findCert = true;
+              break;
+            }
+        }
+      if(findCert == false)
+        {
+          _LOG_ERROR("No SelfEndorseCertificate found!");
+          return;
+        }
       certificate->setPublicKeyInfo(*keyPtr);
       popChatInvitation(invitation, invitation->getInviterNameSpace(), certificate);
       return;
