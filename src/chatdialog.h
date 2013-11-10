@@ -206,6 +206,9 @@ signals:
 
   void
   noNdnConnection(const QString& msg);
+                                     
+  void
+  inivationRejection(const QString& msg);
 
 public slots:
   void 

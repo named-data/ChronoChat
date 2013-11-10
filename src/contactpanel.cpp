@@ -674,6 +674,8 @@ ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, boo
           this, SLOT(removeChatDialog(const ndn::Name&)));
   connect(chatDialog, SIGNAL(noNdnConnection(const QString&)),
           this, SLOT(showError(const QString&)));
+  connect(chatDialog, SIGNAL(inivationRejection(const QString&)),
+          this, SLOT(showWarning(const QString&)));
 
   // send invitation
   chatDialog->sendInvitation(inviteeItem, isIntroducer); 
@@ -697,6 +699,8 @@ ContactPanel::startChatroom2(const ChronosInvitation& invitation,
           this, SLOT(removeChatDialog(const ndn::Name&)));
   connect(chatDialog, SIGNAL(noNdnConnection(const QString&)),
           this, SLOT(showError(const QString&)));
+  connect(chatDialog, SIGNAL(inivationRejection(const QString&)),
+          this, SLOT(showWarning(const QString&)));
 
   chatDialog->addChatDataRule(invitation.getInviterPrefix(), identityCertificate, true);
   chatDialog->publishIntroCert(identityCertificate, true);

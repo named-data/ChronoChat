@@ -39,7 +39,7 @@ InvitationDialog::setInvitation(const string& alias,
 {
   m_inviterAlias = alias;
   string msg = alias;
-  msg.append(" invites you to join the chat room: ");
+  msg.append("\ninvites you to join the chat room: ");
   ui->msgLabel->setText(QString::fromStdString(msg));
 
   m_invitation = invitation;

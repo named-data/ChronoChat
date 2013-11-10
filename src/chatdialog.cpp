@@ -252,6 +252,8 @@ void
 ChatDialog::invitationRejected(const ndn::Name& identity)
 {
   _LOG_DEBUG(" " << identity.toUri() << " Rejected your invitation!");
+  QString msg = QString::fromStdString(identity.toUri()) + " Rejected your invitation!";
+  emit inivationRejection(msg);
 }
 
 void
