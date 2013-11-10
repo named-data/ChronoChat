@@ -91,6 +91,9 @@ public:
 //                           ndn::Ptr<ndn::Data> originalData,
 //                           const ndn::UnverifiedCallback& unverifiedCallback);
 
+  ndn::Ptr<ndn::security::Publickey>
+  getTrustedKey(const ndn::Name& inviterCertName);
+
 private:
   int m_stepLimit;
   ndn::Ptr<ndn::security::CertificateCache> m_certificateCache;

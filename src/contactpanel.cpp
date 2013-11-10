@@ -303,6 +303,17 @@ ContactPanel::onInvitation(Ptr<Interest> interest)
       return;
     }
 
+  Ptr<security::Publickey> keyPtr = m_panelPolicyManager->getTrustedKey(invitation->getInviterCertificateName());
+  if(NULL != keyPtr && security::PolicyManager::verifySignature(invitation->getSignedBlob(), invitation->getSignatureBits(), *keyPtr))
+    {
+      Ptr<security::IdentityCertificate> certificate = Ptr<security::IdentityCertificate>::Create();
+      // hack: incomplete certificate, we don't send it to the wire nor store it anywhere
+      certificate->setName(invitation->getInviterCertificateName());
+      certificate->setPublicKeyInfo(*keyPtr);
+      popChatInvitation(invitation, invitation->getInviterNameSpace(), certificate);
+      return;
+    }
+
   Ptr<Interest> newInterest = Ptr<Interest>(new Interest(invitation->getInviterCertificateName()));
   Ptr<Closure> closure = Ptr<Closure>(new Closure(boost::bind(&ContactPanel::onInvitationCertVerified, 
                                                               this,

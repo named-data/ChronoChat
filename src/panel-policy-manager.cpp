@@ -106,7 +106,7 @@ PanelPolicyManager::checkVerificationPolicy(Ptr<Data> data,
       map<Name, Publickey>::iterator it = m_trustAnchors.find(keyName);
       if(m_trustAnchors.end() != it)
         {
-          _LOG_DEBUG("found key!");
+          // _LOG_DEBUG("found key!");
           Ptr<IdentityCertificate> identityCertificate = Ptr<IdentityCertificate>(new IdentityCertificate(*data));
           if(it->second.getKeyBlob() == identityCertificate->getPublicKeyInfo().getKeyBlob())
             {
@@ -178,4 +178,16 @@ PanelPolicyManager::addTrustAnchor(const EndorseCertificate& selfEndorseCertific
 { 
   // _LOG_DEBUG("Add Anchor: " << selfEndorseCertificate.getPublicKeyName().toUri());
   m_trustAnchors.insert(pair <Name, Publickey > (selfEndorseCertificate.getPublicKeyName(), selfEndorseCertificate.getPublicKeyInfo())); 
+}
+
+Ptr<Publickey>
+PanelPolicyManager::getTrustedKey(const ndn::Name& inviterCertName)
+{
+  Name keyLocatorName = inviterCertName.getPrefix(inviterCertName.size()-1);
+  m_keyNameRegex->match(keyLocatorName);
+  Name keyName = m_keyNameRegex->expand();
+
+  if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
+    return Ptr<Publickey>(new Publickey(m_trustAnchors[keyName]));
+  return NULL;
 }

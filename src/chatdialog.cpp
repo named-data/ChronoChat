@@ -918,6 +918,7 @@ ChatDialog::updateLocalPrefix()
 #endif
     }
   _LOG_DEBUG("now the prefix is " << m_localPrefix.toUri());
+  _LOG_DEBUG("in use prefix is " << m_user.getOriginPrefix().toStdString());
   QString originPrefix = QString::fromStdString(m_newLocalPrefix.toUri());
     
   if (originPrefix != "" && m_user.getOriginPrefix () != originPrefix)
