@@ -226,7 +226,7 @@ ContactPanel::setKeychain()
 }
 
 void
-ContactPanel::setLocalPrefix()
+ContactPanel::setLocalPrefix(int retry)
 {
   Ptr<Interest> interest = Ptr<Interest>(new Interest(Name("/local/ndn/prefix")));
   interest->setChildSelector(Interest::CHILD_RIGHT);
@@ -237,7 +237,8 @@ ContactPanel::setLocalPrefix()
                                                   boost::bind(&ContactPanel::onLocalPrefixTimeout,
                                                               this,
                                                               _1, 
-                                                              _2),
+                                                              _2,
+                                                              10),
                                                   boost::bind(&ContactPanel::onLocalPrefixVerified,
                                                               this,
                                                               _1)));
@@ -256,10 +257,10 @@ ContactPanel::onLocalPrefixVerified(Ptr<Data> data)
 }
 
 void
-ContactPanel::onLocalPrefixTimeout(Ptr<Closure> closure, Ptr<Interest> interest)
+ContactPanel::onLocalPrefixTimeout(Ptr<Closure> closure, Ptr<Interest> interest, int retry)
 { 
-  string randomSuffix = getRandomString();
-  m_localPrefix = Name("/private/local"); 
+  if(retry > 0)
+    setLocalPrefix(retry - 1);
 }
 
 void

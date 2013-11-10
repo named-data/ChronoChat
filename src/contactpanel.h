@@ -59,14 +59,15 @@ private:
   setKeychain();
 
   void
-  setLocalPrefix();
+  setLocalPrefix(int retry = 10);
 
   void
   onLocalPrefixVerified(ndn::Ptr<ndn::Data> data);
   
   void
   onLocalPrefixTimeout(ndn::Ptr<ndn::Closure> closure, 
-                       ndn::Ptr<ndn::Interest> interest);
+                       ndn::Ptr<ndn::Interest> interest,
+                       int retry);
 
   void
   setInvitationListener();
