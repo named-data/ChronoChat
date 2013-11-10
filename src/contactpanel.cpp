@@ -93,7 +93,7 @@ ContactPanel::ContactPanel(QWidget *parent)
     showError(QString::fromStdString("Cannot conect to ndnd!\n Have you started your ndnd?"));
   }
   
-
+  m_localPrefix = Name("/private/local");
   setLocalPrefix();
     
   setInvitationListener();
@@ -260,7 +260,13 @@ void
 ContactPanel::onLocalPrefixTimeout(Ptr<Closure> closure, Ptr<Interest> interest, int retry)
 { 
   if(retry > 0)
-    setLocalPrefix(retry - 1);
+    {
+      setLocalPrefix(retry - 1);
+      return;
+    }
+  else{
+    m_localPrefix = Name("/private/local");
+  }
 }
 
 void
