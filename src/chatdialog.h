@@ -149,10 +149,10 @@ private:
             ndn::Ptr<ndn::Interest> interest);
 
   void
-  getLocalPrefix(ndn::Ptr<ndn::Data> data);
+  onLocalPrefix(ndn::Ptr<ndn::Data> data);
 
   void
-  getLocalPrefixTimeout(ndn::Ptr<ndn::Closure> closure, 
+  onLocalPrefixTimeout(ndn::Ptr<ndn::Closure> closure, 
                         ndn::Ptr<ndn::Interest> interest);
 
   // void 
@@ -284,7 +284,10 @@ private:
   ndn::Ptr<ndn::security::IdentityManager> m_identityManager;
   ndn::Ptr<ndn::security::Keychain> m_keychain;
   ndn::Ptr<ndn::Wrapper> m_handler;
+
   ndn::Ptr<ndn::Wrapper> m_localPrefixHandler;
+  ndn::Name m_newLocalPrefix;
+  bool m_newLocalPrefixReady;
 
   User m_user; 
   std::string m_nick;

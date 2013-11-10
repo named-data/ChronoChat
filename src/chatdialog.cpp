@@ -720,7 +720,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       m_scene->plot("Empty");
     }
 
-    // ui->textEdit->clear();
+    ui->textEdit->clear();
 
     // keep the new prefix
     QString newPrefix = m_user.getPrefix();
@@ -748,10 +748,10 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       usleep(100000);
       // Sync::CcnxWrapperPtr handle = boost::make_shared<Sync::CcnxWrapper> ();
       // handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
-      sendJoin();
+      QTimer::singleShot(600, this, SLOT(sendJoin()));
       m_timer->start(FRESHNESS * 1000);
       disableTreeDisplay();
-      enableTreeDisplay();
+      QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
     }catch(ndn::Error::ndnOperation& e){
       emit noNdnConnection(QString::fromStdString("Cannot conect to ndnd!\n Have you started your ndnd?"));
     }
@@ -890,22 +890,36 @@ ChatDialog::formControlMessage(SyncDemo::ChatMessage &msg, SyncDemo::ChatMessage
 void
 ChatDialog::updateLocalPrefix()
 {
+  m_newLocalPrefixReady = false;
   ndn::Ptr<ndn::Interest> interest = ndn::Ptr<ndn::Interest>(new ndn::Interest(ndn::Name("/local/ndn/prefix")));
   interest->setChildSelector(ndn::Interest::CHILD_RIGHT);
+  interest->setInterestLifetime(1);
 
-  ndn::Ptr<ndn::Closure> closure = ndn::Ptr<ndn::Closure>(new ndn::Closure(boost::bind(&ChatDialog::getLocalPrefix,
+  ndn::Ptr<ndn::Closure> closure = ndn::Ptr<ndn::Closure>(new ndn::Closure(boost::bind(&ChatDialog::onLocalPrefix,
                                                                                        this,
                                                                                        _1),
-                                                                           boost::bind(&ChatDialog::getLocalPrefixTimeout,
+                                                                           boost::bind(&ChatDialog::onLocalPrefixTimeout,
                                                                                        this,
                                                                                        _1,
                                                                                        _2),
-                                                                           boost::bind(&ChatDialog::getLocalPrefix,
+                                                                           boost::bind(&ChatDialog::onLocalPrefix,
                                                                                        this,
                                                                                        _1)));
   
   m_localPrefixHandler->sendInterest(interest, closure);
-
+  while(m_newLocalPrefixReady == false)
+    {
+#if BOOST_VERSION >= 1050000
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+#else
+      boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+#endif
+    }
+  _LOG_DEBUG("now the prefix is " << m_localPrefix.toUri());
+  QString originPrefix = QString::fromStdString(m_newLocalPrefix.toUri());
+    
+  if (originPrefix != "" && m_user.getOriginPrefix () != originPrefix)
+    emit settingUpdated(m_user.getNick (), m_user.getChatroom (), originPrefix);
 }
 
 static std::string chars2("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789");
@@ -924,18 +938,20 @@ ChatDialog::getRandomString()
 }
 
 void
-ChatDialog::getLocalPrefix(ndn::Ptr<ndn::Data> data)
+ChatDialog::onLocalPrefix(ndn::Ptr<ndn::Data> data)
 {
   string dataString(data->content().buf(), data->content().size());
   QString originPrefix = QString::fromStdString (dataString).trimmed ();
-  
-  if (originPrefix != "" && m_user.getOriginPrefix () != originPrefix)
-      emit settingUpdated(m_user.getNick (), m_user.getChatroom (), originPrefix);
+  string trimmedString = originPrefix.toStdString();
+  m_newLocalPrefix = ndn::Name(trimmedString);
+  m_newLocalPrefixReady = true;
 }
 
 void
-ChatDialog::getLocalPrefixTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest)
+ChatDialog::onLocalPrefixTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest)
 {
+  m_newLocalPrefix = m_localPrefix;
+  m_newLocalPrefixReady = true;
 }
 
 void
