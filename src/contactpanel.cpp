@@ -42,9 +42,10 @@ INIT_LOGGER("ContactPanel");
 Q_DECLARE_METATYPE(ndn::security::IdentityCertificate)
 Q_DECLARE_METATYPE(ChronosInvitation)
 
-ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent) 
+ContactPanel::ContactPanel(QWidget *parent) 
   : QDialog(parent)
   , ui(new Ui::ContactPanel)
+  , m_warningDialog(new WarningDialog)
   , m_contactListModel(new QStringListModel)
   , m_startChatDialog(new StartChatDialog)
   , m_invitationDialog(new InvitationDialog)
@@ -55,8 +56,13 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   
   createAction();
 
-  m_contactManager = contactManager;
+  m_contactManager = Ptr<ContactManager>::Create();
 
+  connect(&*m_contactManager, SIGNAL(noNdnConnection(const QString&)),
+          this, SLOT(showError(const QString&)));
+
+  m_contactManager->setWrapper();
+  
   openDB();    
 
   refreshContactList();
@@ -71,13 +77,18 @@ ContactPanel::ContactPanel(Ptr<ContactManager> contactManager, QWidget *parent)
   m_profileEditor = new ProfileEditor(m_contactManager);
   m_profileEditor->setCurrentIdentity(m_defaultIdentity);
 
-  m_addContactPanel = new AddContactPanel(contactManager);
-  m_browseContactDialog = new BrowseContactDialog(contactManager);
-  m_setAliasDialog = new SetAliasDialog(contactManager);
+  m_addContactPanel = new AddContactPanel(m_contactManager);
+  m_browseContactDialog = new BrowseContactDialog(m_contactManager);
+  m_setAliasDialog = new SetAliasDialog(m_contactManager);
  
   ui->setupUi(this);
 
-  m_handler = Ptr<Wrapper>(new Wrapper(m_keychain));  
+  try{
+    m_handler = Ptr<Wrapper>(new Wrapper(m_keychain));  
+  }catch(ndn::Error::ndnOperation& e){
+    showError(QString::fromStdString("Cannot conect to ndnd!\n Have you started your ndnd?"));
+  }
+  
 
   setLocalPrefix();
     
@@ -415,6 +426,12 @@ ContactPanel::getRandomString()
 }
 
 void
+ContactPanel::showError(const QString& msg){
+  QMessageBox::critical(this, tr("Chronos"), msg, QMessageBox::Ok);
+  exit(1);
+}
+
+void
 ContactPanel::updateSelection(const QItemSelection &selected,
 			      const QItemSelection &deselected)
 {
@@ -621,6 +638,8 @@ ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, boo
 
   connect(chatDialog, SIGNAL(closeChatDialog(const ndn::Name&)),
           this, SLOT(removeChatDialog(const ndn::Name&)));
+  connect(chatDialog, SIGNAL(noNdnConnection(const QString&)),
+          this, SLOT(showError(const QString&)));
 
   // send invitation
   chatDialog->sendInvitation(inviteeItem, isIntroducer); 
@@ -642,6 +661,8 @@ ContactPanel::startChatroom2(const ChronosInvitation& invitation,
 
   connect(chatDialog, SIGNAL(closeChatDialog(const ndn::Name&)),
           this, SLOT(removeChatDialog(const ndn::Name&)));
+  connect(chatDialog, SIGNAL(noNdnConnection(const QString&)),
+          this, SLOT(showError(const QString&)));
 
   chatDialog->addChatDataRule(invitation.getInviterPrefix(), identityCertificate, true);
   chatDialog->publishIntroCert(identityCertificate, true);

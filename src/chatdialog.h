@@ -195,6 +195,9 @@ signals:
   void
   closeChatDialog(const ndn::Name& chatroomPrefix);
 
+  void
+  noNdnConnection(const QString& msg);
+
 public slots:
   void 
   processTreeUpdate(const std::vector<Sync::MissingDataInfo>);

@@ -16,9 +16,7 @@
 #include "dns-storage.h"
 #include "contact-manager.h"
 #include "logging.h"
-#include <ndn.cxx/security/identity/identity-manager.h>
-#include <ndn.cxx/security/identity/osx-privatekey-storage.h>
-#include <ndn.cxx/security/identity/basic-identity-storage.h>
+#include <ndn.cxx/wrapper/wrapper.h>
 
 INIT_LOGGER("MAIN");
 
@@ -33,15 +31,17 @@ public:
 
   bool notify(QObject * receiver, QEvent * event) 
   {
-    try 
-      {
+    try {
         return QApplication::notify(receiver, event);
-      } 
-    catch(std::exception& e) 
-      {
-        std::cerr << "Exception thrown:" << e.what() << endl;
-        return false;
-      }
+    } 
+    catch(ndn::Error::ndnOperation& e){
+      std::cerr << "Canno connect to ndnd!" << endl;
+      return false;
+    }
+    catch(std::exception& e){
+      std::cerr << "Exception thrown:" << e.what() << endl;
+      return false;
+    }
     
   }
 };
@@ -50,21 +50,7 @@ int main(int argc, char *argv[])
 {
   NewApp app(argc, argv);
 
-  // app.setWindowIcon(QIcon(":/demo.icns"));
-
-  Ptr<ContactStorage> contactStorage = NULL;
-  Ptr<DnsStorage> dnsStorage = NULL;
-  try{
-    contactStorage = Ptr<ContactStorage>::Create();
-    dnsStorage = Ptr<DnsStorage>::Create();
-  }catch(std::exception& e){
-    std::cerr << e.what() << std::endl;
-    exit(1);
-  }
-
-  Ptr<ContactManager> contactManager = Ptr<ContactManager>(new ContactManager(contactStorage, dnsStorage));
-  
-  ContactPanel contactPanel(contactManager);
+  ContactPanel contactPanel;
 
   contactPanel.show ();
   contactPanel.activateWindow ();
