@@ -111,6 +111,9 @@ private:
   void
   initializeSetting();
 
+  QString 
+  getRandomString();
+
   void 
   updateLabels();
 
@@ -145,6 +148,12 @@ private:
   onTimeout(ndn::Ptr<ndn::Closure> closure, 
             ndn::Ptr<ndn::Interest> interest);
 
+  void
+  getLocalPrefix(ndn::Ptr<ndn::Data> data);
+
+  void
+  getLocalPrefixTimeout(ndn::Ptr<ndn::Closure> closure, 
+                        ndn::Ptr<ndn::Interest> interest);
 
   // void 
   // fetchHistory(std::string name);
@@ -215,6 +224,9 @@ private slots:
   void 
   treeButtonPressed();
 
+  void
+  settingUpdated(QString, QString, QString);
+
   void 
   sendJoin();
 
@@ -232,6 +244,9 @@ private slots:
 
   void 
   enableTreeDisplay();
+
+  void
+  updateLocalPrefix();
 
   void 
   summonReaper();
@@ -269,6 +284,7 @@ private:
   ndn::Ptr<ndn::security::IdentityManager> m_identityManager;
   ndn::Ptr<ndn::security::Keychain> m_keychain;
   ndn::Ptr<ndn::Wrapper> m_handler;
+  ndn::Ptr<ndn::Wrapper> m_localPrefixHandler;
 
   User m_user; 
   std::string m_nick;
@@ -286,6 +302,7 @@ private:
   QAction *minimizeAction;
   QAction *maximizeAction;
   QAction *restoreAction;
+  QAction *updateLocalPrefixAction;
   QAction *quitAction;
   QMenu *trayIconMenu;
 

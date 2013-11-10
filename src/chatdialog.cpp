@@ -19,6 +19,7 @@
 
 #ifndef Q_MOC_RUN
 #include <ndn.cxx/security/identity/identity-manager.h>
+#include <ndn.cxx/security/policy/no-verify-policy-manager.h>
 #include <ndn.cxx/security/encryption/basic-encryption-manager.h>
 #include <sync-intro-certificate.h>
 #include <boost/random/random_device.hpp>
@@ -61,9 +62,10 @@ ChatDialog::ChatDialog(ndn::Ptr<ContactManager> contactManager,
 
   ui->setupUi(this);
 
+  QString randString = getRandomString();
   m_localChatPrefix = m_localPrefix;
   m_localChatPrefix.append("%F0.").append(m_defaultIdentity);
-  m_localChatPrefix.append("chronos").append(m_chatroomPrefix.get(-1));
+  m_localChatPrefix.append("chronos").append(m_chatroomPrefix.get(-1)).append(randString.toStdString());
 
   m_session = time(NULL);
   m_scene = new DigestTreeScene(this);
@@ -136,29 +138,14 @@ ChatDialog::setWrapper(bool trial)
 
   m_keychain = ndn::Ptr<ndn::security::Keychain>(new ndn::security::Keychain(m_identityManager, m_invitationPolicyManager, NULL));
 
+  ndn::Ptr<ndn::security::Keychain> noVerifyKeychain = ndn::Ptr<ndn::security::Keychain>(new ndn::security::Keychain(m_identityManager,
+ndn::Ptr<ndn::security::NoVerifyPolicyManager>::Create(), NULL));
   try{
     m_handler = ndn::Ptr<ndn::Wrapper>(new ndn::Wrapper(m_keychain));
+    m_localPrefixHandler = ndn::Ptr<ndn::Wrapper>(new ndn::Wrapper(noVerifyKeychain));
   }catch(ndn::Error::ndnOperation& e){
     emit noNdnConnection(QString::fromStdString("Cannot conect to ndnd!\n Have you started your ndnd?"));
   }
-
-
-  if(trial == true)
-    {
-      ndn::Ptr<ndn::Interest> interest = ndn::Ptr<ndn::Interest>(new ndn::Interest(ndn::Name("/local/ndn/prefix")));
-      ndn::Ptr<ndn::Closure> closure = ndn::Ptr<ndn::Closure>(new ndn::Closure(boost::bind(&ChatDialog::onUnverified,
-                                                                                           this,
-                                                                                           _1),
-                                                                               boost::bind(&ChatDialog::onTimeout,
-                                                                                           this,
-                                                                                           _1,
-                                                                                           _2),
-                                                                               boost::bind(&ChatDialog::onUnverified,
-                                                                                           this,
-                                                                                           _1)));
-
-      m_handler->sendInterest(interest, closure);
-    }
 }
 
 void
@@ -700,6 +687,94 @@ ChatDialog::updateRosterList(QStringList staleUserList)
 }
 
 void
+ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
+{
+  QString randString = getRandomString();
+  bool needWrite = false;
+  bool needFresh = false;
+
+  QString oldPrefix = m_user.getPrefix();
+  if (!originPrefix.isEmpty() && originPrefix != m_user.getOriginPrefix()) {
+    m_user.setOriginPrefix(originPrefix);
+
+    m_localPrefix = ndn::Name(originPrefix.toStdString());
+    m_localChatPrefix = m_localPrefix;
+    m_localChatPrefix.append("%F0.").append(m_defaultIdentity);
+    m_localChatPrefix.append("chronos").append(m_chatroomPrefix.get(-1)).append(randString.toStdString());
+    m_user.setPrefix(QString::fromStdString(m_localChatPrefix.toUri()));
+    m_scene->setCurrentPrefix(QString::fromStdString(m_localChatPrefix.toUri()));
+    needWrite = true;
+    needFresh = true;
+  }
+
+  if (needWrite) {
+    updateLabels();
+  }
+
+  if (needFresh && m_sock != NULL)
+  {
+
+    {
+      boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
+      m_scene->clearAll();
+      m_scene->plot("Empty");
+    }
+
+    // ui->textEdit->clear();
+
+    // keep the new prefix
+    QString newPrefix = m_user.getPrefix();
+    // send leave for the old
+    m_user.setPrefix(oldPrefix);
+    // there is no point to send leave if we haven't joined yet
+    if (m_joined)
+    {
+      sendLeave();
+    }
+    // resume new prefix
+    m_user.setPrefix(newPrefix);
+    // Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
+    // handle->clearInterestFilter(oldPrefix.toStdString());
+    delete m_sock;
+    m_sock = NULL;
+
+    try
+    {
+      usleep(100000);
+      m_sock = new Sync::SyncSocket(m_chatroomPrefix.toUri(),
+                                    m_syncPolicyManager,
+                                    bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
+                                    bind(&ChatDialog::processRemoveWrapper, this, _1));
+      usleep(100000);
+      // Sync::CcnxWrapperPtr handle = boost::make_shared<Sync::CcnxWrapper> ();
+      // handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
+      sendJoin();
+      m_timer->start(FRESHNESS * 1000);
+      disableTreeDisplay();
+      enableTreeDisplay();
+    }catch(ndn::Error::ndnOperation& e){
+      emit noNdnConnection(QString::fromStdString("Cannot conect to ndnd!\n Have you started your ndnd?"));
+    }
+  }
+  else if (needFresh && m_sock == NULL)
+  {
+    initializeSync();
+  }
+  else if (m_sock == NULL)
+  {
+    initializeSync();
+  }
+  else
+  {
+// #ifdef __DEBUG
+//     std::cout << "Just changing nicks, we're good. " << std::endl;
+// #endif
+  }
+
+  fitView();
+}
+
+void
 ChatDialog::iconActivated(QSystemTrayIcon::ActivationReason reason)
 {
   switch (reason)
@@ -739,8 +814,8 @@ ChatDialog::createActions()
 
   // settingsAction->setMenuRole (QAction::PreferencesRole);
 
-  // updateLocalPrefixAction = new QAction(tr("Update local prefix"), this);
-  // connect (updateLocalPrefixAction, SIGNAL(triggered()), this, SLOT(updateLocalPrefix()));
+  updateLocalPrefixAction = new QAction(tr("Update local prefix"), this);
+  connect (updateLocalPrefixAction, SIGNAL(triggered()), this, SLOT(updateLocalPrefix()));
 
   quitAction = new QAction(tr("Quit"), this);
   connect(quitAction, SIGNAL(triggered()), this, SLOT(quit()));
@@ -755,8 +830,8 @@ ChatDialog::createTrayIcon()
   trayIconMenu->addAction(restoreAction);
   // trayIconMenu->addSeparator();
   // trayIconMenu->addAction(settingsAction);
-  // trayIconMenu->addSeparator();
-  // trayIconMenu->addAction(updateLocalPrefixAction);
+  trayIconMenu->addSeparator();
+  trayIconMenu->addAction(updateLocalPrefixAction);
   trayIconMenu->addSeparator();
   trayIconMenu->addAction(quitAction);
 
@@ -810,6 +885,57 @@ ChatDialog::formControlMessage(SyncDemo::ChatMessage &msg, SyncDemo::ChatMessage
   time_t seconds = time(NULL);
   msg.set_timestamp(seconds);
   msg.set_type(type);
+}
+
+void
+ChatDialog::updateLocalPrefix()
+{
+  ndn::Ptr<ndn::Interest> interest = ndn::Ptr<ndn::Interest>(new ndn::Interest(ndn::Name("/local/ndn/prefix")));
+  interest->setChildSelector(ndn::Interest::CHILD_RIGHT);
+
+  ndn::Ptr<ndn::Closure> closure = ndn::Ptr<ndn::Closure>(new ndn::Closure(boost::bind(&ChatDialog::getLocalPrefix,
+                                                                                       this,
+                                                                                       _1),
+                                                                           boost::bind(&ChatDialog::getLocalPrefixTimeout,
+                                                                                       this,
+                                                                                       _1,
+                                                                                       _2),
+                                                                           boost::bind(&ChatDialog::getLocalPrefix,
+                                                                                       this,
+                                                                                       _1)));
+  
+  m_localPrefixHandler->sendInterest(interest, closure);
+
+}
+
+static std::string chars2("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789");
+
+QString
+ChatDialog::getRandomString()
+{
+  std::string randStr;
+  boost::random::random_device rng;
+  boost::random::uniform_int_distribution<> index_dist(0, chars2.size() - 1);
+  for (int i = 0; i < 10; i ++)
+  {
+    randStr += chars2[index_dist(rng)];
+  }
+  return randStr.c_str();
+}
+
+void
+ChatDialog::getLocalPrefix(ndn::Ptr<ndn::Data> data)
+{
+  string dataString(data->content().buf(), data->content().size());
+  QString originPrefix = QString::fromStdString (dataString).trimmed ();
+  
+  if (originPrefix != "" && m_user.getOriginPrefix () != originPrefix)
+      emit settingUpdated(m_user.getNick (), m_user.getChatroom (), originPrefix);
+}
+
+void
+ChatDialog::getLocalPrefixTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest)
+{
 }
 
 void
