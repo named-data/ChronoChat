@@ -122,6 +122,9 @@ private slots:
   showError(const QString& msg);
 
   void
+  showWarning(const QString& msg);
+
+  void
   updateSelection(const QItemSelection &selected,
                   const QItemSelection &deselected);
 

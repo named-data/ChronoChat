@@ -85,11 +85,17 @@ ProfileEditor::onOkClicked()
 {
   Name defaultKeyName = m_identityManager->getPublicStorage()->getDefaultKeyNameForIdentity(m_currentIdentity);
   if(defaultKeyName.size() == 0)
-    emit noKeyOrCert(QString::fromStdString("Corresponding key is missing!\nHave you created the key?"));
+    {
+      emit noKeyOrCert(QString::fromStdString("Corresponding key is missing!\nHave you created the key?"));
+      return;
+    }
+
   Name defaultCertName = m_identityManager->getPublicStorage()->getDefaultCertificateNameForKey(defaultKeyName);
   if(defaultCertName.size() == 0)
-    emit noKeyOrCert(QString::fromStdString("Corresponding certificate is missing!\nHave you installed the certificate?"));
-
+    {
+      emit noKeyOrCert(QString::fromStdString("Corresponding certificate is missing!\nHave you installed the certificate?"));
+      return;
+    }
 
   m_tableModel->submitAll();
   m_contactManager->updateProfileData(m_currentIdentity);
