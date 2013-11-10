@@ -17,6 +17,7 @@
 #include <boost/tokenizer.hpp>
 #include "logging.h"
 #include "exception.h"
+#include "ndn.cxx/error.h"
 #endif
 
 using namespace std;
@@ -62,10 +63,9 @@ BrowseContactDialog::~BrowseContactDialog()
 }
 
 
-vector<string> 
-BrowseContactDialog::getCertName()
+void
+BrowseContactDialog::getCertNames(std::vector<std::string> &names)
 {
-  vector<string> result;
   try{
     using namespace boost::asio::ip;
     tcp::iostream request_stream;
@@ -75,7 +75,7 @@ BrowseContactDialog::getCertName()
       {
 	m_warningDialog->setMsg("Fail to fetch certificate directory! #1");
 	m_warningDialog->show();
-	return result;
+	return;
       }
     request_stream << "GET /cert/list/ HTTP/1.0\r\n";
     request_stream << "Host: ndncert.named-data.net\r\n\r\n";
@@ -87,8 +87,9 @@ BrowseContactDialog::getCertName()
       {
 	m_warningDialog->setMsg("Fail to fetch certificate directory! #2");
 	m_warningDialog->show();
-	return result;
+	return;
       }
+
     std::stringstream response_stream(line1);
     std::string http_version;
     response_stream >> http_version;
@@ -101,13 +102,13 @@ BrowseContactDialog::getCertName()
       {
     	m_warningDialog->setMsg("Fail to fetch certificate directory! #3");
 	m_warningDialog->show();
-	return result;
+	return;
       }
     if (status_code!=200)
       {
     	m_warningDialog->setMsg("Fail to fetch certificate directory! #4");
 	m_warningDialog->show();
-	return result;
+	return;
       }
     vector<string> headers;
     std::string header;
@@ -127,28 +128,29 @@ BrowseContactDialog::getCertName()
     try{
       while (it != certItems.end())
         {
-	  result.push_back(*it);
+          if (!it->empty())
+            {
+              names.push_back(*it);
+            }
           it++;
         }
     }catch (exception &e){
       m_warningDialog->setMsg("Fail to fetch certificate directory! #5");
       m_warningDialog->show();
-      return vector<string>();
     }
-    result.pop_back();
-    
-    return result;
+
   }catch(std::exception &e){
     m_warningDialog->setMsg("Fail to fetch certificate directory! #N");
     m_warningDialog->show();
-    return result;
   }
 }
 
 void
 BrowseContactDialog::updateCertificateMap(bool filter)
 {
-  vector<string> certNameList = getCertName();
+  vector<string> certNameList;
+  getCertNames(certNameList);
+  
   if(filter)
     {
       map<Name, Name> certificateMap;
@@ -186,7 +188,13 @@ BrowseContactDialog::updateCertificateMap(bool filter)
   
       for(; it != certNameList.end(); it++)
 	{
-	  m_certificateNameList.push_back(*it);
+          try{
+            m_certificateNameList.push_back(Name (*it));
+          }
+          catch(error::Name)
+            {
+              ; // do nothing 
+            }
 	}
     }
 }
