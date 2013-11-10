@@ -29,6 +29,7 @@ ProfileEditor::ProfileEditor(Ptr<ContactManager> contactManager,
     , ui(new Ui::ProfileEditor)
     , m_tableModel(new QSqlTableModel())
     , m_contactManager(contactManager)
+    , m_identityManager(ndn::Ptr<ndn::security::IdentityManager>::Create())
 {
   ui->setupUi(this);
   
@@ -82,6 +83,14 @@ ProfileEditor::onDeleteClicked()
 void
 ProfileEditor::onOkClicked()
 {
+  Name defaultKeyName = m_identityManager->getPublicStorage()->getDefaultKeyNameForIdentity(m_currentIdentity);
+  if(defaultKeyName.size() == 0)
+    emit noKeyOrCert(QString::fromStdString("Corresponding key is missing!\nHave you created the key?"));
+  Name defaultCertName = m_identityManager->getPublicStorage()->getDefaultCertificateNameForKey(defaultKeyName);
+  if(defaultCertName.size() == 0)
+    emit noKeyOrCert(QString::fromStdString("Corresponding certificate is missing!\nHave you installed the certificate?"));
+
+
   m_tableModel->submitAll();
   m_contactManager->updateProfileData(m_currentIdentity);
   this->hide();

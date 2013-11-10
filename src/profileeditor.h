@@ -16,6 +16,7 @@
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
+#include <ndn.cxx/security/identity/identity-manager.h>
 #endif
 
 namespace Ui {
@@ -49,11 +50,15 @@ private slots:
   void
   onGetClicked();
 
+signals:
+  void
+  noKeyOrCert(const QString&);
 
 private:
   Ui::ProfileEditor *ui;
   QSqlTableModel* m_tableModel;
   ndn::Ptr<ContactManager> m_contactManager;
+  ndn::Ptr<ndn::security::IdentityManager> m_identityManager;
   ndn::Name m_currentIdentity;
 };
 
