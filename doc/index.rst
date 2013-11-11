@@ -1,7 +1,7 @@
 ChronoChat Manual
 ===================================================================
 
-Step 0. Before open ChronoChat, make sure ndnd is running on your machine. 
+**Step 0**: Before open ChronoChat, make sure ndnd is running on your machine. 
 If you have installed `NDNx Control Center`_, check if its tray icon shows up
 
 .. _NDNx Control Center: http://named-data.net/download/
@@ -9,7 +9,7 @@ If you have installed `NDNx Control Center`_, check if its tray icon shows up
 .. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/ncc.png
 
 You also need to have your default key generated and certificate installed.
-To check that, you can use a command line tool **ndnsec-ls-identity**, and you should see output similar to following:
+To check that, you can use a command line tool **ndnsec-ls-identity**, and you should see output similar to:
 
 .. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/ndnsec-ls-identity.png
 
@@ -17,8 +17,15 @@ If you see nothing or something different in output, please go to `NDN Certifica
 
 .. _NDN Certifications: http://ndncert.named-data.net/
 
-Step 1. When you open ChronoChat App, you will see a contact panel as shown below.
+**Step 1**: When you open ChronoChat App, you should see a contact panel as shown below.
 
 .. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chronochat-1.png
 
- 
+The left part of the panel is your contact list. 
+One must be one of your contacts if she/he wants to have a chat with you.
+Right now, it is empty, so let's add some contacts. 
+
+**Step 2**: Click the **Add** button in the lower left corner. 
+You should see a contact browsing dialog which collects all the existing contact certificate in the testbed.
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/browse-contact.png
