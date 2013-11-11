@@ -70,12 +70,16 @@ ContactPanel::ContactPanel(QWidget *parent)
   setKeychain();
 
   m_defaultIdentity = m_keychain->getDefaultIdentity();
-  m_contactManager->setDefaultIdentity(m_defaultIdentity);
-  m_nickName = m_defaultIdentity.get(-1).toUri();
-  m_settingDialog->setIdentity(m_defaultIdentity.toUri(), m_nickName);
+  if(m_defaultIdentity.size() == 0)
+    showError(QString::fromStdString("certificate of ") + QString::fromStdString(m_defaultIdentity.toUri()) + " is missing!\nHave you installed the certificate?");
   Name defaultCertName = m_keychain->getIdentityManager()->getDefaultCertificateNameByIdentity(m_defaultIdentity);
   if(defaultCertName.size() == 0)
     showError(QString::fromStdString("certificate of ") + QString::fromStdString(m_defaultIdentity.toUri()) + " is missing!\nHave you installed the certificate?");
+
+
+  m_contactManager->setDefaultIdentity(m_defaultIdentity);
+  m_nickName = m_defaultIdentity.get(-1).toUri();
+  m_settingDialog->setIdentity(m_defaultIdentity.toUri(), m_nickName);
   
 
   m_profileEditor = new ProfileEditor(m_contactManager);

@@ -26,7 +26,7 @@
 #include "chatdialog.h"
 #include "endorse-combobox-delegate.h"
 #include "browsecontactdialog.h"
-#include "warningDialog.h"
+#include "warningdialog.h"
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
