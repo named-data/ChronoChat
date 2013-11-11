@@ -21,6 +21,11 @@ If you see nothing or something different in output, please go to `NDN Certifica
 
 .. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chronochat-1.png
 
+You should see **Setting** button at the bottom of the panel. 
+You can change your nick name there.
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/setting-dialog.png
+
 The left part of the panel is your contact list. 
 One must be one of your contacts if she/he wants to have a chat with you.
 Right now, it is empty, so let's add some contacts. 
