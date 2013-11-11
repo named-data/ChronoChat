@@ -8,7 +8,14 @@ If you have installed `NDNx Control Center`_, check if its tray icon shows up
 
 .. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/ncc.png
 
-and your default key and certificate have been generated and installed . 
+You also need to have your default key generated and certificate installed.
+To check that, you can use a command line tool **ndnsec-ls-identity**, and you should see output similar to following:
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/ndnsec-ls-identity.png
+
+If you see nothing or something different in output, please go to `NDN Certifications`_ to set up your security environment.
+
+.. _NDN Certifications: http://ndncert.named-data.net/
 
 Step 1. When you open ChronoChat App, you will see a contact panel as shown below.
 
