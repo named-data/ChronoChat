@@ -26,6 +26,13 @@ One must be one of your contacts if she/he wants to have a chat with you.
 Right now, it is empty, so let's add some contacts. 
 
 **Step 2**: Click the **Add** button in the lower left corner. 
-You should see a contact browsing dialog which collects all the existing contact certificate in the testbed.
+You should see a contact browsing dialog which collects all the existing contact certificate in the testbed, for example:
 
 .. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/browse-contact.png
+
+You can select the contact you want to add, and then click the **Add** button.
+Then you should see that the selected contact has been added into your contact list.
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chronochat-2.png
+
+
