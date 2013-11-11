@@ -1,4 +1,4 @@
 ChronoChat Manual
 ===================================================================
 
-.. image:: https://github.com/bruinfish/ChronoChat-V2/blob/master/doc/img/chronochat-1.png
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chronochat-1.png
