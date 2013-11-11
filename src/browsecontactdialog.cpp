@@ -112,29 +112,20 @@ BrowseContactDialog::getCertNames(std::vector<std::string> &names)
     while (std::getline(request_stream, header) && header != "\r")
       headers.push_back(header);
 
-    std::stringbuf buffer;
-    std::ostream os (&buffer);
+    std::istreambuf_iterator<char> stream_iter (request_stream);
+    std::istreambuf_iterator<char> end_of_stream;
 
-    os << request_stream.rdbuf();
-    
-    using boost::tokenizer;
-    using boost::escaped_list_separator;
+    typedef boost::tokenizer< boost::escaped_list_separator<char>, std::istreambuf_iterator<char> > tokenizer_t;
+    tokenizer_t certItems (stream_iter, end_of_stream,boost::escaped_list_separator<char>('\\', '\n', '"'));
 
-    tokenizer<escaped_list_separator<char> > certItems(buffer.str(), escaped_list_separator<char> ('\\', '\n', '"'));
-    tokenizer<escaped_list_separator<char> >::iterator it = certItems.begin();
-    try{
-      while (it != certItems.end())
-        {
-          if (!it->empty())
-            {
-              names.push_back(*it);
-            }
-          it++;
-        }
-    }catch (exception &e){
-      QMessageBox::information(this, tr("Chronos"), QString::fromStdString("Fail to fetch certificate directory! #5"));
-    }
-
+    for (tokenizer_t::iterator it = certItems.begin();
+         it != certItems.end (); it++)
+      {
+        if (!it->empty())
+          {
+            names.push_back(*it);
+          }
+      }
   }catch(std::exception &e){
     QMessageBox::information(this, tr("Chronos"), QString::fromStdString("Fail to fetch certificate directory! #N"));
   }
@@ -183,13 +174,16 @@ BrowseContactDialog::updateCertificateMap(bool filter)
   
       for(; it != certNameList.end(); it++)
 	{
-          try{
-            Name name(*it);
-            m_certificateNameList.push_back(name);
+          try {
+            m_certificateNameList.push_back(Name (*it));
           }
           catch(error::Name)
             {
-              ; // do nothing 
+              _LOG_ERROR ("Error parsing: [" << *it << "]");
+            }
+          catch(error::name::Component)
+            {
+              _LOG_ERROR ("Error parsing: [" << *it << "]");
             }
 	}
     }
