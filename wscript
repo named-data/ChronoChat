@@ -10,11 +10,17 @@ def options(opt):
     
     opt.load('compiler_c compiler_cxx boost protoc qt4')
 
+    if Utils.unversioned_sys_platform () != "darwin":
+        opt.load('gnu_dirs');
+
     # opt.load('tinyxml', tooldir=['waf-tools'])
     opt.load('cryptopp', tooldir=['waf-tools'])
     
 def configure(conf):
     conf.load("compiler_c compiler_cxx boost protoc qt4 cryptopp")
+
+    if Utils.unversioned_sys_platform () != "darwin":
+        conf.load('gnu_dirs');
 
     if conf.options.debug:
         conf.define ('_DEBUG', 1)
@@ -35,6 +41,8 @@ def configure(conf):
     if conf.options.log4cxx:
         conf.check_cfg(package='liblog4cxx', args=['--cflags', '--libs'], uselib_store='LOG4CXX', mandatory=True)
     conf.check_cfg (package='ChronoSync', args=['ChronoSync >= 0.1', '--cflags', '--libs'], uselib_store='SYNC', mandatory=True)
+
+    conf.check_cryptopp(path=conf.options.cryptopp_dir)
 
     conf.check_boost(lib='system random thread filesystem')
 
@@ -93,6 +101,15 @@ def build (bld):
         qt.mac_app = "ChronoChat.app"
         qt.mac_plist = app_plist % "ChronoChat"
         qt.mac_resources = 'demo.icns'
+    else:
+        bld (features = "subst",
+             source = 'linux/chronochat.desktop.in',
+             target = 'linux/chronochat.desktop',
+             BINARY = "ChronoChat",
+             install_path = "${DATAROOTDIR}/applications"
+            )
+        bld.install_files("${DATAROOTDIR}/chronochat",
+                          bld.path.ant_glob(['linux/Resources/*']))
 
 
 from waflib import TaskGen

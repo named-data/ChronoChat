@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Name=ChronoChat
+Keywords=Internet;NDN;Chat
+Exec=@BINDIR@/@BINARY@
+Terminal=false
+X-MultipleArgs=false
+Type=Application
+Icon=@DATAROOTDIR@/chronochat/icon-main.png
+Categories=GNOME;GTK;Network;
+StartupNotify=true
+Actions=NewWindow;NewPrivateWindow;
