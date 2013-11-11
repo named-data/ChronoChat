@@ -28,6 +28,7 @@ You can change your identity and setting there.
 
 The default setting is derived from the key and certificate you installed in step 0. 
 
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chronochat-2.png
 
 The left part of the panel is your contact list. 
 One must be one of your contacts if she/he wants to have a chat with you.
@@ -41,6 +42,6 @@ You should see a contact browsing dialog which collects all the existing contact
 You can select the contact you want to add, and then click the **Add** button.
 Then you should see that the selected contact has been added into your contact list.
 
-.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chronochat-2.png
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chronochat-3.png
 
 
