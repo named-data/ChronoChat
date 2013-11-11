@@ -119,10 +119,11 @@ ContactPanel::ContactPanel(QWidget *parent)
   connect(m_profileEditor, SIGNAL(noKeyOrCert(const QString&)),
           this, SLOT(showWarning(const QString&)));
 
-  // connect(ui->AddContactButton, SIGNAL(clicked()),
-  //         this, SLOT(openAddContactPanel()));
   connect(ui->AddContactButton, SIGNAL(clicked()),
           this, SLOT(openBrowseContactDialog()));
+
+  connect(m_browseContactDialog, SIGNAL(directAddClicked()),
+          this, SLOT(openAddContactPanel()));
 
   connect(this, SIGNAL(refreshCertDirectory()),
           m_browseContactDialog, SLOT(refreshList()));
@@ -133,6 +134,8 @@ ContactPanel::ContactPanel(QWidget *parent)
   connect(ui->settingButton, SIGNAL(clicked()),
           this, SLOT(openSettingDialog()));
    
+  connect(m_addContactPanel, SIGNAL(newContactAdded()),
+          this, SLOT(refreshContactList()));
   connect(m_browseContactDialog, SIGNAL(newContactAdded()),
           this, SLOT(refreshContactList()));
   connect(m_setAliasDialog, SIGNAL(aliasChanged()),

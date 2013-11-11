@@ -54,8 +54,8 @@ BrowseContactDialog::BrowseContactDialog(Ptr<ContactManager> contactManager,
   connect(ui->AddButton, SIGNAL(clicked()),
 	  this, SLOT(onAddClicked()));
 	  
-  connect(ui->CancelButton, SIGNAL(clicked()),
-	  this, SLOT(onCancelClicked()));
+  connect(ui->DirectAddButton, SIGNAL(clicked()),
+	  this, SLOT(onDirectAddClicked()));
 }
 
 BrowseContactDialog::~BrowseContactDialog()
@@ -306,8 +306,11 @@ BrowseContactDialog::onAddClicked()
 }
 
 void
-BrowseContactDialog::onCancelClicked()
-{ this->close(); }
+BrowseContactDialog::onDirectAddClicked()
+{
+  emit directAddClicked();
+  this->close();
+}
 
 void
 BrowseContactDialog::closeEvent(QCloseEvent *e)

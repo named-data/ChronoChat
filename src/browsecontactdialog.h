@@ -79,7 +79,7 @@ private slots:
   onAddClicked();
 
   void
-  onCancelClicked();
+  onDirectAddClicked();
 
 public slots:
   void
@@ -88,6 +88,9 @@ public slots:
 signals:
   void
   newContactAdded();
+
+  void
+  directAddClicked();
 
 private:
   Ui::BrowseContactDialog *ui;
