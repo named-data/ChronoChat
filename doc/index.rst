@@ -56,3 +56,55 @@ If the certificate can be fetched and verified, the dialog will show you the des
 
 .. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/add-contact-2.png
 
+You can click **Add** to add the contact into contact list.
+
+**Step 3**: Now you can start a chatting room with you contacts. 
+You can right click the contact you want to chat, and then select **Chat**. 
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chronochat-4.png
+
+You should see a "Start Chating" dialog:
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/start-chat.png
+
+You can click **OK** button, and then you will enter the chat room, and a chat invitation will be sent to the contact.
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chatdialog-1.png
+
+If you see some red warning at the top of your chatroom window, such as:
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chatdialog-3.png
+
+You can click the tray icon of the chat room to update your local prefix, such as:
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/update-prefix.png
+
+After that the red warning should disappear and your current prefix will turn green.
+
+**Step 4**: At the contact side, the contact will got a inviation notification if the contact has also added you as a contact:
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/invitation-notify.png
+
+The contact may **Accept** or **Reject** your invitation. 
+Once your inviation is accepted, contact will enter the chat room, and both of you should see each other:
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chatdialog-2.png
+
+Now you can chat with people in the chat room.
+
+**Step 5**: If you want to add more contacts into the chat room, you can invite them by clicking the **Invite** button.
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chatdialog-4.png
+
+Then a contact list will pop up and you can select other contact to invite:
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/invite.png
+
+When the invited contact accept your invitation, you should see the contact enter the chat room.
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chatdialog-5.png
+
+**Step 6**: Enjoy chatting with others!
+
+.. image:: https://raw.github.com/bruinfish/ChronoChat-V2/master/doc/img/chatdialog-6.png
+
