@@ -72,10 +72,15 @@ ContactManager::setKeychain()
   policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>",
 											  "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$",
 											  "==", "\\1", "\\1\\2", true)));
+  policyManager->addVerificationPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^(<>*)$", 
+                                                                                          "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
+                                                                                          ">", "\\1", "\\1\\2", true)));
+  
 
   policyManager->addSigningPolicyRule(Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<DNS>]*)<DNS><PROFILE>",
                                                                                      "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT>",
                                                                                      "==", "\\1", "\\1\\2", true)));
+
 
   const string TrustAnchor("BIICqgOyEIWlKzDI2xX2hdq5Azheu9IVyewcV4uM7ylfh67Y8MIxF3tDCTx5JgEn\
 HYMuCaYQm6XuaXTlVfDdWff/K7Xebq8IgGxjNBeU9eMf7Gy9iIMrRAOdBG0dBHmo\
@@ -280,11 +285,17 @@ ContactManager::onKeyVerified(Ptr<Data> data, const Name& identity)
 
 void
 ContactManager::onKeyUnverified(Ptr<Data> data, const Name& identity)
-{ emit contactKeyFetchFailed (identity); }
+{ 
+  _LOG_DEBUG("Key cannot be verified!");
+  emit contactKeyFetchFailed (identity); 
+}
 
 void
 ContactManager::onKeyTimeout(Ptr<Closure> closure, Ptr<Interest> interest, const Name& identity, int retry)
-{ emit contactKeyFetchFailed(identity); }
+{ 
+  _LOG_DEBUG("Key timeout!");
+  emit contactKeyFetchFailed(identity); 
+}
 
 void
 ContactManager::onIdCertificateVerified(Ptr<Data> data, const Name& identity)

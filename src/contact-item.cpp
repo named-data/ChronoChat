@@ -37,7 +37,10 @@ ContactItem::ContactItem(const EndorseCertificate& selfEndorseCertificate,
   m_name = string(nameBlob->buf(), nameBlob->size());
   m_alias = alias.empty() ? m_name : alias;
   Ptr<const Blob> institutionBlob = profileData->getProfile().getProfileEntry("institution");
-  m_institution = string(institutionBlob->buf(), institutionBlob->size());
+  if(institutionBlob != NULL)
+    m_institution = string(institutionBlob->buf(), institutionBlob->size());
+  else
+    m_institution = string();
 }
 
 ContactItem::ContactItem(const ContactItem& contactItem)
