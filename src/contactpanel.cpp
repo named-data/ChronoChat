@@ -148,6 +148,11 @@ ContactPanel::ContactPanel(QWidget *parent)
           this, SLOT(acceptInvitation(const ChronosInvitation&, const ndn::security::IdentityCertificate&)));
   connect(m_invitationDialog, SIGNAL(invitationRejected(const ChronosInvitation&)),
           this, SLOT(rejectInvitation(const ChronosInvitation&)));
+  
+  connect(&*m_contactManager, SIGNAL(contactAdded(const ndn::Name&)),
+          this, SLOT(addContactIntoPanelPolicy(const ndn::Name&)));
+  connect(&*m_contactManager, SIGNAL(contactRemoved(const ndn::Name&)),
+          this, SLOT(removeContactFromPanelPolicy(const ndn::Name&)));
 
   connect(m_settingDialog, SIGNAL(identitySet(const QString&, const QString&)),
           this, SLOT(updateDefaultIdentity(const QString&, const QString&)));
@@ -642,6 +647,18 @@ ContactPanel::removeContactButton()
 void
 ContactPanel::openInvitationDialog()
 { m_invitationDialog->show(); }
+
+void
+ContactPanel::addContactIntoPanelPolicy(const Name& contactNameSpace)
+{
+  Ptr<ContactItem> contact = m_contactManager->getContact(contactNameSpace);
+  if(contact != NULL)
+    m_panelPolicyManager->addTrustAnchor(contact->getSelfEndorseCertificate());
+}
+
+void
+ContactPanel::removeContactFromPanelPolicy(const Name& keyName)
+{ m_panelPolicyManager->removeTrustAnchor(keyName); }
 
 void
 ContactPanel::refreshContactList()

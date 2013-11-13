@@ -84,6 +84,10 @@ public:
   void
   addContact(const ndn::security::IdentityCertificate& idCert, const Profile& profile);
 
+  void
+  removeContact(const ndn::Name& contactNameSpace);
+  
+
 private:
   void
   setKeychain();
@@ -167,6 +171,12 @@ signals:
 
   void
   warning(QString msg);
+
+  void
+  contactRemoved(const ndn::Name& identity);
+
+  void
+  contactAdded(const ndn::Name& identity);                                         
 
 private slots:
   

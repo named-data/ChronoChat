@@ -197,6 +197,11 @@ private slots:
   void
   removeChatDialog(const ndn::Name& chatroomName);
 
+  void 
+  addContactIntoPanelPolicy(const ndn::Name& nameSpace);
+
+  void 
+  removeContactFromPanelPolicy(const ndn::Name& keyName);
   
 
 private:
