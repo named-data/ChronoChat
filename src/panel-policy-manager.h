@@ -79,6 +79,9 @@ public:
   void
   addTrustAnchor(const EndorseCertificate& selfEndorseCertificate);
 
+  void
+  removeTrustAnchor(const ndn::Name& keyName);
+
 // private:
 //   void 
 //   onCertificateVerified(ndn::Ptr<ndn::Data> certData, 

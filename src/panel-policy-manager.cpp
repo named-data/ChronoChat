@@ -180,6 +180,12 @@ PanelPolicyManager::addTrustAnchor(const EndorseCertificate& selfEndorseCertific
   m_trustAnchors.insert(pair <Name, Publickey > (selfEndorseCertificate.getPublicKeyName(), selfEndorseCertificate.getPublicKeyInfo())); 
 }
 
+void
+PanelPolicyManager::removeTrustAnchor(const Name& keyName)
+{  
+  m_trustAnchors.erase(keyName); 
+}
+
 Ptr<Publickey>
 PanelPolicyManager::getTrustedKey(const ndn::Name& inviterCertName)
 {

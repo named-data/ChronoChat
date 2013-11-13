@@ -629,6 +629,7 @@ ContactManager::addContact(const IdentityCertificate& identityCertificate, const
 
   try{
     m_contactStorage->addContact(contactItem);
+    emit contactAdded(contactItem.getNameSpace());
   }catch(exception& e){
     emit warning(e.what());
     _LOG_ERROR("Exception: " << e.what());
@@ -636,6 +637,15 @@ ContactManager::addContact(const IdentityCertificate& identityCertificate, const
   }
 }
 
+void
+ContactManager::removeContact(const ndn::Name& contactNameSpace)
+{
+  Ptr<ContactItem> contact = getContact(contactNameSpace);
+  if(contact == NULL)
+    return;
+  m_contactStorage->removeContact(contactNameSpace);
+  emit contactRemoved(contact->getPublicKeyName());
+}
 
 
 #if WAF
