@@ -8,13 +8,12 @@ def options(opt):
     opt.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
     opt.add_option('--log4cxx',action='store_true',default=False,dest='log4cxx',help='''Enable log4cxx''')
     
-    opt.load('compiler_c compiler_cxx boost protoc qt4')
+    opt.load('compiler_c compiler_cxx qt4')
 
     if Utils.unversioned_sys_platform () != "darwin":
         opt.load('gnu_dirs');
 
-    # opt.load('tinyxml', tooldir=['waf-tools'])
-    opt.load('cryptopp', tooldir=['waf-tools'])
+    opt.load('boost protoc cryptopp', tooldir=['waf-tools'])
     
 def configure(conf):
     conf.load("compiler_c compiler_cxx boost protoc qt4 cryptopp")
