@@ -49,6 +49,16 @@ public:
   ~ContactPanel();
 
 private:
+  void 
+  connectToDaemon();
+
+  void
+  onConnectionData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
+                   const ndn::ptr_lib::shared_ptr<ndn::Data>& data);
+ 
+  void
+  onConnectionDataTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest);
+
   void
   createAction();
 
@@ -56,54 +66,93 @@ private:
   openDB();
 
   void
-  setKeychain();
+  loadTrustAnchor();
 
   void
   setLocalPrefix(int retry = 10);
 
   void
-  onLocalPrefixVerified(ndn::Ptr<ndn::Data> data);
+  onLocalPrefix(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
+                const ndn::ptr_lib::shared_ptr<ndn::Data>& data);
   
   void
-  onLocalPrefixTimeout(ndn::Ptr<ndn::Closure> closure, 
-                       ndn::Ptr<ndn::Interest> interest,
+  onLocalPrefixTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
                        int retry);
 
   void
   setInvitationListener();
 
   void
-  onInvitation(ndn::Ptr<ndn::Interest> interest);
+  onInvitation(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix, 
+               const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
+               ndn::Transport& transport, 
+               uint64_t registeredPrefixI);
 
   void
-  onUnverified(ndn::Ptr<ndn::Data> data);
-  
+  onInvitationRegisterFailed(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix);
+
   void
-  onTimeout(ndn::Ptr<ndn::Closure> closure, 
-            ndn::Ptr<ndn::Interest> interest);
+  sendInterest(const ndn::Interest& interest,
+               const ndn::OnVerified& onVerified,
+               const ndn::OnVerifyFailed& onVerifyFailed,
+               const TimeoutNotify& timeoutNotify,
+               int retry = 1,
+               int stepCount = 0);
+
+  void
+  onTargetData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
+               const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
+               int stepCount,
+               const ndn::OnVerified& onVerified,
+               const ndn::OnVerifyFailed& onVerifyFailed,
+               const TimeoutNotify& timeoutNotify);
+
+  void
+  onTargetTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
+                  int retry,
+                  int stepCount,
+                  const ndn::OnVerified& onVerified,
+                  const ndn::OnVerifyFailed& onVerifyFailed,
+                  const TimeoutNotify& timeoutNotify);
+
+
+  void
+  onCertData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
+             const ndn::ptr_lib::shared_ptr<ndn::Data>& cert,
+             ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> previousStep);
+
+  void
+  onCertTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
+                const ndn::OnVerifyFailed& onVerifyFailed,
+                const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
+                ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> nextStep);
     
   void
-  onInvitationCertVerified(ndn::Ptr<ndn::Data> data,
-                           ndn::Ptr<ChronosInvitation> invitation);
+  onInvitationCertVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, 
+                           ndn::ptr_lib::shared_ptr<ChronosInvitation> invitation);
 
   void
-  popChatInvitation(ndn::Ptr<ChronosInvitation> invitation,
+  onInvitationCertVerifyFailed(const ndn::ptr_lib::shared_ptr<ndn::Data>& data);
+
+  void
+  onInvitationCertTimeoutNotify();
+
+  void
+  popChatInvitation(ndn::ptr_lib::shared_ptr<ChronosInvitation> invitation,
                     const ndn::Name& inviterNameSpace,
-                    ndn::Ptr<ndn::security::IdentityCertificate> certificate);
+                    ndn::ptr_lib::shared_ptr<ndn::IdentityCertificate> certificate);
 
   void
   collectEndorsement();
 
   void
-  onDnsEndorseeVerified(ndn::Ptr<ndn::Data> data, int count);
+  onDnsEndorseeVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, int count);
 
   void
-  onDnsEndorseeTimeout(ndn::Ptr<ndn::Closure> closure, 
-                       ndn::Ptr<ndn::Interest> interest, 
-                       int count);
-  
+  onDnsEndorseeVerifyFailed(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, int count);
+
   void
-  onDnsEndorseeUnverified(ndn::Ptr<ndn::Data> data, int count);
+  onDnsEndorseeTimeoutNotify(int count);
 
   void 
   updateCollectStatus(int count);
@@ -170,11 +219,11 @@ private slots:
 
   void 
   startChatroom2(const ChronosInvitation& invitation, 
-                 const ndn::security::IdentityCertificate& identityCertificate);
+                 const ndn::IdentityCertificate& identityCertificate);
 
   void
   acceptInvitation(const ChronosInvitation& invitation, 
-                   const ndn::security::IdentityCertificate& identityCertificate);
+                   const ndn::IdentityCertificate& identityCertificate);
 
   void
   rejectInvitation(const ChronosInvitation& invitation);
@@ -207,7 +256,7 @@ private slots:
 private:
   Ui::ContactPanel *ui;
   WarningDialog* m_warningDialog;
-  ndn::Ptr<ContactManager> m_contactManager;
+  ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;
   QStringListModel* m_contactListModel;
   ProfileEditor* m_profileEditor;
   AddContactPanel* m_addContactPanel;
@@ -216,22 +265,24 @@ private:
   StartChatDialog* m_startChatDialog;
   InvitationDialog* m_invitationDialog;
   SettingDialog* m_settingDialog;
-  std::map<ndn::Name, ChatDialog*> m_chatDialogs;
+  std::map<ndn::Name, ChatDialog*, ndn::Name::BreadthFirstLess> m_chatDialogs;
   QAction* m_menuInvite;
   QAction* m_menuAlias;
-  std::vector<ndn::Ptr<ContactItem> > m_contactList;
-  ndn::Ptr<std::vector<bool> > m_collectStatus;
+  std::vector<ndn::ptr_lib::shared_ptr<ContactItem> > m_contactList;
+  ndn::ptr_lib::shared_ptr<std::vector<bool> > m_collectStatus;
 
-  ndn::Ptr<PanelPolicyManager> m_panelPolicyManager;
-  ndn::Ptr<ndn::security::Keychain> m_keychain;
-  ndn::Ptr<ndn::Wrapper> m_handler;
+  ndn::ptr_lib::shared_ptr<PanelPolicyManager> m_policyManager;
+  ndn::ptr_lib::shared_ptr<ndn::IdentityManager> m_identityManager;
+  ndn::ptr_lib::shared_ptr<ndn::Transport> m_transport;
+  ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
+  uint64_t m_invitationListenerId;
 
   ndn::Name m_defaultIdentity;
   std::string m_nickName;
   ndn::Name m_localPrefix;
   ndn::Name m_inviteListenPrefix;
 
-  ndn::Ptr<ContactItem> m_currentSelectedContact;
+  ndn::ptr_lib::shared_ptr<ContactItem> m_currentSelectedContact;
   QSqlTableModel* m_trustScopeModel;
   QSqlTableModel* m_endorseDataModel;
   EndorseComboBoxDelegate* m_endorseComboBoxDelegate;

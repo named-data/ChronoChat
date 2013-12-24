@@ -20,16 +20,18 @@
 #endif
 
 using namespace ndn;
+using namespace std;
+using namespace ndn::ptr_lib;
 
 INIT_LOGGER("ProfileEditor");
 
-ProfileEditor::ProfileEditor(Ptr<ContactManager> contactManager, 
+ProfileEditor::ProfileEditor(shared_ptr<ContactManager> contactManager, 
                              QWidget *parent) 
     : QDialog(parent)
     , ui(new Ui::ProfileEditor)
     , m_tableModel(new QSqlTableModel())
     , m_contactManager(contactManager)
-    , m_identityManager(ndn::Ptr<ndn::security::IdentityManager>::Create())
+    , m_identityManager(contactManager->getIdentityManager())
 {
   ui->setupUi(this);
   
@@ -83,14 +85,7 @@ ProfileEditor::onDeleteClicked()
 void
 ProfileEditor::onOkClicked()
 {
-  Name defaultKeyName = m_identityManager->getPublicStorage()->getDefaultKeyNameForIdentity(m_currentIdentity);
-  if(defaultKeyName.size() == 0)
-    {
-      emit noKeyOrCert(QString::fromStdString("Corresponding key is missing!\nHave you created the key?"));
-      return;
-    }
-
-  Name defaultCertName = m_identityManager->getPublicStorage()->getDefaultCertificateNameForKey(defaultKeyName);
+  Name defaultCertName = m_identityManager->getDefaultCertificateNameForIdentity(m_currentIdentity);
   if(defaultCertName.size() == 0)
     {
       emit noKeyOrCert(QString::fromStdString("Corresponding certificate is missing!\nHave you installed the certificate?"));

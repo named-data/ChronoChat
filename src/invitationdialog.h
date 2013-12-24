@@ -14,8 +14,8 @@
 #include <QDialog>
 
 #ifndef Q_MOC_RUN
-#include <ndn.cxx/data.h>
-#include <ndn.cxx/security/certificate/identity-certificate.h>
+#include <ndn-cpp/data.hpp>
+#include <ndn-cpp/security/certificate/identity-certificate.hpp>
 #include "chronos-invitation.h"
 #endif
 
@@ -33,13 +33,13 @@ public:
 
   void
   setInvitation(const std::string& alias,
-                ndn::Ptr<ChronosInvitation> invitation, 
-                ndn::Ptr<ndn::security::IdentityCertificate> identityCertificate);
+                ndn::ptr_lib::shared_ptr<ChronosInvitation> invitation, 
+                ndn::ptr_lib::shared_ptr<ndn::IdentityCertificate> identityCertificate);
 
 signals:
   void
   invitationAccepted(const ChronosInvitation& invitation, 
-                     const ndn::security::IdentityCertificate& identityCertificate);
+                     const ndn::IdentityCertificate& identityCertificate);
   
   void
   invitationRejected(const ChronosInvitation& invitation);
@@ -55,8 +55,8 @@ private slots:
 private:
   Ui::InvitationDialog *ui;
   std::string m_inviterAlias;
-  ndn::Ptr<ChronosInvitation> m_invitation;
-  ndn::Ptr<ndn::security::IdentityCertificate> m_identityCertificate;
+  ndn::ptr_lib::shared_ptr<ChronosInvitation> m_invitation;
+  ndn::ptr_lib::shared_ptr<ndn::IdentityCertificate> m_identityCertificate;
 };
 
 #endif // INVITATIONDIALOG_H

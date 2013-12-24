@@ -12,13 +12,13 @@
 #define LINKNDN_ENDORSE_CERTIFICATE_H
 
 #include <vector>
-#include <ndn.cxx/data.h>
-#include <ndn.cxx/security/certificate/identity-certificate.h>
-#include <ndn.cxx/security/certificate/certificate-extension.h>
+#include <ndn-cpp/data.hpp>
+#include <ndn-cpp/security/certificate/identity-certificate.hpp>
+#include <ndn-cpp/security/certificate/certificate-extension.hpp>
 
 #include "profile-data.h"
 
-class ProfileExtension : public ndn::security::CertificateExtension
+class ProfileExtension : public ndn::CertificateExtension
 {
 public:
   ProfileExtension(const ProfileData& profileData);
@@ -29,14 +29,14 @@ public:
 
   ~ProfileExtension() {}
 
-  ndn::Ptr<ProfileData>
+  ndn::ptr_lib::shared_ptr<ProfileData>
   getProfileData();
 };
 
-class EndorseExtension : public ndn::security::CertificateExtension
+class EndorseExtension : public ndn::CertificateExtension
 {
 public:
-  EndorseExtension(const std::vector<std::string>& endorsedList);
+  EndorseExtension(const std::vector<std::string>& endorseList);
 
   EndorseExtension(const EndorseExtension& endorseExtension);
 
@@ -45,20 +45,20 @@ public:
   ~EndorseExtension() {}
 
   std::vector<std::string>
-  getEndorsedList();
+  getEndorseList();
 
 private:
-  static ndn::Ptr<ndn::Blob>
-  prepareValue(const std::vector<std::string>& endorsedList);
+  static ndn::Blob
+  encodeEndorseList(const std::vector<std::string>& endorsedList);
 };
 
-class EndorseCertificate : public ndn::security::Certificate
+class EndorseCertificate : public ndn::Certificate
 {
 public:
   EndorseCertificate() {}
 
-  EndorseCertificate(const ndn::security::IdentityCertificate& kskCertificate,
-                     ndn::Ptr<ProfileData> profileData,
+  EndorseCertificate(const ndn::IdentityCertificate& kskCertificate,
+                     const ProfileData& profileData,
                      const std::vector<std::string>& endorseList = std::vector<std::string>());
 
   EndorseCertificate(const EndorseCertificate& endorseCertificate,
@@ -73,26 +73,26 @@ public:
   ~EndorseCertificate()
   {}
 
-  inline const ndn::Name&
+  const ndn::Name&
   getSigner() const
   { return m_signer; }
 
-  inline ndn::Ptr<ProfileData>
+  const ProfileData&
   getProfileData() const
   { return m_profileData; }
 
-  inline const std::vector<std::string>&
+  const std::vector<std::string>&
   getEndorseList() const
   { return m_endorseList; }
 
-  inline virtual ndn::Name
+  virtual ndn::Name
   getPublicKeyName () const
   { return m_keyName; }
 
 protected:
   ndn::Name m_keyName;
   ndn::Name m_signer;
-  ndn::Ptr<ProfileData> m_profileData;
+  ProfileData m_profileData;
   std::vector<std::string> m_endorseList;
 };
 

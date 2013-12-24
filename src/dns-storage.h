@@ -12,7 +12,7 @@
 #define LINKNDN_DNS_STORAGE_H
 
 #include <sqlite3.h>
-#include <ndn.cxx/data.h>
+#include <ndn-cpp/data.hpp>
 
 class DnsStorage
 {
@@ -30,7 +30,7 @@ public:
   void
   updateDnsOthersEndorse(const ndn::Data& data, const ndn::Name& identity);
 
-  ndn::Ptr<ndn::Data>
+  ndn::ptr_lib::shared_ptr<ndn::Data>
   getData(const ndn::Name& name);
 
 private:

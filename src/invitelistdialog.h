@@ -27,7 +27,7 @@ class InviteListDialog : public QDialog
   Q_OBJECT
 
 public:
-  explicit InviteListDialog(ndn::Ptr<ContactManager> contactManager,
+  explicit InviteListDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
                             QWidget *parent = 0);
   ~InviteListDialog();
 
@@ -50,9 +50,9 @@ private slots:
 
 private:
   Ui::InviteListDialog *ui;
-  ndn::Ptr<ContactManager> m_contactManager;
+  ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;
   QStringListModel* m_contactListModel;
-  std::vector<ndn::Ptr<ContactItem> > m_contactList;
+  std::vector<ndn::ptr_lib::shared_ptr<ContactItem> > m_contactList;
   std::vector<std::string> m_invitedContacts;
 };
 

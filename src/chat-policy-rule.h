@@ -11,15 +11,15 @@
 #ifndef CHAT_POLICY_RULE_H
 #define CHAT_POLICY_RULE_H
 
-#include <ndn.cxx/security/policy/policy-rule.h>
-#include <ndn.cxx/regex/regex.h>
+#include <ndn-cpp-et/policy-manager/policy-rule.hpp>
+#include <ndn-cpp-et/regex/regex.hpp>
 
-class ChatPolicyRule : public ndn::security::PolicyRule
+class ChatPolicyRule : public ndn::PolicyRule
 {
   
 public:
-  ChatPolicyRule(ndn::Ptr<ndn::Regex> dataRegex,
-                 ndn::Ptr<ndn::Regex> signerRegex);
+  ChatPolicyRule(ndn::ptr_lib::shared_ptr<ndn::Regex> dataRegex,
+                 ndn::ptr_lib::shared_ptr<ndn::Regex> signerRegex);
 
   ChatPolicyRule(const ChatPolicyRule& rule);
 
@@ -39,8 +39,8 @@ public:
   satisfy(const ndn::Name & dataName, const ndn::Name & signerName);
   
 private:
-  ndn::Ptr<ndn::Regex> m_dataRegex;
-  ndn::Ptr<ndn::Regex> m_signerRegex;
+  ndn::ptr_lib::shared_ptr<ndn::Regex> m_dataRegex;
+  ndn::ptr_lib::shared_ptr<ndn::Regex> m_signerRegex;
 };
 
 #endif //CHAT_POLICY_RULE_H

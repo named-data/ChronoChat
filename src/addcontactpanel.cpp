@@ -13,18 +13,20 @@
 #include <QMessageBox>
 
 #ifndef Q_MOC_RUN
-// #include <cryptopp/base64.h>
-// #include <ndn.cxx/helpers/der/der.h>
-#include <ndn.cxx/helpers/der/visitor/simple-visitor.h>
+#include <ndn-cpp/security/signature/sha256-with-rsa-handler.hpp>
+#include <boost/iostreams/stream.hpp>
+#include "null-ptrs.h"
+#include "endorse-collection.pb.h"
 #include "logging.h"
 #endif
 
 using namespace ndn;
+using namespace ndn::ptr_lib;
 using namespace std;
 
 INIT_LOGGER("AddContactPanel");
 
-AddContactPanel::AddContactPanel(Ptr<ContactManager> contactManager,
+AddContactPanel::AddContactPanel(shared_ptr<ContactManager> contactManager,
                                  QWidget *parent) 
   : QDialog(parent)
   , ui(new Ui::AddContactPanel)
@@ -78,7 +80,7 @@ AddContactPanel::onSearchClicked()
   for(int i = ui->infoView->rowCount() - 1; i >= 0 ; i--)
     ui->infoView->removeRow(i);
   QString inputIdentity = ui->contactInput->text();
-  m_searchIdentity = Name(inputIdentity.toUtf8().constData());
+  m_searchIdentity = Name(inputIdentity.toStdString());
 
   if(Qt::Checked == ui->fetchBox->checkState())
     {
@@ -102,13 +104,13 @@ AddContactPanel::isCorrectName(const Name& name)
   string key("KEY");
   string idCert("ID-CERT");
 
-  if(name.get(-1).toUri() != idCert)
+  if(name.get(-1).toEscapedString() != idCert)
     return false;
   
   int keyIndex = -1;
   for(int i = 0; i < name.size(); i++)
     {
-      if(name.get(i).toUri() == key)
+      if(name.get(i).toEscapedString() == key)
         {
           keyIndex = i;
           break;
@@ -127,7 +129,7 @@ AddContactPanel::onAddClicked()
   ContactItem contactItem(*m_currentEndorseCertificate);
   try{
     m_contactManager->getContactStorage()->addContact(contactItem);
-  }catch(exception& e){
+  }catch(std::exception& e){
     QMessageBox::information(this, tr("Chronos"), QString::fromStdString(e.what()));
     _LOG_ERROR("Exception: " << e.what());
     return;
@@ -140,8 +142,8 @@ void
 AddContactPanel::selfEndorseCertificateFetched(const EndorseCertificate& endorseCertificate)
 {
   try{
-    m_currentEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(endorseCertificate));
-  }catch(exception& e){
+    m_currentEndorseCertificate = make_shared<EndorseCertificate>(endorseCertificate);
+  }catch(std::exception& e){
     QMessageBox::information(this, tr("Chronos"), QString::fromStdString(e.what()));
     _LOG_ERROR("Exception: " << e.what());
     return;
@@ -162,8 +164,8 @@ void
 AddContactPanel::onContactKeyFetched(const EndorseCertificate& endorseCertificate)
 {
   try{
-    m_currentEndorseCertificate = Ptr<EndorseCertificate>(new EndorseCertificate(endorseCertificate));
-  }catch(exception& e){
+    m_currentEndorseCertificate = make_shared<EndorseCertificate>(endorseCertificate);
+  }catch(std::exception& e){
     QMessageBox::information(this, tr("Chronos"), QString::fromStdString(e.what()));
     _LOG_ERROR("Exception: " << e.what());
     return;
@@ -183,7 +185,7 @@ AddContactPanel::onContactKeyFetchFailed(const Name& identity)
 void
 AddContactPanel::onCollectEndorseFetched(const Data& data)
 {
-  m_currentCollectEndorse = Ptr<Data>(new Data(data));
+  m_currentCollectEndorse = make_shared<Data>(data);
   m_currentCollectEndorseReady = true;
 
   if(m_currentEndorseCertificateReady == true)
@@ -193,7 +195,7 @@ AddContactPanel::onCollectEndorseFetched(const Data& data)
 void
 AddContactPanel::onCollectEndorseFetchFailed(const Name& identity)
 {
-  m_currentCollectEndorse = NULL;
+  m_currentCollectEndorse = CHRONOCHAT_NULL_DATA_PTR;
   m_currentCollectEndorseReady = true;
   
   if(m_currentEndorseCertificateReady == true)
@@ -204,55 +206,52 @@ void
 AddContactPanel::displayContactInfo()
 {
   // _LOG_TRACE("displayContactInfo");
-  const Profile& profile = m_currentEndorseCertificate->getProfileData()->getProfile();
-  const Blob& profileBlob = m_currentEndorseCertificate->getProfileData()->content();
+  const Profile& profile = m_currentEndorseCertificate->getProfileData().getProfile();
+  const Blob& profileBlob = m_currentEndorseCertificate->getProfileData().getContent();
 
   map<string, int> endorseCount;
 
-  if(m_currentCollectEndorse != NULL)
+  if(m_currentCollectEndorse != CHRONOCHAT_NULL_DATA_PTR)
     {
-      boost::iostreams::stream
-        <boost::iostreams::array_source> is (m_currentCollectEndorse->content().buf(), m_currentCollectEndorse->content().size());
-  
-      Ptr<der::DerSequence> root = DynamicCast<der::DerSequence>(der::DerNode::parse(reinterpret_cast<InputIterator &>(is)));
-      const der::DerNodePtrList & children = root->getChildren();
-      der::SimpleVisitor simpleVisitor;
+      Chronos::EndorseCollection endorseCollection;
       
-      for(int i = 0; i < children.size(); i++)
+      boost::iostreams::stream
+        <boost::iostreams::array_source> is ((const char*)m_currentCollectEndorse->getContent().buf(), m_currentCollectEndorse->getContent().size());
+      
+      endorseCollection.ParseFromIstream(&is);
+
+      for(int i = 0; i < endorseCollection.endorsement_size(); i ++)
         {
-          Ptr<Blob> dataBlob = boost::any_cast<Ptr<Blob> >(children[i]->accept(simpleVisitor));
-          
-          Ptr<Data> data = NULL;
-          Ptr<EndorseCertificate> endorseCert = NULL;
           try{
-            data = Data::decodeFromWire(dataBlob);
-            endorseCert = Ptr<EndorseCertificate>(new EndorseCertificate(*data));
-          }catch(exception& e){
-            continue;
-          }
-
-          Name signerKeyName = endorseCert->getSigner();
-          Name signerName = signerKeyName.getPrefix(signerKeyName.size()-1);
+            Data data;
+            data.wireDecode((const uint8_t*)endorseCollection.endorsement(i).blob().c_str(), endorseCollection.endorsement(i).blob().size());
+            EndorseCertificate endorseCert(data);
+            
+            Name signerKeyName = endorseCert.getSigner();
+            Name signerName = signerKeyName.getPrefix(-1);
           
-          Ptr<ContactItem> contact = m_contactManager->getContact(signerName);
-          if(contact == NULL)
-            continue;
+            shared_ptr<ContactItem> contact = m_contactManager->getContact(signerName);
+            if(contact == CHRONOCHAT_NULL_CONTACTITEM_PTR)
+              continue;
 
-          if(!contact->isIntroducer() || !contact->canBeTrustedFor(m_currentEndorseCertificate->getProfileData()->getIdentityName()))
-            continue;
+            if(!contact->isIntroducer() || !contact->canBeTrustedFor(m_currentEndorseCertificate->getProfileData().getIdentityName()))
+              continue;
           
-          if(!security::PolicyManager::verifySignature(*data, contact->getSelfEndorseCertificate().getPublicKeyInfo()))
-            continue;
+            if(!Sha256WithRsaHandler::verifySignature(data, contact->getSelfEndorseCertificate().getPublicKeyInfo()))
+              continue;
 
-          const Blob& tmpProfileBlob = endorseCert->getProfileData()->content();
-          if(profileBlob != tmpProfileBlob)
-            continue;
+            const Blob& tmpProfileBlob = endorseCert.getProfileData().getContent();
+            if(!isSameBlob(profileBlob, tmpProfileBlob))
+              continue;
 
-          const vector<string>& endorseList = endorseCert->getEndorseList();
+          const vector<string>& endorseList = endorseCert.getEndorseList();
           vector<string>::const_iterator it = endorseList.begin();
           for(; it != endorseList.end(); it++)
             endorseCount[*it] += 1;
-        }
+          }catch(std::exception& e){
+            continue;
+          }
+        }  
     }
   
   ui->infoView->setColumnCount(3);
@@ -269,11 +268,10 @@ AddContactPanel::displayContactInfo()
   for(; it != profile.end(); it++)
   {
     ui->infoView->insertRow(rowCount);  
-    QTableWidgetItem *type = new QTableWidgetItem(QString::fromUtf8(it->first.c_str()));
+    QTableWidgetItem *type = new QTableWidgetItem(QString::fromStdString(it->first));
     ui->infoView->setItem(rowCount, 0, type);
     
-    string valueString(it->second.buf(), it->second.size());
-    QTableWidgetItem *value = new QTableWidgetItem(QString::fromUtf8(valueString.c_str()));
+    QTableWidgetItem *value = new QTableWidgetItem(QString::fromStdString(it->second));
     ui->infoView->setItem(rowCount, 1, value);
     
     map<string, int>::iterator map_it = endorseCount.find(it->first);
@@ -287,6 +285,28 @@ AddContactPanel::displayContactInfo()
     rowCount++;
   }
 }
+
+bool
+AddContactPanel::isSameBlob(const ndn::Blob& blobA, const ndn::Blob& blobB)
+{
+  size_t size = blobA.size();
+
+  if(size != blobB.size())
+    return false;
+
+  const uint8_t* ap = blobA.buf();
+  const uint8_t* bp = blobB.buf();
+  
+  for(int i = 0; i < size; i++)
+    {
+      if(ap[i] != bp[i])
+        return false;
+    }
+
+  return true;
+
+}
+
 
 #if WAF
 #include "addcontactpanel.moc"

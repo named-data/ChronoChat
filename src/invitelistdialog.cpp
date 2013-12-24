@@ -13,7 +13,7 @@
 
 using namespace std;
 
-InviteListDialog::InviteListDialog(ndn::Ptr<ContactManager> contactManager,
+InviteListDialog::InviteListDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
 				   QWidget *parent) 
   :QDialog(parent)
   , ui(new Ui::InviteListDialog)
@@ -50,7 +50,8 @@ InviteListDialog::setInviteLabel(string label)
 void
 InviteListDialog::refreshContactList()
 {
-  m_contactList = m_contactManager->getContactItemList();
+  m_contactList.clear();
+  m_contactManager->getContactItemList(m_contactList);
   QStringList contactNameList;
   for(int i = 0; i < m_contactList.size(); i++)
     {

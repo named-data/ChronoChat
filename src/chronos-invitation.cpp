@@ -10,7 +10,7 @@
 
 #include "chronos-invitation.h"
 
-#include <ndn.cxx/security/certificate/identity-certificate.h>
+#include <ndn-cpp/security/certificate/identity-certificate.hpp>
 #include "exception.h"
 #include "logging.h"
 
@@ -22,11 +22,11 @@ INIT_LOGGER("ChronosInvitation");
 ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
   : m_interestName(originalInterestName)
 {
-  Name interestName = originalInterestName.getPrefix(originalInterestName.size()-1);
-  if(interestName.get(0).toUri() != string("ndn")
-     || interestName.get(1).toUri() != string("broadcast")
-     || interestName.get(2).toUri() != string("chronos")
-     || interestName.get(3).toUri() != string("invitation"))
+  Name interestName = originalInterestName.getPrefix(-1);
+  if(interestName.get(0).toEscapedString() != string("ndn")
+     || interestName.get(1).toEscapedString() != string("broadcast")
+     || interestName.get(2).toEscapedString() != string("chronos")
+     || interestName.get(3).toEscapedString() != string("invitation"))
     throw LnException("Wrong ChronosInvitation Name");
     
   int i = 4;
@@ -35,7 +35,7 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
   string chatroomStr("chatroom");
   int inviteeBegin = 4;
   for(; i < size; i++)
-    if(interestName.get(i).toUri() == chatroomStr)
+    if(interestName.get(i).toEscapedString() == chatroomStr)
       break;
 
   if(i >= size)
@@ -45,7 +45,7 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
   string inviterPrefixStr("inviter-prefix");
   int chatroomBegin = (++i);
   for(; i < size;  i++)
-    if(interestName.get(i).toUri() == inviterPrefixStr)
+    if(interestName.get(i).toEscapedString() == inviterPrefixStr)
       break;
 
   if(i > size)
@@ -55,7 +55,7 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
   string inviterStr("inviter");
   int inviterPrefixBegin = (++i);
   for(; i < size; i++)
-    if(interestName.get(i).toUri() == inviterStr)
+    if(interestName.get(i).toEscapedString() == inviterStr)
       break;
   
   if(i > size)
@@ -65,14 +65,13 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
   int inviterCertBegin = (++i);
   m_inviterCertificateName = interestName.getSubName(inviterCertBegin, size - 1 - inviterCertBegin);
   
-  string signature = interestName.get(-1).toBlob();
-  m_signatureBits.insert(m_signatureBits.end(), signature.begin(), signature.end());
+  m_signatureBits = interestName.get(-1).getValue();
  
-  Name keyName = security::IdentityCertificate::certificateNameToPublicKeyName(m_inviterCertificateName, true);
-  m_inviterNameSpace = keyName.getPrefix(keyName.size()-1);
+  Name keyName = IdentityCertificate::certificateNameToPublicKeyName(m_inviterCertificateName);
+  m_inviterNameSpace = keyName.getPrefix(-1);
 
   string signedName = interestName.getSubName(0, size - 1).toUri();
-  m_signedBlob.insert(m_signedBlob.end(), signedName.begin(), signedName.end());
+  m_signedBlob = Blob((const uint8_t*)signedName.c_str(), signedName.size());
 }
 
 ChronosInvitation::ChronosInvitation(const ChronosInvitation& invitation)

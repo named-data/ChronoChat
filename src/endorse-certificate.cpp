@@ -10,93 +10,91 @@
 
 #include "endorse-certificate.h"
 #include "exception.h"
-#include <ndn.cxx/helpers/der/der.h>
-#include <ndn.cxx/helpers/der/visitor/simple-visitor.h>
-#include <ndn.cxx/security/certificate/certificate-subdescrpt.h>
+#include "endorse-extension.pb.h"
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/iostreams/stream.hpp>
 #include "logging.h"
 
 using namespace std;
 using namespace ndn;
-using namespace ndn::security;
+using namespace ndn::ptr_lib;
+using namespace boost::posix_time;
 
 INIT_LOGGER("EndorseCertificate");
 
 ProfileExtension::ProfileExtension(const ProfileData & profileData)
-  : CertificateExtension("1.3.6.1.5.32.2.1", true, *profileData.encodeToWire())
+  : CertificateExtension("1.3.6.1.5.32.2.1", true, profileData.wireEncode())
 {}
 
 ProfileExtension::ProfileExtension(const ProfileExtension& profileExtension)
-  : CertificateExtension("1.3.6.1.5.32.2.1", true, profileExtension.m_extnValue)
+  : CertificateExtension("1.3.6.1.5.32.2.1", true, profileExtension.extensionValue_)
 {}
 
 ProfileExtension::ProfileExtension(const CertificateExtension& extension)
-  : CertificateExtension(extension.getOID(), extension.getCritical(), extension.getValue())
+  : CertificateExtension(extension.getOid(), extension.getIsCritical(), extension.getValue())
 {
-  if(m_extnID != OID("1.3.6.1.5.32.2.1"))
+  if(extensionId_ != OID("1.3.6.1.5.32.2.1"))
     throw LnException("Wrong ProfileExtension Number!");
 }
 
-Ptr<ProfileData>
+shared_ptr<ProfileData>
 ProfileExtension::getProfileData()
 {
-  Ptr<Blob> dataBlob = Ptr<Blob>(new Blob(m_extnValue.buf (), m_extnValue.size ()));
-  return Ptr<ProfileData>(new ProfileData(*Data::decodeFromWire(dataBlob)));
+  Data data;
+  data.wireDecode(extensionValue_.buf(), extensionValue_.size());
+  return make_shared<ProfileData>(data);
 }
 
-EndorseExtension::EndorseExtension(const vector<string>& endorsedList)
-  : CertificateExtension("1.3.6.1.5.32.2.2", true, *EndorseExtension::prepareValue(endorsedList))
+EndorseExtension::EndorseExtension(const vector<string>& endorseList)
+  : CertificateExtension("1.3.6.1.5.32.2.2", true, EndorseExtension::encodeEndorseList(endorseList))
 {}
 
 EndorseExtension::EndorseExtension(const EndorseExtension& endorseExtension)
-  : CertificateExtension("1.3.6.1.5.32.2.2", true, endorseExtension.m_extnValue)
+  : CertificateExtension("1.3.6.1.5.32.2.2", true, endorseExtension.extensionValue_)
 {}
 
 EndorseExtension::EndorseExtension(const CertificateExtension& extension)
-  : CertificateExtension(extension.getOID(), extension.getCritical(), extension.getValue())
+  : CertificateExtension(extension.getOid(), extension.getIsCritical(), extension.getValue())
 {
-  if(m_extnID != OID("1.3.6.1.5.32.2.2"))
+  if(extensionId_ != OID("1.3.6.1.5.32.2.2"))
     throw LnException("Wrong EndorseExtension Number!");
 }
 
 vector<string>
-EndorseExtension::getEndorsedList()
+EndorseExtension::getEndorseList()
 {
-  vector<string> endorsedList;
+  Chronos::EndorseExtensionMsg endorseExtension;
 
   boost::iostreams::stream
-    <boost::iostreams::array_source> is (m_extnValue.buf(), m_extnValue.size());
+    <boost::iostreams::array_source> is ((const char*)extensionValue_.buf(), extensionValue_.size());
+
+  endorseExtension.ParseFromIstream(&is);
+
+  vector<string> endorseList;
+
+  for(int i = 0; i < endorseExtension.endorseentry_size(); i ++)
+    endorseList.push_back(endorseExtension.endorseentry(i).name());
   
-  Ptr<der::DerSequence> root = DynamicCast<der::DerSequence>(der::DerNode::parse(reinterpret_cast<InputIterator &>(is)));
-  const der::DerNodePtrList & children = root->getChildren();
-  der::SimpleVisitor simpleVisitor;
-
-  for(int i = 0; i < children.size(); i++)
-      endorsedList.push_back(boost::any_cast<string>(children[i]->accept(simpleVisitor)));
-
-  return endorsedList;
+  return endorseList;
 }
 
-Ptr<Blob>
-EndorseExtension::prepareValue(const vector<string>& endorsedList)
+Blob
+EndorseExtension::encodeEndorseList(const vector<string>& endorseList)
 {
-  Ptr<der::DerSequence> root = Ptr<der::DerSequence>::Create();
+  Chronos::EndorseExtensionMsg endorseExtension;
   
-  vector<string>::const_iterator it = endorsedList.begin();
-  for(; it != endorsedList.end(); it++)
-    {
-      Ptr<der::DerPrintableString> entry = Ptr<der::DerPrintableString>(new der::DerPrintableString(*it));
-      root->addChild(entry);
-    }
-  
-  blob_stream blobStream;
-  OutputIterator & start = reinterpret_cast<OutputIterator &> (blobStream);
-  root->encode(start);
+  vector<string>::const_iterator it = endorseList.begin();
+  for(; it != endorseList.end(); it++)
+    endorseExtension.add_endorseentry()->set_name(*it);
 
-  return blobStream.buf ();
+  string encoded;
+  endorseExtension.SerializeToString(&encoded);
+  
+  return Blob((const uint8_t*)encoded.c_str(), encoded.size());
 }
 
 EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate,
-                                       Ptr<ProfileData> profileData,
+                                       const ProfileData& profileData,
                                        const vector<string>& endorseList)
   : Certificate()
   , m_keyName(kskCertificate.getPublicKeyName())
@@ -104,15 +102,18 @@ EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate
   , m_profileData(profileData)
   , m_endorseList(endorseList)
 {
+  time_duration now = microsec_clock::universal_time () - ptime(boost::gregorian::date (1970, boost::gregorian::Jan, 1));
+  uint64_t version = (now.total_seconds () << 12) | (0xFFF & (now.fractional_seconds () / 244));
+
   Name dataName = m_keyName;
-  dataName.append("PROFILE-CERT").append(m_signer).appendVersion();
+  dataName.append("PROFILE-CERT").append(m_signer).appendVersion(version);
   setName(dataName);
 
   setNotBefore(kskCertificate.getNotBefore());
   setNotAfter(kskCertificate.getNotAfter());
-  addSubjectDescription(CertificateSubDescrypt("2.5.4.41", m_keyName.toUri()));
+  addSubjectDescription(CertificateSubjectDescription("2.5.4.41", m_keyName.toUri()));
   setPublicKeyInfo(kskCertificate.getPublicKeyInfo());  
-  addExtension(ProfileExtension(*m_profileData));
+  addExtension(ProfileExtension(m_profileData));
   addExtension(EndorseExtension(m_endorseList));
   
   encode();
@@ -127,15 +128,18 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
   , m_profileData(endorseCertificate.m_profileData)
   , m_endorseList(endorseList)
 {
+  time_duration now = microsec_clock::universal_time () - ptime(boost::gregorian::date (1970, boost::gregorian::Jan, 1));
+  uint64_t version = (now.total_seconds () << 12) | (0xFFF & (now.fractional_seconds () / 244));
+  
   Name dataName = m_keyName;
-  dataName.append("PROFILE-CERT").append(m_signer).appendVersion();
+  dataName.append("PROFILE-CERT").append(m_signer).appendVersion(version);
   setName(dataName);
   
   setNotBefore(endorseCertificate.getNotBefore());
   setNotAfter(endorseCertificate.getNotAfter());
-  addSubjectDescription(CertificateSubDescrypt("2.5.4.41", m_keyName.toUri()));
+  addSubjectDescription(CertificateSubjectDescription("2.5.4.41", m_keyName.toUri()));
   setPublicKeyInfo(endorseCertificate.getPublicKeyInfo());
-  addExtension(ProfileExtension(*m_profileData));
+  addExtension(ProfileExtension(m_profileData));
   addExtension(EndorseExtension(m_endorseList));
 
   encode();
@@ -153,7 +157,7 @@ EndorseCertificate::EndorseCertificate(const Data& data)
   : Certificate(data)
 {
   const Name& dataName = data.getName();
-  name::Component certFlag(string("PROFILE-CERT"));  
+  Name::Component certFlag(Name::fromEscapedString("PROFILE-CERT"));  
   int profileIndex = -1;
   for(int i = 0; i < dataName.size(); i++)
     {
@@ -172,18 +176,18 @@ EndorseCertificate::EndorseCertificate(const Data& data)
   OID profileExtensionOID("1.3.6.1.5.32.2.1");
   OID endorseExtensionOID("1.3.6.1.5.32.2.2");
 
-  ExtensionList::iterator it = m_extnList.begin();
-  for(; it != m_extnList.end(); it++)
+  ExtensionList::iterator it = extensionList_.begin();
+  for(; it != extensionList_.end(); it++)
     {
-      if(profileExtensionOID == it->getOID())
+      if(profileExtensionOID == it->getOid())
 	{
           ProfileExtension profileExtension(*it);
-	  m_profileData = profileExtension.getProfileData();
+	  m_profileData = *profileExtension.getProfileData();
 	}
-      if(endorseExtensionOID == it->getOID())
+      if(endorseExtensionOID == it->getOid())
         {
           EndorseExtension endorseExtension(*it);
-          m_endorseList = endorseExtension.getEndorsedList();
+          m_endorseList = endorseExtension.getEndorseList();
         }
     }
 }

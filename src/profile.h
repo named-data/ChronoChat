@@ -11,22 +11,21 @@
 #ifndef LINKNDN_PROFILE_H
 #define LINKNDN_PROFILE_H
 
-#include <ndn.cxx/common.h>
-#include <ndn.cxx/fields/name.h>
-#include <ndn.cxx/fields/blob.h>
-#include <ndn.cxx/security/certificate/identity-certificate.h>
+#include <ndn-cpp/name.hpp>
+#include <ndn-cpp/security/certificate/identity-certificate.hpp>
 #include <map>
 #include <string>
+#include "profile.pb.h"
 
 class Profile
 {
 public:
-  typedef std::map<std::string, ndn::Blob>::iterator iterator;
-  typedef std::map<std::string, ndn::Blob>::const_iterator const_iterator;
+  typedef std::map<std::string, std::string>::iterator iterator;
+  typedef std::map<std::string, std::string>::const_iterator const_iterator;
 public:
   Profile() {}
 
-  Profile(const ndn::security::IdentityCertificate& identityCertificate);
+  Profile(const ndn::IdentityCertificate& identityCertificate);
 
   Profile(const ndn::Name& identityName);
 
@@ -41,9 +40,9 @@ public:
 
   void
   setProfileEntry(const std::string& profileType,
-                  const ndn::Blob& profileValue);
+                  const std::string& profileValue);
   
-  ndn::Ptr<const ndn::Blob>
+  std::string
   getProfileEntry(const std::string& profileType) const;
 
   inline Profile::iterator
@@ -62,25 +61,23 @@ public:
   end() const
   { return m_entries.end(); }
 
-  ndn::Ptr<ndn::Blob>
-  toDerBlob() const;
+  void
+  encode(std::string* output) const;
 
-  static ndn::Ptr<Profile>
-  fromDerBlob(const ndn::Blob& derBlob);
+  static ndn::ptr_lib::shared_ptr<Profile>
+  decode(const std::string& input);
 
-  inline const std::map<std::string, ndn::Blob>&
+  const std::map<std::string, std::string>&
   getEntries() const
   { return m_entries; }
 
-  inline const ndn::Name&
+  const ndn::Name&
   getIdentityName() const
   { return m_identityName; }
 
 protected:
   ndn::Name m_identityName;
-  std::map<std::string, ndn::Blob> m_entries;
+  std::map<std::string, std::string> m_entries;
 };
-
-
 
 #endif
