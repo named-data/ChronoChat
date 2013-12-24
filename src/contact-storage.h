@@ -14,8 +14,7 @@
 #include <sqlite3.h>
 #include "contact-item.h"
 #include "endorse-certificate.h"
-#include <ndn.cxx/security/identity/identity-manager.h>
-#include <ndn.cxx/fields/signature-sha256-with-rsa.h>
+#include <ndn-cpp/security/identity/identity-manager.hpp>
 
 
 class ContactStorage
@@ -30,7 +29,7 @@ public:
   void
   setSelfProfileEntry(const ndn::Name& identity, const std::string& profileType, const ndn::Blob& profileValue);
 
-  ndn::Ptr<Profile>
+  ndn::ptr_lib::shared_ptr<Profile>
   getSelfProfile(const ndn::Name& identity);
 
   void
@@ -45,47 +44,47 @@ public:
   void 
   updateAlias(const ndn::Name& identity, std::string alias);
 
-  std::vector<ndn::Ptr<ContactItem> >
-  getAllContacts() const;
+  void
+  getAllContacts(std::vector<ndn::ptr_lib::shared_ptr<ContactItem> >& contacts) const;
 
-  ndn::Ptr<ContactItem>
+  ndn::ptr_lib::shared_ptr<ContactItem>
   getContact(const ndn::Name& name);
     
-  ndn::Ptr<Profile>
+  ndn::ptr_lib::shared_ptr<Profile>
   getSelfProfile(const ndn::Name& identity) const;
 
 
   //SelfEndorse
-  ndn::Ptr<ndn::Blob>
+  ndn::Blob
   getSelfEndorseCertificate(const ndn::Name& identity);
 
   void
-  updateSelfEndorseCertificate(ndn::Ptr<EndorseCertificate> endorseCertificate, const ndn::Name& identity);
+  updateSelfEndorseCertificate(const EndorseCertificate& endorseCertificate, const ndn::Name& identity);
 
   void
-  addSelfEndorseCertificate(ndn::Ptr<EndorseCertificate> endorseCertificate, const ndn::Name& identity);
+  addSelfEndorseCertificate(const EndorseCertificate& endorseCertificate, const ndn::Name& identity);
 
 
   //ProfileEndorse
-  ndn::Ptr<ndn::Blob>
+  ndn::Blob
   getEndorseCertificate(const ndn::Name& identity);
 
   void
-  updateEndorseCertificate(ndn::Ptr<EndorseCertificate> endorseCertificate, const ndn::Name& identity);
+  updateEndorseCertificate(const EndorseCertificate& endorseCertificate, const ndn::Name& identity);
 
   void
-  addEndorseCertificate(ndn::Ptr<EndorseCertificate> endorseCertificate, const ndn::Name& identity);
+  addEndorseCertificate(const EndorseCertificate& endorseCertificate, const ndn::Name& identity);
 
-  std::vector<std::string>
-  getEndorseList(const ndn::Name& identity);
+  void
+  getEndorseList(const ndn::Name& identity, std::vector<std::string>& endorseList);
 
   
   //CollectEndorse
   void
   updateCollectEndorse(const EndorseCertificate& endorseCertificate);
 
-  ndn::Ptr<std::vector<ndn::Blob> >
-  getCollectEndorseList(const ndn::Name& name);
+  void
+  getCollectEndorseList(const ndn::Name& name, std::vector<ndn::Blob>& endorseList);
   
 
 private:

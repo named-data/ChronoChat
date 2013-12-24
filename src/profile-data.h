@@ -11,12 +11,14 @@
 #ifndef LINKNDN_PROFILE_DATA_H
 #define LINKNDN_PROFILE_DATA_H
 
-#include <ndn.cxx/data.h>
+#include <ndn-cpp/data.hpp>
 #include "profile.h"
 
 class ProfileData : public ndn::Data
 {
 public:
+  ProfileData();
+
   ProfileData(const Profile& profile);
 
   ProfileData(const ProfileData& profileData);
@@ -25,11 +27,11 @@ public:
 
   ~ProfileData() {}
 
-  inline const ndn::Name& 
+  const ndn::Name& 
   getIdentityName() const
   { return m_identity; }
 
-  inline const Profile&
+  const Profile&
   getProfile() const
   { return m_profile; }
 

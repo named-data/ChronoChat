@@ -12,7 +12,7 @@
 #define CHRONOS_INVITATION_H
 
 
-#include <ndn.cxx/fields/name.h>
+#include <ndn-cpp/name.hpp>
 
 class ChronosInvitation
 {
@@ -26,35 +26,35 @@ public:
   virtual
   ~ChronosInvitation() {};
 
-  inline const ndn::Name&
+  const ndn::Name&
   getInviteeNameSpace() const
   { return m_inviteeNameSpace; }
 
-  inline const ndn::Name&
+  const ndn::Name&
   getChatroom() const
   { return m_chatroom; }
 
-  inline const ndn::Name&
+  const ndn::Name&
   getInviterPrefix() const
   { return m_inviterPrefix; }
 
-  inline const ndn::Name&
+  const ndn::Name&
   getInviterCertificateName() const
   { return m_inviterCertificateName; }
 
-  inline const ndn::Blob&
+  const ndn::Blob&
   getSignatureBits() const
   { return m_signatureBits; }
 
-  inline const ndn::Name&
+  const ndn::Name&
   getInviterNameSpace() const
   { return m_inviterNameSpace; }
 
-  inline const ndn::Blob&
+  const ndn::Blob&
   getSignedBlob() const
   { return m_signedBlob; }
   
-  inline const ndn::Name&
+  const ndn::Name&
   getInterestName() const
   { return m_interestName; }
 

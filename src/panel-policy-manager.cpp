@@ -9,45 +9,42 @@
  */
 
 #include "panel-policy-manager.h"
-
-#include <ndn.cxx/security/certificate/identity-certificate.h>
-#include <ndn.cxx/security/cache/ttl-certificate-cache.h>
-#include <boost/bind.hpp>
+#include "null-ptrs.h"
+#include <ndn-cpp/sha256-with-rsa-signature.hpp>
+#include <ndn-cpp/security/signature/sha256-with-rsa-handler.hpp>
+// #include <boost/bind.hpp>
 
 #include "logging.h"
 
 using namespace std;
 using namespace ndn;
-using namespace ndn::security;
+using namespace ndn::ptr_lib;
 
 INIT_LOGGER("PanelPolicyManager");
 
-PanelPolicyManager::PanelPolicyManager(const int & stepLimit,
-                                       Ptr<CertificateCache> certificateCache)
+PanelPolicyManager::PanelPolicyManager(const int & stepLimit)
   : m_stepLimit(stepLimit)
-  , m_certificateCache(certificateCache)
-  , m_localPrefixRegex(Ptr<Regex>(new Regex("^<local><ndn><prefix><><>$")))
+  , m_certificateCache()
 {
-  if(NULL == m_certificateCache)
-    m_certificateCache = Ptr<security::CertificateCache>(new security::TTLCertificateCache());
+  m_localPrefixRegex = make_shared<Regex>("^<local><ndn><prefix><><>$");
 
-  m_invitationDataSigningRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
-                                                                               "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT><>$", 
-                                                                               "==", "\\1", "\\1\\2", true));
+  m_invitationDataSigningRule = make_shared<IdentityPolicyRule>("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
+                                                                "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT><>$", 
+                                                                "==", "\\1", "\\1\\2", true);
   
-  m_dskRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
-							     "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
-							     "==", "\\1", "\\1\\2", true));
+  m_dskRule = make_shared<IdentityPolicyRule>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
+                                              "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
+                                              "==", "\\1", "\\1\\2", true);
   
-  m_endorseeRule = Ptr<IdentityPolicyRule>(new IdentityPolicyRule("^([^<DNS>]*)<DNS><>*<ENDORSEE><>$", 
-                                                                  "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
-                                                                  "==", "\\1", "\\1\\2", true));
+  m_endorseeRule = make_shared<IdentityPolicyRule>("^([^<DNS>]*)<DNS><>*<ENDORSEE><>$", 
+                                                   "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
+                                                   "==", "\\1", "\\1\\2", true);
   
-  m_kskRegex = Ptr<Regex>(new Regex("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT><>$", "\\1\\2"));
+  m_kskRegex = make_shared<Regex>("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT><>$", "\\1\\2");
 
-  m_keyNameRegex = Ptr<Regex>(new Regex("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>$", "\\1\\2"));
+  m_keyNameRegex = make_shared<Regex>("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>$", "\\1\\2");
 
-  m_signingCertificateRegex = Ptr<Regex>(new Regex("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", "\\1"));
+  m_signingCertificateRegex = make_shared<Regex>("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", "\\1");
 }
 
 bool 
@@ -76,26 +73,26 @@ PanelPolicyManager::requireVerify (const Data & data)
   return false;
 }
 
-Ptr<ValidationRequest>
-PanelPolicyManager::checkVerificationPolicy(Ptr<Data> data, 
-						 const int & stepCount, 
-						 const DataCallback& verifiedCallback,
-						 const UnverifiedCallback& unverifiedCallback)
+shared_ptr<ValidationRequest>
+PanelPolicyManager::checkVerificationPolicy(const shared_ptr<Data>& data, 
+                                            int stepCount, 
+                                            const OnVerified& onVerified,
+                                            const OnVerifyFailed& onVerifyFailed)
 {
   if(m_stepLimit == stepCount)
     {
       _LOG_ERROR("Reach the maximum steps of verification!");
-      unverifiedCallback(data);
-      return NULL;
+      onVerifyFailed(data);
+      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
     }
 
-  Ptr<const signature::Sha256WithRsa> sha256sig = boost::dynamic_pointer_cast<const signature::Sha256WithRsa> (data->getSignature());    
+  const Sha256WithRsaSignature* sha256sig = dynamic_cast<const Sha256WithRsaSignature*>(data->getSignature());    
 
-  if(KeyLocator::KEYNAME != sha256sig->getKeyLocator().getType())
+  if(ndn_KeyLocatorType_KEYNAME != sha256sig->getKeyLocator().getType())
     {
       _LOG_ERROR("Keylocator is not name!");
-      unverifiedCallback(data);
-      return NULL;
+      onVerifyFailed(data);
+      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
     }
 
   const Name & keyLocatorName = sha256sig->getKeyLocator().getKeyName();
@@ -103,22 +100,20 @@ PanelPolicyManager::checkVerificationPolicy(Ptr<Data> data,
   if(m_kskRegex->match(data->getName()))
     {
       Name keyName = m_kskRegex->expand();
-      map<Name, Publickey>::iterator it = m_trustAnchors.find(keyName);
+      map<Name, PublicKey>::iterator it = m_trustAnchors.find(keyName);
       if(m_trustAnchors.end() != it)
         {
           // _LOG_DEBUG("found key!");
-          Ptr<IdentityCertificate> identityCertificate = Ptr<IdentityCertificate>(new IdentityCertificate(*data));
-          if(it->second.getKeyBlob() == identityCertificate->getPublicKeyInfo().getKeyBlob())
-            {
-              verifiedCallback(data);
-            }
+          IdentityCertificate identityCertificate(*data);
+          if(isSameKey(it->second.getKeyDer(), identityCertificate.getPublicKeyInfo().getKeyDer()))
+            onVerified(data);
           else
-            unverifiedCallback(data);
+            onVerifyFailed(data);
         }
       else
-        unverifiedCallback(data);
+        onVerifyFailed(data);
 
-      return NULL;
+      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
     }
 
   if(m_dskRule->satisfy(*data))
@@ -127,14 +122,14 @@ PanelPolicyManager::checkVerificationPolicy(Ptr<Data> data,
       Name keyName = m_keyNameRegex->expand();
 
       if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
-        if(verifySignature(*data, m_trustAnchors[keyName]))
-          verifiedCallback(data);
+        if(Sha256WithRsaHandler::verifySignature(*data, m_trustAnchors[keyName]))
+          onVerified(data);
         else
-          unverifiedCallback(data);
+          onVerifyFailed(data);
       else
-        unverifiedCallback(data);
+        onVerifyFailed(data);
 
-      return NULL;	
+      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;	
     }
 
   if(m_endorseeRule->satisfy(*data))
@@ -142,20 +137,20 @@ PanelPolicyManager::checkVerificationPolicy(Ptr<Data> data,
       m_keyNameRegex->match(keyLocatorName);
       Name keyName = m_keyNameRegex->expand();
       if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
-        if(verifySignature(*data, m_trustAnchors[keyName]))
-          verifiedCallback(data);
+        if(Sha256WithRsaHandler::verifySignature(*data, m_trustAnchors[keyName]))
+          onVerified(data);
         else
-          unverifiedCallback(data);
+          onVerifyFailed(data);
       else
-        unverifiedCallback(data);
+        onVerifyFailed(data);
 
-      return NULL;
+      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
     }
 
   _LOG_DEBUG("Unverified!");
 
-  unverifiedCallback(data);
-  return NULL;
+  onVerifyFailed(data);
+  return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
 }
 
 bool 
@@ -177,7 +172,7 @@ void
 PanelPolicyManager::addTrustAnchor(const EndorseCertificate& selfEndorseCertificate)
 { 
   // _LOG_DEBUG("Add Anchor: " << selfEndorseCertificate.getPublicKeyName().toUri());
-  m_trustAnchors.insert(pair <Name, Publickey > (selfEndorseCertificate.getPublicKeyName(), selfEndorseCertificate.getPublicKeyInfo())); 
+  m_trustAnchors.insert(pair <Name, PublicKey > (selfEndorseCertificate.getPublicKeyName(), selfEndorseCertificate.getPublicKeyInfo())); 
 }
 
 void
@@ -186,14 +181,34 @@ PanelPolicyManager::removeTrustAnchor(const Name& keyName)
   m_trustAnchors.erase(keyName); 
 }
 
-Ptr<Publickey>
-PanelPolicyManager::getTrustedKey(const ndn::Name& inviterCertName)
+shared_ptr<PublicKey>
+PanelPolicyManager::getTrustedKey(const Name& inviterCertName)
 {
-  Name keyLocatorName = inviterCertName.getPrefix(inviterCertName.size()-1);
+  Name keyLocatorName = inviterCertName.getPrefix(-1);
   m_keyNameRegex->match(keyLocatorName);
   Name keyName = m_keyNameRegex->expand();
 
   if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
-    return Ptr<Publickey>(new Publickey(m_trustAnchors[keyName]));
-  return NULL;
+    return make_shared<PublicKey>(m_trustAnchors[keyName]);
+  return CHRONOCHAT_NULL_PUBLICKEY_PTR;
+}
+
+bool
+PanelPolicyManager::isSameKey(const Blob& keyA, const Blob& keyB)
+{
+  size_t size = keyA.size();
+
+  if(size != keyB.size())
+    return false;
+
+  const uint8_t* ap = keyA.buf();
+  const uint8_t* bp = keyB.buf();
+  
+  for(int i = 0; i < size; i++)
+    {
+      if(ap[i] != bp[i])
+        return false;
+    }
+
+  return true;
 }

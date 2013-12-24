@@ -11,22 +11,21 @@
 #ifndef INVITATION_POLICY_MANAGER_H
 #define INVITATION_POLICY_MANAGER_H
 
-#include <ndn.cxx/security/policy/policy-manager.h>
-#include <ndn.cxx/security/policy/identity-policy-rule.h>
-#include <ndn.cxx/security/cache/certificate-cache.h>
-#include <ndn.cxx/regex/regex.h>
+#include <ndn-cpp/security/policy/policy-manager.hpp>
+#include <ndn-cpp-et/policy-manager/identity-policy-rule.hpp>
+#include <ndn-cpp-et/cache/ttl-certificate-cache.hpp>
+#include <ndn-cpp-et/regex/regex.hpp>
 #include <map>
 
 #include "endorse-certificate.h"
 #include "chat-policy-rule.h"
 
-class InvitationPolicyManager : public ndn::security::PolicyManager
+class InvitationPolicyManager : public ndn::PolicyManager
 {
 public:
   InvitationPolicyManager(const std::string& chatroomName,
                           const ndn::Name& signingIdentity,
-                          int stepLimit = 10,
-                          ndn::Ptr<ndn::security::CertificateCache> certificateCache = NULL);
+                          int stepLimit = 10);
   
   virtual
   ~InvitationPolicyManager();
@@ -37,11 +36,11 @@ public:
   bool
   requireVerify (const ndn::Data& data);
 
-  ndn::Ptr<ndn::security::ValidationRequest>
-  checkVerificationPolicy(ndn::Ptr<ndn::Data> data, 
-                          const int& stepCount, 
-                          const ndn::DataCallback& verifiedCallback,
-                          const ndn::UnverifiedCallback& unverifiedCallback);
+  ndn::ptr_lib::shared_ptr<ndn::ValidationRequest>
+  checkVerificationPolicy(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, 
+                          int stepCount, 
+                          const ndn::OnVerified& onVerified,
+                          const ndn::OnVerifyFailed& onVerifyFailed);
 
   bool 
   checkSigningPolicy(const ndn::Name& dataName, 
@@ -57,20 +56,23 @@ public:
   // addChatDataRule(const ndn::Name& prefix, 
   //                 const ndn::security::IdentityCertificate identityCertificate);
 
-  ndn::Ptr<ndn::security::IdentityCertificate> 
+  ndn::ptr_lib::shared_ptr<ndn::IdentityCertificate> 
   getValidatedDskCertificate(const ndn::Name& certName);
 
 private:
   void 
-  onDskCertificateVerified(ndn::Ptr<ndn::Data> certData, 
-                        ndn::Ptr<ndn::Data> originalData,
-                        const ndn::DataCallback& verifiedCallback, 
-                        const ndn::UnverifiedCallback& unverifiedCallback);
+  onDskCertificateVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& certData, 
+                           ndn::ptr_lib::shared_ptr<ndn::Data> originalData,
+                           const ndn::OnVerified& onVerified, 
+                           const ndn::OnVerifyFailed& onVerifyFailed);
 
   void
-  onDskCertificateUnverified(ndn::Ptr<ndn::Data> certData, 
-                          ndn::Ptr<ndn::Data> originalData,
-                          const ndn::UnverifiedCallback& unverifiedCallback);
+  onDskCertificateVerifyFailed(const ndn::ptr_lib::shared_ptr<ndn::Data>& certData, 
+                               ndn::ptr_lib::shared_ptr<ndn::Data> originalData,
+                               const ndn::OnVerifyFailed& onVerifyFailed);
+
+  static bool
+  isSameKey(const ndn::Blob& keyA, const ndn::Blob& keyB);
 
 private:
   std::string m_chatroomName;
@@ -78,18 +80,18 @@ private:
 
   int m_stepLimit;
 
-  ndn::Ptr<ndn::security::CertificateCache> m_certificateCache;
+  ndn::TTLCertificateCache m_certificateCache;
 
-  ndn::Ptr<ndn::security::IdentityPolicyRule> m_invitationPolicyRule;
-  ndn::Ptr<ndn::security::IdentityPolicyRule> m_dskRule;
-  std::map<ndn::Name, ChatPolicyRule> m_chatDataRules;
+  ndn::ptr_lib::shared_ptr<ndn::IdentityPolicyRule> m_invitationPolicyRule;
+  ndn::ptr_lib::shared_ptr<ndn::IdentityPolicyRule> m_dskRule;
+  std::map<ndn::Name, ChatPolicyRule, ndn::Name::BreadthFirstLess> m_chatDataRules;
 
-  ndn::Ptr<ndn::Regex> m_kskRegex;
-  ndn::Ptr<ndn::Regex> m_keyNameRegex;
+  ndn::ptr_lib::shared_ptr<ndn::Regex> m_kskRegex;
+  ndn::ptr_lib::shared_ptr<ndn::Regex> m_keyNameRegex;
 
-  std::map<ndn::Name, ndn::security::Publickey> m_trustAnchors;
+  std::map<ndn::Name, ndn::PublicKey, ndn::Name::BreadthFirstLess> m_trustAnchors;
 
-  std::map<ndn::Name, ndn::Ptr<ndn::security::IdentityCertificate> > m_dskCertificates;
+  std::map<ndn::Name, ndn::ptr_lib::shared_ptr<ndn::IdentityCertificate>, ndn::Name::BreadthFirstLess> m_dskCertificates;
 
 };
 

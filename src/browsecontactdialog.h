@@ -19,7 +19,7 @@
 
 
 #ifndef Q_MOC_RUN
-#include <ndn.cxx/security/certificate/identity-certificate.h>
+#include <ndn-cpp/security/certificate/identity-certificate.hpp>
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include "profile.h"
@@ -35,7 +35,7 @@ class BrowseContactDialog : public QDialog
   Q_OBJECT
   
 public:
-  explicit BrowseContactDialog(ndn::Ptr<ContactManager> contactManager,
+  explicit BrowseContactDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
                                QWidget *parent = 0);
 
   ~BrowseContactDialog();
@@ -67,7 +67,7 @@ private slots:
                   const QItemSelection &deselected);
 
   void
-  onCertificateFetched(const ndn::security::IdentityCertificate& identityCertificate);
+  onCertificateFetched(const ndn::IdentityCertificate& identityCertificate);
 
   void
   onCertificateFetchFailed(const ndn::Name& identity);
@@ -95,7 +95,7 @@ signals:
 private:
   Ui::BrowseContactDialog *ui;
   
-  ndn::Ptr<ContactManager> m_contactManager;
+  ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;
 
   WarningDialog* m_warningDialog;
   QStringListModel* m_contactListModel;
@@ -103,8 +103,8 @@ private:
   QStringList m_contactList;  
   std::vector<ndn::Name> m_contactNameList;
   std::vector<ndn::Name> m_certificateNameList;
-  std::map<ndn::Name, ndn::security::IdentityCertificate> m_certificateMap;
-  std::map<ndn::Name, Profile> m_profileMap;
+  std::map<ndn::Name, ndn::IdentityCertificate, ndn::Name::BreadthFirstLess> m_certificateMap;
+  std::map<ndn::Name, Profile, ndn::Name::BreadthFirstLess> m_profileMap;
 
   RecLock m_mutex;
 

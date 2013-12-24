@@ -9,13 +9,12 @@
  */
 
 #include "profile.h"
-#include <ndn.cxx/helpers/der/der.h>
-#include <ndn.cxx/helpers/der/visitor/print-visitor.h>
-#include <ndn.cxx/helpers/der/visitor/simple-visitor.h>
+#include "null-ptrs.h"
 #include "logging.h"
 
 using namespace std;
 using namespace ndn;
+using namespace ndn::ptr_lib;
 
 INIT_LOGGER("Profile");
 
@@ -26,47 +25,44 @@ static string homepageOid("2.5.4.3");
 static string advisor("2.5.4.80");
 static string emailOid("1.2.840.113549.1.9.1");
 
-Profile::Profile(const security::IdentityCertificate& oldIdentityCertificate)
+Profile::Profile(const IdentityCertificate& oldIdentityCertificate)
 {
-  using namespace ndn::security;
-  security::IdentityCertificate identityCertificate(oldIdentityCertificate);
+  IdentityCertificate identityCertificate(oldIdentityCertificate);
 
   Name keyName = identityCertificate.getPublicKeyName();
-  m_identityName = keyName.getPrefix(keyName.size()-1);
+  m_identityName = keyName.getPrefix(-1);
 
   const string& identityString = m_identityName.toUri();
-  Blob identityBlob (identityString.c_str(), identityString.size());
-  m_entries[string("IDENTITY")] = identityBlob;
+  m_entries[string("IDENTITY")] = identityString;
   
-  const vector<CertificateSubDescrypt>& subList = identityCertificate.getSubjectDescriptionList();
-  vector<CertificateSubDescrypt>::const_iterator it = subList.begin();
+  const vector<CertificateSubjectDescription>& subList = identityCertificate.getSubjectDescriptionList();
+  vector<CertificateSubjectDescription>::const_iterator it = subList.begin();
   for(; it != subList.end(); it++)
     {
-      string oidStr = it->getOidStr();
-      Blob blob (it->getValue().c_str(), it->getValue().size());
+      const string oidStr = it->getOidString();
+      string valueStr = it->getValue();
       if(oidStr == nameOid)
-        m_entries[string("name")] = blob;
+        m_entries[string("name")] = valueStr;
       else if(oidStr == orgOid)
-        m_entries[string("institution")] = blob;
+        m_entries[string("institution")] = valueStr;
       else if(oidStr == groupOid)
-        m_entries[string("group")] = blob;
+        m_entries[string("group")] = valueStr;
       else if(oidStr == homepageOid)
-        m_entries[string("homepage")] = blob;
+        m_entries[string("homepage")] = valueStr;
       else if(oidStr == advisor)
-        m_entries[string("advisor")] = blob;
+        m_entries[string("advisor")] = valueStr;
       else if(oidStr == emailOid)
-        m_entries[string("email")] = blob;
+        m_entries[string("email")] = valueStr;
       else
-        m_entries[oidStr] = blob;
+        m_entries[oidStr] = valueStr;
     }
 }
 
 Profile::Profile(const Name& identityName)
   : m_identityName(identityName)
 {
-  const string& nameString = identityName.toUri();
-  Blob identityBlob (nameString.c_str(), nameString.size());
-  m_entries[string("IDENTITY")] = identityBlob;
+  const string& identityString = identityName.toUri();
+  m_entries[string("IDENTITY")] = identityString;
 }
 
 Profile::Profile(const Name& identityName,
@@ -74,15 +70,11 @@ Profile::Profile(const Name& identityName,
 		 const string& institution)
   : m_identityName(identityName)
 {
-  const string& nameString = identityName.toUri();
-  Blob identityBlob (nameString.c_str(), nameString.size());
-  m_entries[string("IDENTITY")] = identityBlob;
+  const string& identityString = identityName.toUri();
+  m_entries[string("IDENTITY")] = identityString;
 
-  Blob nameBlob (name.c_str(), name.size());
-  Blob institutionBlob (institution.c_str(), institution.size());
-
-  m_entries[string("name")] = nameBlob;
-  m_entries[string("institution")] = institutionBlob;
+  m_entries[string("name")] = name;
+  m_entries[string("institution")] = institution;
 }
 
 Profile::Profile(const Profile& profile)
@@ -92,63 +84,50 @@ Profile::Profile(const Profile& profile)
 
 void
 Profile::setProfileEntry(const string& profileType,
-			 const Blob& profileValue)
+			 const string& profileValue)
 { m_entries[profileType] = profileValue; }
 
-Ptr<const Blob>
+string
 Profile::getProfileEntry(const string& profileType) const
 {
   if(m_entries.find(profileType) != m_entries.end())
-    return Ptr<Blob>(new Blob(m_entries.at(profileType).buf(), m_entries.at(profileType).size()));
+    return m_entries.at(profileType);
 
-  return NULL;
+  return CHRONOCHAT_NULL_STR;
 }
 
-Ptr<Blob>
-Profile::toDerBlob() const
+void
+Profile::encode(string* output) const
 {
-  Ptr<der::DerSequence> root = Ptr<der::DerSequence>::Create();
-  
-  Ptr<der::DerPrintableString> identityName = Ptr<der::DerPrintableString>(new der::DerPrintableString(m_identityName.toUri()));
-  root->addChild(identityName);
 
-  map<string, Blob>::const_iterator it = m_entries.begin();
+  Chronos::ProfileMsg profileMsg;
+
+  profileMsg.set_identityname(m_identityName.toUri());
+  
+  map<string, string>::const_iterator it = m_entries.begin();
   for(; it != m_entries.end(); it++)
     {
-      Ptr<der::DerSequence> entry = Ptr<der::DerSequence>::Create();
-      Ptr<der::DerPrintableString> type = Ptr<der::DerPrintableString>(new der::DerPrintableString(it->first));
-      Ptr<der::DerOctetString> value = Ptr<der::DerOctetString>(new der::DerOctetString(it->second));
-      entry->addChild(type);
-      entry->addChild(value);
-      root->addChild(entry);
+      Chronos::ProfileMsg::ProfileEntry* profileEntry = profileMsg.add_entry();
+      profileEntry->set_oid(it->first);
+      profileEntry->set_data(it->second);
     }
-  
-  blob_stream blobStream;
-  OutputIterator & start = reinterpret_cast<OutputIterator &> (blobStream);
-  root->encode(start);
 
-  return blobStream.buf ();
+  profileMsg.SerializeToString(output);
 }
 
-Ptr<Profile>
-Profile::fromDerBlob(const Blob& derBlob)
+shared_ptr<Profile>
+Profile::decode(const string& input)
 {
-  boost::iostreams::stream
-    <boost::iostreams::array_source> is (derBlob.buf(), derBlob.size());
+  Chronos::ProfileMsg profileMsg;
+    
+  profileMsg.ParseFromString(input);
 
-  Ptr<der::DerSequence> root = DynamicCast<der::DerSequence>(der::DerNode::parse(reinterpret_cast<InputIterator &>(is)));
-  const der::DerNodePtrList & children = root->getChildren();
-  der::SimpleVisitor simpleVisitor;
-  string identityName = boost::any_cast<string>(children[0]->accept(simpleVisitor));
-  Ptr<Profile> profile = Ptr<Profile>(new Profile(identityName));
+  shared_ptr<Profile> profile = make_shared<Profile>(profileMsg.identityname());
 
-  for(int i = 1; i < children.size(); i++)
+  for(int i = 0; i < profileMsg.entry_size(); i++)
     {
-      Ptr<der::DerSequence> entry = DynamicCast<der::DerSequence>(children[i]);
-      const der::DerNodePtrList & tuple = entry->getChildren();
-      string type = boost::any_cast<string>(tuple[0]->accept(simpleVisitor));
-      Ptr<Blob> value = boost::any_cast<Ptr<Blob> >(tuple[1]->accept(simpleVisitor));
-      profile->setProfileEntry(type, *value);
+      const Chronos::ProfileMsg::ProfileEntry& profileEntry = profileMsg.entry(i);
+      profile->setProfileEntry(profileEntry.oid(), profileEntry.data());
     }
 
   return profile;

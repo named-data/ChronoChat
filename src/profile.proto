@@ -1,0 +1,12 @@
+package Chronos;
+
+message ProfileMsg
+{
+  required string identityName = 1;
+  message ProfileEntry
+  {
+    required string oid = 1;
+    required string data = 2;
+  }
+  repeated ProfileEntry entry = 2;
+}

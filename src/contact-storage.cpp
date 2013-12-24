@@ -9,14 +9,15 @@
  */
 
 #include "contact-storage.h"
+#include "null-ptrs.h"
 #include "exception.h"
 
 #include <boost/filesystem.hpp>
-#include <ndn.cxx/fields/signature-sha256-with-rsa.h>
 #include "logging.h"
 
 using namespace std;
 using namespace ndn;
+using namespace ndn::ptr_lib;
 namespace fs = boost::filesystem;
 
 INIT_LOGGER ("ContactStorage");
@@ -270,7 +271,7 @@ ContactStorage::setSelfProfileEntry(const Name& identity, const string& profileT
   if(doesSelfEntryExist(identity, profileType))
     {
       sqlite3_prepare_v2 (m_db, "UPDATE SelfProfile SET profile_value=? WHERE profile_type=? and profile_identity=?", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, profileValue.buf(), profileValue.size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 1, (const char*)profileValue.buf(), profileValue.size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 2, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 3, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
     }
@@ -279,17 +280,17 @@ ContactStorage::setSelfProfileEntry(const Name& identity, const string& profileT
       sqlite3_prepare_v2 (m_db, "INSERT INTO SelfProfile (profile_identity, profile_type, profile_value) values (?, ?, ?)", -1, &stmt, 0);
       sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 2, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 3, profileValue.buf(), profileValue.size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 3, (const char*)profileValue.buf(), profileValue.size(), SQLITE_TRANSIENT);
     }
   sqlite3_step (stmt);
   sqlite3_finalize (stmt);
 }
 
-Ptr<Profile>
+shared_ptr<Profile>
 ContactStorage::getSelfProfile(const Name& identity)
 {
   sqlite3_stmt *stmt;
-  Ptr<Profile> profile = Ptr<Profile>(new Profile(identity));
+  shared_ptr<Profile> profile = make_shared<Profile>(identity);
   
   sqlite3_prepare_v2(m_db, "SELECT profile_type, profile_value FROM SelfProfile WHERE profile_identity=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
@@ -297,7 +298,7 @@ ContactStorage::getSelfProfile(const Name& identity)
   while(sqlite3_step (stmt) == SQLITE_ROW)
     {
       string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      Blob profileValue(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
+      string profileValue(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
 
       profile->setProfileEntry(profileType, profileValue );
     }
@@ -310,7 +311,7 @@ ContactStorage::getSelfProfile(const Name& identity)
 void 
 ContactStorage::removeContact(const Name& contactNameSpace)
 {
-  Ptr<ContactItem> contact = getContact(contactNameSpace);
+  shared_ptr<ContactItem> contact = getContact(contactNameSpace);
   string identity = contactNameSpace.toUri();
   
   if(contact == NULL)
@@ -353,15 +354,14 @@ ContactStorage::addContact(const ContactItem& contact)
 
   sqlite3_bind_text(stmt, 1, contact.getNameSpace().toUri().c_str(),  contact.getNameSpace().toUri().size (), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 2, contact.getAlias().c_str(), contact.getAlias().size(), SQLITE_TRANSIENT);
-  Ptr<Blob> selfCertificateBlob = contact.getSelfEndorseCertificate().encodeToWire();
-  sqlite3_bind_text(stmt, 3, selfCertificateBlob->buf(), selfCertificateBlob->size(), SQLITE_TRANSIENT);
+  Blob selfCertificateBlob = contact.getSelfEndorseCertificate().wireEncode();
+  sqlite3_bind_text(stmt, 3, (const char*)selfCertificateBlob.buf(), selfCertificateBlob.size(), SQLITE_TRANSIENT);
   sqlite3_bind_int(stmt, 4, (isIntroducer ? 1 : 0));
 
   int res = sqlite3_step (stmt);
   sqlite3_finalize (stmt);
 
-  Ptr<ProfileData> profileData = contact.getSelfEndorseCertificate().getProfileData();
-  const Profile&  profile = profileData->getProfile();
+  const Profile&  profile = contact.getSelfEndorseCertificate().getProfileData().getProfile();
   Profile::const_iterator it = profile.begin();
   string identity = contact.getNameSpace().toUri();
   for(; it != profile.end(); it++)
@@ -373,7 +373,7 @@ ContactStorage::addContact(const ContactItem& contact)
                           0);
       sqlite3_bind_text(stmt, 1, identity.c_str(),  identity.size (), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 2, it->first.c_str(), it->first.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 3, it->second.buf(), it->second.size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 3, it->second.c_str(), it->second.size(), SQLITE_TRANSIENT);
       res = sqlite3_step (stmt);
       sqlite3_finalize (stmt);
     }
@@ -445,27 +445,27 @@ ContactStorage::doesContactExist(const Name& name)
   return result;
 }
 
-vector<Ptr<ContactItem> >
-ContactStorage::getAllContacts() const
+void
+ContactStorage::getAllContacts(vector<shared_ptr<ContactItem> >& contacts) const
 {
-  vector<Ptr<ContactItem> > contacts;
-
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT contact_alias, self_certificate, is_introducer FROM Contact", -1, &stmt, 0);
   
   while( sqlite3_step (stmt) == SQLITE_ROW)
     {
       string alias(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      Ptr<Blob> certBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1)));
-      Ptr<Data> certData = Data::decodeFromWire(certBlob);
-      EndorseCertificate endorseCertificate(*certData);
+
+      Data certData;
+      certData.wireDecode(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
+      EndorseCertificate endorseCertificate(certData);
+
       int isIntroducer = sqlite3_column_int (stmt, 2);
 
-      contacts.push_back(Ptr<ContactItem>(new ContactItem(endorseCertificate, isIntroducer, alias)));      
+      contacts.push_back(make_shared<ContactItem>(endorseCertificate, isIntroducer, alias));      
     }
   sqlite3_finalize (stmt);  
 
-  vector<Ptr<ContactItem> >::iterator it = contacts.begin();
+  vector<shared_ptr<ContactItem> >::iterator it = contacts.begin();
   for(; it != contacts.end(); it++)
     {
       if((*it)->isIntroducer())
@@ -481,11 +481,9 @@ ContactStorage::getAllContacts() const
           sqlite3_finalize (stmt);  
         }
     }
-
-  return contacts;
 }
 
-Ptr<ContactItem>
+shared_ptr<ContactItem>
 ContactStorage::getContact(const Name& name)
 {
   sqlite3_stmt *stmt;
@@ -495,14 +493,16 @@ ContactStorage::getContact(const Name& name)
   if( sqlite3_step (stmt) == SQLITE_ROW)
     {
       string alias(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      Ptr<Blob> certBlob = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1)));
-      Ptr<Data> certData = Data::decodeFromWire(certBlob);
-      EndorseCertificate endorseCertificate(*certData);
+
+      Data certData;
+      certData.wireDecode(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
+      EndorseCertificate endorseCertificate(certData);
+
       int isIntroducer = sqlite3_column_int (stmt, 2);
 
       sqlite3_finalize (stmt);
       
-      Ptr<ContactItem> contact = Ptr<ContactItem>(new ContactItem(endorseCertificate, isIntroducer, alias));
+      shared_ptr<ContactItem> contact = make_shared<ContactItem>(endorseCertificate, isIntroducer, alias);
 
       if(contact->isIntroducer())
         {
@@ -519,13 +519,13 @@ ContactStorage::getContact(const Name& name)
 
       return contact;      
     } 
-  return NULL;
+  return CHRONOCHAT_NULL_CONTACTITEM_PTR;
 }
 
-Ptr<Profile>
+shared_ptr<Profile>
 ContactStorage::getSelfProfile(const Name& identity) const
 {  
-  Ptr<Profile> profile = Ptr<Profile>(new Profile(identity));
+  shared_ptr<Profile> profile = make_shared<Profile>(identity);
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT profile_type, profile_value FROM SelfProfile WHERE profile_identity=?", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
@@ -533,7 +533,7 @@ ContactStorage::getSelfProfile(const Name& identity) const
   while( sqlite3_step (stmt) == SQLITE_ROW)
     {
       string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      Blob profileValue(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
+      string profileValue(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
       profile->setProfileEntry(profileType, profileValue);
     }
 
@@ -542,30 +542,33 @@ ContactStorage::getSelfProfile(const Name& identity) const
   return profile;
 }
 
-Ptr<Blob>
+Blob
 ContactStorage::getSelfEndorseCertificate(const Name& identity)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT endorse_data FROM SelfEndorse where identity=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
 
-  Ptr<Blob> result = NULL;
   if(sqlite3_step (stmt) == SQLITE_ROW)
-    result = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
+    {
+      Blob result(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      sqlite3_finalize (stmt);
+      return result;
+    }
 
   sqlite3_finalize (stmt);
 
-  return result;
+  return CHRONOCHAT_NULL_BLOB;
 }
 
 void
-ContactStorage::updateSelfEndorseCertificate(Ptr<EndorseCertificate> newEndorseCertificate, const Name& identity)
+ContactStorage::updateSelfEndorseCertificate(const EndorseCertificate& newEndorseCertificate, const Name& identity)
 {
-  Ptr<Blob> newEndorseCertificateBlob = newEndorseCertificate->encodeToWire();
+  Blob newEndorseCertificateBlob = newEndorseCertificate.wireEncode();
 
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "UPDATE SelfEndorse SET endorse_data=? WHERE identity=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 1, (const char*)newEndorseCertificateBlob.buf(), newEndorseCertificateBlob.size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
   sqlite3_step(stmt);
   
@@ -573,43 +576,47 @@ ContactStorage::updateSelfEndorseCertificate(Ptr<EndorseCertificate> newEndorseC
 }
 
 void
-ContactStorage::addSelfEndorseCertificate(Ptr<EndorseCertificate> newEndorseCertificate, const Name& identity)
+ContactStorage::addSelfEndorseCertificate(const EndorseCertificate& newEndorseCertificate, const Name& identity)
 {
-  Ptr<Blob> newEndorseCertificateBlob = newEndorseCertificate->encodeToWire();
+  Blob newEndorseCertificateBlob = newEndorseCertificate.wireEncode();
 
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "INSERT INTO SelfEndorse (identity, endorse_data) values (?, ?)", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt, 2, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, (const char*)newEndorseCertificateBlob.buf(), newEndorseCertificateBlob.size(), SQLITE_TRANSIENT);
   sqlite3_step(stmt);
 
   sqlite3_finalize (stmt);
 }
 
-Ptr<Blob>
-ContactStorage::getEndorseCertificate(const ndn::Name& identity)
+Blob
+ContactStorage::getEndorseCertificate(const Name& identity)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT endorse_data FROM ProfileEndorse where identity=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
 
-  Ptr<Blob> result = NULL;
+  
   if(sqlite3_step (stmt) == SQLITE_ROW)
-    result = Ptr<Blob>(new Blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
+    {
+      Blob result(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      sqlite3_finalize (stmt);
+      return result;
+    }
 
   sqlite3_finalize (stmt);
-
-  return result;
+  
+  return CHRONOCHAT_NULL_BLOB;
 }
 
 void
-ContactStorage::updateEndorseCertificate(ndn::Ptr<EndorseCertificate> endorseCertificate, const ndn::Name& identity)
+ContactStorage::updateEndorseCertificate(const EndorseCertificate& endorseCertificate, const Name& identity)
 {
-  Ptr<Blob> newEndorseCertificateBlob = endorseCertificate->encodeToWire();
+  Blob newEndorseCertificateBlob = endorseCertificate.wireEncode();
 
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "UPDATE ProfileEndorse SET endorse_data=? WHERE identity=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 1, (const char*)newEndorseCertificateBlob.buf(), newEndorseCertificateBlob.size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
   sqlite3_step(stmt);
 
@@ -617,24 +624,22 @@ ContactStorage::updateEndorseCertificate(ndn::Ptr<EndorseCertificate> endorseCer
 }
 
 void
-ContactStorage::addEndorseCertificate(ndn::Ptr<EndorseCertificate> endorseCertificate, const ndn::Name& identity)
+ContactStorage::addEndorseCertificate(const EndorseCertificate& endorseCertificate, const Name& identity)
 {
-  Ptr<Blob> newEndorseCertificateBlob = endorseCertificate->encodeToWire();
+  Blob newEndorseCertificateBlob = endorseCertificate.wireEncode();
 
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "INSERT INTO ProfileEndorse (identity, endorse_data) values (?, ?)", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt, 2, newEndorseCertificateBlob->buf(), newEndorseCertificateBlob->size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, (const char*)newEndorseCertificateBlob.buf(), newEndorseCertificateBlob.size(), SQLITE_TRANSIENT);
   sqlite3_step(stmt);
 
   sqlite3_finalize (stmt);
 }
 
-vector<string>
-ContactStorage::getEndorseList(const Name& identity)
+void
+ContactStorage::getEndorseList(const Name& identity, vector<string>& endorseList)
 {
-  vector<string> endorseList;
-
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT profile_type FROM ContactProfile WHERE profile_identity=? AND endorse=1 ORDER BY profile_type", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
@@ -645,8 +650,6 @@ ContactStorage::getEndorseList(const Name& identity)
       endorseList.push_back(profileType);      
     }
   sqlite3_finalize (stmt);  
-  
-  return endorseList;
 }
 
 void
@@ -680,8 +683,8 @@ ContactStorage::updateCollectEndorse(const EndorseCertificate& endorseCertificat
       sqlite3_bind_text(stmt, 1, endorserName.toUri().c_str(), endorserName.toUri().size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 2, endorseeName.toUri().c_str(), endorseeName.toUri().size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 3, getCertName.toUri().c_str(), getCertName.toUri().size(), SQLITE_TRANSIENT);
-      Ptr<Blob> blob = endorseCertificate.encodeToWire();
-      sqlite3_bind_text(stmt, 4, blob->buf(), blob->size(), SQLITE_TRANSIENT);
+      Blob blob = endorseCertificate.wireEncode();
+      sqlite3_bind_text(stmt, 4, (const char*)blob.buf(), blob.size(), SQLITE_TRANSIENT);
       int res = sqlite3_step (stmt);
       sqlite3_finalize (stmt); 
       return;
@@ -690,8 +693,8 @@ ContactStorage::updateCollectEndorse(const EndorseCertificate& endorseCertificat
     {
       sqlite3_prepare_v2 (m_db, "UPDATE CollectEndorse SET endorse_name=?, endorse_data=? WHERE endorser=? AND endorsee=?", -1, &stmt, 0);
       sqlite3_bind_text(stmt, 1, getCertName.toUri().c_str(), getCertName.toUri().size(), SQLITE_TRANSIENT);
-      Ptr<Blob> blob = endorseCertificate.encodeToWire();
-      sqlite3_bind_text(stmt, 2, blob->buf(), blob->size(), SQLITE_TRANSIENT);
+      Blob blob = endorseCertificate.wireEncode();
+      sqlite3_bind_text(stmt, 2, (const char*)blob.buf(), blob.size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 3, endorserName.toUri().c_str(), endorserName.toUri().size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 4, endorseeName.toUri().c_str(), endorseeName.toUri().size(), SQLITE_TRANSIENT);
       int res = sqlite3_step (stmt);
@@ -700,22 +703,18 @@ ContactStorage::updateCollectEndorse(const EndorseCertificate& endorseCertificat
     }
 }
 
-Ptr<vector<Blob> >
-ContactStorage::getCollectEndorseList(const Name& name)
+void
+ContactStorage::getCollectEndorseList(const Name& name, vector<Blob>& endorseList)
 {
-  Ptr<vector<Blob> > collectEndorseList = Ptr<vector<Blob> >::Create();
-
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT endorse_data FROM CollectEndorse WHERE endorsee=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
 
   while(sqlite3_step (stmt) == SQLITE_ROW)
     {
-      Blob blob(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      collectEndorseList->push_back(blob);
+      Blob blob(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      endorseList.push_back(blob);
     }
 
   sqlite3_finalize (stmt);
-
-  return collectEndorseList;
 }

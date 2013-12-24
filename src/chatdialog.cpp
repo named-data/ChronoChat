@@ -18,12 +18,10 @@
 #include <QCloseEvent>
 
 #ifndef Q_MOC_RUN
-#include <ndn.cxx/security/identity/identity-manager.h>
-#include <ndn.cxx/security/policy/no-verify-policy-manager.h>
-#include <ndn.cxx/security/encryption/basic-encryption-manager.h>
 #include <sync-intro-certificate.h>
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
+#include <ndn-cpp/sha256-with-rsa-signature.hpp>
 #include "logging.h"
 #endif
 
@@ -36,7 +34,7 @@ static const int HELLO_INTERVAL = FRESHNESS * 3 / 4;
 Q_DECLARE_METATYPE(std::vector<Sync::MissingDataInfo> )
 Q_DECLARE_METATYPE(size_t)
 
-ChatDialog::ChatDialog(ndn::Ptr<ContactManager> contactManager,
+ChatDialog::ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
                        const ndn::Name& chatroomPrefix,
 		       const ndn::Name& localPrefix,
                        const ndn::Name& defaultIdentity,
@@ -49,7 +47,7 @@ ChatDialog::ChatDialog(ndn::Ptr<ContactManager> contactManager,
   , m_chatroomPrefix(chatroomPrefix)
   , m_localPrefix(localPrefix)
   , m_defaultIdentity(defaultIdentity)
-  , m_invitationPolicyManager(ndn::Ptr<InvitationPolicyManager>(new InvitationPolicyManager(m_chatroomPrefix.get(-1).toUri(), m_defaultIdentity)))
+  , m_invitationPolicyManager(new InvitationPolicyManager(m_chatroomPrefix.get(-1).toEscapedString(), m_defaultIdentity))
   , m_nick(nick)
   , m_sock(NULL)
   , m_lastMsgTime(0)
@@ -87,7 +85,13 @@ ChatDialog::ChatDialog(ndn::Ptr<ContactManager> contactManager,
 
   m_timer = new QTimer(this);
 
-  setWrapper(trial);
+  ndn::Name certificateName = m_identityManager->getDefaultCertificateNameForIdentity(m_defaultIdentity);
+  m_syncPolicyManager = ndn::ptr_lib::make_shared<SyncPolicyManager>(m_defaultIdentity, certificateName, m_chatroomPrefix);
+
+  m_transport = ndn::ptr_lib::make_shared<ndn::TcpTransport>();
+  m_face = ndn::ptr_lib::make_shared<ndn::Face>(m_transport, ndn::ptr_lib::make_shared<ndn::TcpTransport::ConnectionInfo>("localhost"));
+
+  connectToDaemon();
 
   connect(ui->inviteButton, SIGNAL(clicked()),
           this, SLOT(openInviteListDialog()));
@@ -125,34 +129,34 @@ ChatDialog::~ChatDialog()
       delete m_sock;
       m_sock = NULL;
     }
-  m_handler->shutdown();
+  m_face->shutdown();
 }
 
 void
-ChatDialog::setWrapper(bool trial)
+ChatDialog::connectToDaemon()
 {
-  m_identityManager = ndn::Ptr<ndn::security::IdentityManager>::Create();
-
-  ndn::Name certificateName = m_identityManager->getDefaultCertificateNameByIdentity(m_defaultIdentity);
-  m_syncPolicyManager = ndn::Ptr<SyncPolicyManager>(new SyncPolicyManager(m_defaultIdentity, certificateName, m_chatroomPrefix));
-
-  m_keychain = ndn::Ptr<ndn::security::Keychain>(new ndn::security::Keychain(m_identityManager, m_invitationPolicyManager, NULL));
-
-  ndn::Ptr<ndn::security::Keychain> noVerifyKeychain = ndn::Ptr<ndn::security::Keychain>(new ndn::security::Keychain(m_identityManager,
-ndn::Ptr<ndn::security::NoVerifyPolicyManager>::Create(), NULL));
-  try{
-    m_handler = ndn::Ptr<ndn::Wrapper>(new ndn::Wrapper(m_keychain));
-    m_localPrefixHandler = ndn::Ptr<ndn::Wrapper>(new ndn::Wrapper(noVerifyKeychain));
-  }catch(ndn::Error::ndnOperation& e){
-    emit noNdnConnection(QString::fromStdString("Cannot conect to ndnd!\n Have you started your ndnd?"));
-  }
+  //Hack! transport does not connect to daemon unless an interest is expressed.
+  ndn::Name name("/ndn");
+  ndn::ptr_lib::shared_ptr<ndn::Interest> interest = ndn::ptr_lib::make_shared<ndn::Interest>(name);
+  m_face->expressInterest(*interest, 
+                          boost::bind(&ChatDialog::onConnectionData, this, _1, _2),
+                          boost::bind(&ChatDialog::onConnectionDataTimeout, this, _1));
 }
+
+void
+ChatDialog::onConnectionData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
+                             const ndn::ptr_lib::shared_ptr<ndn::Data>& data)
+{ _LOG_DEBUG("onConnectionData"); }
+
+void
+ChatDialog::onConnectionDataTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest)
+{ _LOG_DEBUG("onConnectionDataTimeout"); }
 
 void
 ChatDialog::initializeSetting()
 {
   m_user.setNick(QString::fromStdString(m_nick));
-  m_user.setChatroom(QString::fromStdString(m_chatroomPrefix.get(-1).toUri()));
+  m_user.setChatroom(QString::fromStdString(m_chatroomPrefix.get(-1).toEscapedString()));
   m_user.setOriginPrefix(QString::fromStdString(m_localPrefix.toUri()));
   m_user.setPrefix(QString::fromStdString(m_localChatPrefix.toUri()));
   m_scene->setCurrentPrefix(QString::fromStdString(m_localChatPrefix.toUri()));
@@ -179,11 +183,121 @@ ChatDialog::updateLabels()
 }
 
 void
-ChatDialog::sendInvitation(ndn::Ptr<ContactItem> contact, bool isIntroducer)
+ChatDialog::sendInterest(const ndn::Interest& interest,
+                         const ndn::OnVerified& onVerified,
+                         const ndn::OnVerifyFailed& onVerifyFailed,
+                         const OnEventualTimeout& timeoutNotify,
+                         const ndn::ptr_lib::shared_ptr<ndn::PolicyManager>& policyManager,
+                         int retry /* = 1 */,
+                         int stepCount /* = 0 */)
+{
+  m_face->expressInterest(interest, 
+                          boost::bind(&ChatDialog::onTargetData, 
+                                      this,
+                                      _1,
+                                      _2,
+                                      stepCount,
+                                      onVerified, 
+                                      onVerifyFailed,
+                                      timeoutNotify,
+                                      policyManager),
+                          boost::bind(&ChatDialog::onTargetTimeout,
+                                      this,
+                                      _1,
+                                      retry,
+                                      stepCount,
+                                      onVerified,
+                                      onVerifyFailed,
+                                      timeoutNotify,
+                                      policyManager));
+}
+
+void
+ChatDialog::onTargetData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
+                         const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
+                         int stepCount,
+                         const ndn::OnVerified& onVerified,
+                         const ndn::OnVerifyFailed& onVerifyFailed,
+                         const OnEventualTimeout& timeoutNotify,
+                         const ndn::ptr_lib::shared_ptr<ndn::PolicyManager>& policyManager)
+{
+  ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> nextStep = policyManager->checkVerificationPolicy(data, stepCount, onVerified, onVerifyFailed);
+
+  if (nextStep)
+    m_face->expressInterest
+      (*nextStep->interest_, 
+       boost::bind(&ChatDialog::onCertData, this, _1, _2, nextStep, policyManager), 
+       boost::bind(&ChatDialog::onCertTimeout, this, _1, onVerifyFailed, data, nextStep, policyManager));
+}
+
+void
+ChatDialog::onTargetTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
+                            int retry,
+                            int stepCount,
+                            const ndn::OnVerified& onVerified,
+                            const ndn::OnVerifyFailed& onVerifyFailed,
+                            const OnEventualTimeout& timeoutNotify,
+                            const ndn::ptr_lib::shared_ptr<ndn::PolicyManager>& policyManager)
+{
+  if(retry > 0)
+    sendInterest(*interest, onVerified, onVerifyFailed, timeoutNotify, policyManager, retry-1, stepCount);
+  else
+    {
+      _LOG_DEBUG("Interest: " << interest->getName().toUri() << " eventually times out!");
+      timeoutNotify();
+    }
+}
+
+void
+ChatDialog::onCertData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
+                       const ndn::ptr_lib::shared_ptr<ndn::Data>& cert,
+                       ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> previousStep,
+                       const ndn::ptr_lib::shared_ptr<ndn::PolicyManager>& policyManager)
+{
+  ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> nextStep = policyManager->checkVerificationPolicy(cert, 
+                                                                                                     previousStep->stepCount_, 
+                                                                                                     previousStep->onVerified_, 
+                                                                                                     previousStep->onVerifyFailed_);
+
+  if (nextStep)
+    m_face->expressInterest
+      (*nextStep->interest_, 
+       boost::bind(&ChatDialog::onCertData, this, _1, _2, nextStep, policyManager), 
+       boost::bind(&ChatDialog::onCertTimeout, this, _1, previousStep->onVerifyFailed_, cert, nextStep, policyManager));
+}
+
+void
+ChatDialog::onCertTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
+                          const ndn::OnVerifyFailed& onVerifyFailed,
+                          const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
+                          ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> nextStep,
+                          const ndn::ptr_lib::shared_ptr<ndn::PolicyManager>& policyManager)
+{
+  if(nextStep->retry_ > 0)
+    m_face->expressInterest(*interest, 
+                            boost::bind(&ChatDialog::onCertData,
+                                        this,
+                                        _1,
+                                        _2,
+                                        nextStep,
+                                        policyManager),
+                            boost::bind(&ChatDialog::onCertTimeout,
+                                        this,
+                                        _1,
+                                        onVerifyFailed,
+                                        data,
+                                        nextStep,
+                                        policyManager));
+ else
+   onVerifyFailed(data);
+}
+
+void
+ChatDialog::sendInvitation(ndn::ptr_lib::shared_ptr<ContactItem> contact, bool isIntroducer)
 {
   m_invitationPolicyManager->addTrustAnchor(contact->getSelfEndorseCertificate());
 
-  ndn::Name certificateName = m_identityManager->getDefaultCertificateNameByIdentity(m_defaultIdentity);
+  ndn::Name certificateName = m_identityManager->getDefaultCertificateNameForIdentity(m_defaultIdentity);
 
   ndn::Name interestName("/ndn/broadcast/chronos/invitation");
   interestName.append(contact->getNameSpace());
@@ -195,57 +309,63 @@ ChatDialog::sendInvitation(ndn::Ptr<ContactItem> contact, bool isIntroducer)
   interestName.append(certificateName);
 
   string signedUri = interestName.toUri();
-  ndn::Blob signedBlob(signedUri.c_str(), signedUri.size());
+  ndn::Blob signedBlob((const uint8_t*)signedUri.c_str(), signedUri.size());
 
-  ndn::Ptr<const ndn::signature::Sha256WithRsa> sha256sig = ndn::DynamicCast<const ndn::signature::Sha256WithRsa>(m_identityManager->signByCertificate(signedBlob, certificateName));
-  const ndn::Blob& sigBits = sha256sig->getSignatureBits();
+  ndn::ptr_lib::shared_ptr<const ndn::Sha256WithRsaSignature> sha256sig = ndn::ptr_lib::dynamic_pointer_cast<const ndn::Sha256WithRsaSignature>(m_identityManager->signByCertificate(signedBlob.buf(), signedBlob.size(), certificateName));
+  const ndn::Blob& sigBits = sha256sig->getSignature();
 
-  interestName.append(sigBits.buf(), sigBits.size());
-  interestName.appendVersion();
+  interestName.append(sigBits);
+  //TODO... remove version from invitation interest
+  //  interestName.appendVersion();
 
-  ndn::Ptr<ndn::Interest> interest = ndn::Ptr<ndn::Interest>(new ndn::Interest(interestName));
-  ndn::Ptr<ndn::Closure> closure = ndn::Ptr<ndn::Closure>(new ndn::Closure(boost::bind(&ChatDialog::onInviteReplyVerified,
-                                                                                       this,
-                                                                                       _1,
-                                                                                       contact->getNameSpace(),
-                                                                                       isIntroducer),
-                                                                           boost::bind(&ChatDialog::onInviteTimeout,
-                                                                                       this,
-                                                                                       _1,
-                                                                                       _2,
-                                                                                       contact->getNameSpace(),
-                                                                                       7),
-                                                                           boost::bind(&ChatDialog::onUnverified,
-                                                                                       this,
-                                                                                       _1)));
+  ndn::Interest interest(interestName);
+  ndn::OnVerified onVerified = boost::bind(&ChatDialog::onInviteReplyVerified,
+                                           this,
+                                           _1,
+                                           contact->getNameSpace(),
+                                           isIntroducer);
 
-  m_handler->sendInterest(interest, closure);
+  ndn::OnVerifyFailed onVerifyFailed = boost::bind(&ChatDialog::onInviteReplyVerifyFailed,
+                                                   this,
+                                                   _1,
+                                                   contact->getNameSpace());
+
+  OnEventualTimeout timeoutNotify = boost::bind(&ChatDialog::onInviteReplyTimeout,
+                                                     this,
+                                                     contact->getNameSpace());
+                                                 
+
+  sendInterest(interest, onVerified, onVerifyFailed, timeoutNotify, m_invitationPolicyManager);
+}
+
+void 
+ChatDialog::onInviteReplyVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, 
+                                  const ndn::Name& identity, 
+                                  bool isIntroducer)
+{
+  string content((const char*)data->getContent().buf(), data->getContent().size());
+  if(content == string("nack"))
+    invitationRejected(identity);
+  else
+    invitationAccepted(identity, data, content, isIntroducer);
 }
 
 void
-ChatDialog::addTrustAnchor(const EndorseCertificate& selfEndorseCertificate)
-{ m_invitationPolicyManager->addTrustAnchor(selfEndorseCertificate); }
-
-void
-ChatDialog::addChatDataRule(const ndn::Name& prefix, 
-                            const ndn::security::IdentityCertificate& identityCertificate,
-                            bool isIntroducer)
-{ m_syncPolicyManager->addChatDataRule(prefix, identityCertificate, isIntroducer); }
-
-void
-ChatDialog::publishIntroCert(const ndn::security::IdentityCertificate& dskCertificate, bool isIntroducer)
+ChatDialog::onInviteReplyVerifyFailed(const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
+                                      const ndn::Name& identity)
 {
-  SyncIntroCertificate syncIntroCertificate(m_chatroomPrefix,
-                                            dskCertificate.getPublicKeyName(),
-                                            m_identityManager->getDefaultKeyNameForIdentity(m_defaultIdentity),
-                                            dskCertificate.getNotBefore(),
-                                            dskCertificate.getNotAfter(),
-                                            dskCertificate.getPublicKeyInfo(),
-                                            (isIntroducer ? SyncIntroCertificate::INTRODUCER : SyncIntroCertificate::PRODUCER));
-  ndn::Name certName = m_identityManager->getDefaultCertificateNameByIdentity(m_defaultIdentity);
-  _LOG_DEBUG("Publish Intro Certificate: " << syncIntroCertificate.getName());
-  m_identityManager->signByCertificate(syncIntroCertificate, certName);
-  m_handler->putToNdnd(*syncIntroCertificate.encodeToWire());
+  _LOG_DEBUG("Reply from " << identity.toUri() << " cannot be verified!");
+  QString msg = QString::fromUtf8("Reply from ") + QString::fromStdString(identity.toUri()) + " cannot be verified!";
+  emit inivationRejection(msg);
+}
+
+
+void
+ChatDialog::onInviteReplyTimeout(const ndn::Name& identity)
+{
+  _LOG_DEBUG("Your invitation to " << identity.toUri() << " times out!");
+  QString msg = QString::fromUtf8("Your invitation to ") + QString::fromStdString(identity.toUri()) + " times out!";
+  emit inivationRejection(msg);
 }
 
 void
@@ -257,55 +377,43 @@ ChatDialog::invitationRejected(const ndn::Name& identity)
 }
 
 void
-ChatDialog::invitationAccepted(const ndn::Name& identity, ndn::Ptr<ndn::Data> data, const string& inviteePrefix, bool isIntroducer)
+ChatDialog::invitationAccepted(const ndn::Name& identity, ndn::ptr_lib::shared_ptr<ndn::Data> data, const string& inviteePrefix, bool isIntroducer)
 {
   _LOG_DEBUG(" " << identity.toUri() << " Accepted your invitation!");
-  ndn::Ptr<const ndn::signature::Sha256WithRsa> sha256sig = boost::dynamic_pointer_cast<const ndn::signature::Sha256WithRsa> (data->getSignature());
+  const ndn::Sha256WithRsaSignature* sha256sig = dynamic_cast<const ndn::Sha256WithRsaSignature*>(data->getSignature());
   const ndn::Name & keyLocatorName = sha256sig->getKeyLocator().getKeyName();
-  ndn::Ptr<ndn::security::IdentityCertificate> dskCertificate = m_invitationPolicyManager->getValidatedDskCertificate(keyLocatorName);
+  ndn::ptr_lib::shared_ptr<ndn::IdentityCertificate> dskCertificate = m_invitationPolicyManager->getValidatedDskCertificate(keyLocatorName);
   m_syncPolicyManager->addChatDataRule(inviteePrefix, *dskCertificate, isIntroducer);
   publishIntroCert(*dskCertificate, isIntroducer);
 }
 
-void 
-ChatDialog::onInviteReplyVerified(ndn::Ptr<ndn::Data> data, const ndn::Name& identity, bool isIntroducer)
+void
+ChatDialog::publishIntroCert(const ndn::IdentityCertificate& dskCertificate, bool isIntroducer)
 {
-  string content(data->content().buf(), data->content().size());
-  if(content == string("nack"))
-    invitationRejected(identity);
-  else
-    invitationAccepted(identity, data, content, isIntroducer);
+  SyncIntroCertificate syncIntroCertificate(m_chatroomPrefix,
+                                            dskCertificate.getPublicKeyName(),
+                                            m_identityManager->getDefaultKeyNameForIdentity(m_defaultIdentity),
+                                            dskCertificate.getNotBefore(),
+                                            dskCertificate.getNotAfter(),
+                                            dskCertificate.getPublicKeyInfo(),
+                                            (isIntroducer ? SyncIntroCertificate::INTRODUCER : SyncIntroCertificate::PRODUCER));
+  ndn::Name certName = m_identityManager->getDefaultCertificateNameForIdentity(m_defaultIdentity);
+  _LOG_DEBUG("Publish Intro Certificate: " << syncIntroCertificate.getName());
+  m_identityManager->signByCertificate(syncIntroCertificate, certName);
+  m_transport->send(*syncIntroCertificate.wireEncode());
 }
 
-void 
-ChatDialog::onInviteTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest, const ndn::Name& identity, int retry)
-{
-  if(retry > 0)
-    {
-      ndn::Ptr<ndn::Closure> newClosure = ndn::Ptr<ndn::Closure>(new ndn::Closure(closure->m_dataCallback,
-                                                                                  boost::bind(&ChatDialog::onInviteTimeout, 
-                                                                                              this, 
-                                                                                              _1, 
-                                                                                              _2, 
-                                                                                              identity,
-                                                                                              retry - 1),
-                                                                                  closure->m_unverifiedCallback,
-                                                                                  closure->m_stepCount)
-                                                                 );
-      m_handler->sendInterest(interest, newClosure);
-    }
-  else
-    invitationRejected(identity);
-}
+void
+ChatDialog::addTrustAnchor(const EndorseCertificate& selfEndorseCertificate)
+{ m_invitationPolicyManager->addTrustAnchor(selfEndorseCertificate); }
+
+void
+ChatDialog::addChatDataRule(const ndn::Name& prefix, 
+                            const ndn::IdentityCertificate& identityCertificate,
+                            bool isIntroducer)
+{ m_syncPolicyManager->addChatDataRule(prefix, identityCertificate, isIntroducer); }
+
  
-void
-ChatDialog::onUnverified(ndn::Ptr<ndn::Data> data)
-{}
-
-void
-ChatDialog::onTimeout(ndn::Ptr<ndn::Closure> closure, 
-                      ndn::Ptr<ndn::Interest> interest)
-{}
 
 void
 ChatDialog::initializeSync()
@@ -313,8 +421,8 @@ ChatDialog::initializeSync()
   
   m_sock = new Sync::SyncSocket(m_chatroomPrefix.toUri(),
                                 m_syncPolicyManager,
-                                bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
-                                bind(&ChatDialog::processRemoveWrapper, this, _1));
+                                boost::bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
+                                boost::bind(&ChatDialog::processRemoveWrapper, this, _1));
   
   usleep(100000);
 
@@ -449,11 +557,11 @@ ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
 }
 
 void
-ChatDialog::processDataWrapper(ndn::Ptr<ndn::Data> data)
+ChatDialog::processDataWrapper(const ndn::ptr_lib::shared_ptr<ndn::Data>& data)
 {
   string name = data->getName().toUri();
-  const char* buf = data->content().buf();
-  size_t len = data->content().size();
+  const char* buf = (const char*)data->getContent().buf();
+  size_t len = data->getContent().size();
 
   char *tempBuf = new char[len];
   memcpy(tempBuf, buf, len);
@@ -462,11 +570,11 @@ ChatDialog::processDataWrapper(ndn::Ptr<ndn::Data> data)
 }
 
 void
-ChatDialog::processDataNoShowWrapper(ndn::Ptr<ndn::Data> data)
+ChatDialog::processDataNoShowWrapper(const ndn::ptr_lib::shared_ptr<ndn::Data>& data)
 {
   string name = data->getName().toUri();
-  const char* buf = data->content().buf();
-  size_t len = data->content().size();
+  const char* buf = (const char*)data->getContent().buf();
+  size_t len = data->getContent().size();
 
   char *tempBuf = new char[len];
   memcpy(tempBuf, buf, len);
@@ -755,7 +863,7 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       m_timer->start(FRESHNESS * 1000);
       disableTreeDisplay();
       QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
-    }catch(ndn::Error::ndnOperation& e){
+    }catch(std::exception& e){
       emit noNdnConnection(QString::fromStdString("Cannot conect to ndnd!\n Have you started your ndnd?"));
     }
   }
@@ -894,22 +1002,15 @@ void
 ChatDialog::updateLocalPrefix()
 {
   m_newLocalPrefixReady = false;
-  ndn::Ptr<ndn::Interest> interest = ndn::Ptr<ndn::Interest>(new ndn::Interest(ndn::Name("/local/ndn/prefix")));
-  interest->setChildSelector(ndn::Interest::CHILD_RIGHT);
-  interest->setInterestLifetime(1);
+  ndn::Name interestName("/local/ndn/prefix");
+  ndn::Interest interest(interestName);
+  interest.setChildSelector(ndn_Interest_CHILD_SELECTOR_RIGHT);
+  interest.setInterestLifetimeMilliseconds(1000);
 
-  ndn::Ptr<ndn::Closure> closure = ndn::Ptr<ndn::Closure>(new ndn::Closure(boost::bind(&ChatDialog::onLocalPrefix,
-                                                                                       this,
-                                                                                       _1),
-                                                                           boost::bind(&ChatDialog::onLocalPrefixTimeout,
-                                                                                       this,
-                                                                                       _1,
-                                                                                       _2),
-                                                                           boost::bind(&ChatDialog::onLocalPrefix,
-                                                                                       this,
-                                                                                       _1)));
+  m_face->expressInterest(interest, 
+                          bind(&ChatDialog::onLocalPrefix, this, _1, _2), 
+                          bind(&ChatDialog::onLocalPrefixTimeout, this, _1));
   
-  m_localPrefixHandler->sendInterest(interest, closure);
   while(m_newLocalPrefixReady == false)
     {
 #if BOOST_VERSION >= 1050000
@@ -926,6 +1027,25 @@ ChatDialog::updateLocalPrefix()
     emit settingUpdated(m_user.getNick (), m_user.getChatroom (), originPrefix);
 }
 
+
+void
+ChatDialog::onLocalPrefix(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
+                          const ndn::ptr_lib::shared_ptr<ndn::Data>& data)
+{
+  string dataString((const char*)data->getContent().buf(), data->getContent().size());
+  QString originPrefix = QString::fromStdString (dataString).trimmed ();
+  string trimmedString = originPrefix.toStdString();
+  m_newLocalPrefix = ndn::Name(trimmedString);
+  m_newLocalPrefixReady = true;
+}
+
+void
+ChatDialog::onLocalPrefixTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest)
+{
+  m_newLocalPrefix = m_localPrefix;
+  m_newLocalPrefixReady = true;
+}
+
 static std::string chars2("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789");
 
 QString
@@ -939,23 +1059,6 @@ ChatDialog::getRandomString()
     randStr += chars2[index_dist(rng)];
   }
   return randStr.c_str();
-}
-
-void
-ChatDialog::onLocalPrefix(ndn::Ptr<ndn::Data> data)
-{
-  string dataString(data->content().buf(), data->content().size());
-  QString originPrefix = QString::fromStdString (dataString).trimmed ();
-  string trimmedString = originPrefix.toStdString();
-  m_newLocalPrefix = ndn::Name(trimmedString);
-  m_newLocalPrefixReady = true;
-}
-
-void
-ChatDialog::onLocalPrefixTimeout(ndn::Ptr<ndn::Closure> closure, ndn::Ptr<ndn::Interest> interest)
-{
-  m_newLocalPrefix = m_localPrefix;
-  m_newLocalPrefixReady = true;
 }
 
 void
@@ -1155,8 +1258,8 @@ ChatDialog::openInviteListDialog()
 void
 ChatDialog::sendInvitationWrapper(QString invitee, bool isIntroducer)
 {
-  ndn::Name inviteeNamespace(invitee.toUtf8().constData());
-  ndn::Ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
+  ndn::Name inviteeNamespace(invitee.toStdString());
+  ndn::ptr_lib::shared_ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
   sendInvitation(inviteeItem, isIntroducer);
 }
 

@@ -9,15 +9,15 @@
  */
 
 #include "chat-policy-rule.h"
-#include <ndn.cxx/fields/signature-sha256-with-rsa.h>
+#include <ndn-cpp/sha256-with-rsa-signature.hpp>
 
 using namespace ndn;
 using namespace std;
-using namespace ndn::security;
+using namespace ndn::ptr_lib;
 
 
-ChatPolicyRule::ChatPolicyRule(Ptr<Regex> dataRegex,
-			       Ptr<Regex> signerRegex)
+ChatPolicyRule::ChatPolicyRule(shared_ptr<Regex> dataRegex,
+			       shared_ptr<Regex> signerRegex)
   : PolicyRule(PolicyRule::IDENTITY_POLICY, true)
   , m_dataRegex(dataRegex)
   , m_signerRegex(signerRegex)
@@ -36,13 +36,12 @@ ChatPolicyRule::matchDataName(const Data & data)
 bool 
 ChatPolicyRule::matchSignerName(const Data & data)
 { 
-  Ptr<const Signature> sig = data.getSignature();
+  const Sha256WithRsaSignature* sigPtr = dynamic_cast<const Sha256WithRsaSignature*> (data.getSignature());
 
-  if(NULL == sig)
+  if(NULL == sigPtr)
     return false;
 
-  Ptr<const signature::Sha256WithRsa> sigPtr = DynamicCast<const signature::Sha256WithRsa> (sig);
-  if(KeyLocator::KEYNAME != sigPtr->getKeyLocator().getType())
+  if(ndn_KeyLocatorType_KEYNAME != sigPtr->getKeyLocator().getType())
     return false;
 
   Name signerName = sigPtr->getKeyLocator ().getKeyName ();

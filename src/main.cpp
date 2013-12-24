@@ -16,7 +16,6 @@
 #include "dns-storage.h"
 #include "contact-manager.h"
 #include "logging.h"
-#include <ndn.cxx/wrapper/wrapper.h>
 
 INIT_LOGGER("MAIN");
 
@@ -34,12 +33,8 @@ public:
     try {
         return QApplication::notify(receiver, event);
     } 
-    catch(ndn::Error::ndnOperation& e){
-      std::cerr << "Canno connect to ndnd!" << endl;
-      return false;
-    }
     catch(std::exception& e){
-      std::cerr << "Exception thrown:" << e.what() << endl;
+      std::cerr << "Exception thrown:" << e.what() << std::endl;
       return false;
     }
     

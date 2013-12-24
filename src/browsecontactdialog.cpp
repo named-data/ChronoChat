@@ -18,17 +18,18 @@
 #include <boost/tokenizer.hpp>
 #include "logging.h"
 #include "exception.h"
-#include "ndn.cxx/error.h"
+// #include "ndn.cxx/error.h"
 #endif
 
 using namespace std;
 using namespace ndn;
+using namespace ndn::ptr_lib;
 
 INIT_LOGGER("BrowseContactDialog");
 
 // Q_DECLARE_METATYPE(ndn::security::IdentityCertificate)
 
-BrowseContactDialog::BrowseContactDialog(Ptr<ContactManager> contactManager,
+BrowseContactDialog::BrowseContactDialog(shared_ptr<ContactManager> contactManager,
 					 QWidget *parent) 
   : QDialog(parent)
   , ui(new Ui::BrowseContactDialog)
@@ -139,24 +140,24 @@ BrowseContactDialog::updateCertificateMap(bool filter)
   
   if(filter)
     {
-      map<Name, Name> certificateMap;
+      map<Name, Name, Name::BreadthFirstLess> certificateMap;
 
       vector<string>::iterator it = certNameList.begin();
   
       for(; it != certNameList.end(); it++)
 	{
 	  Name newCertName(*it);
-	  Name keyName = security::IdentityCertificate::certificateNameToPublicKeyName(newCertName, true);
-	  Name identity = keyName.getPrefix(keyName.size()-1);
+	  Name keyName = IdentityCertificate::certificateNameToPublicKeyName(newCertName);
+	  Name identity = keyName.getPrefix(-1);
 	  
 	  map<Name, Name>::iterator map_it = certificateMap.find(identity);
 	  if(map_it != certificateMap.end())
 	    {
 	      Name oldCertName = map_it->second;
-	      Name oldKeyName = security::IdentityCertificate::certificateNameToPublicKeyName(oldCertName, true);
-	      if(keyName > oldKeyName)
+	      Name oldKeyName = IdentityCertificate::certificateNameToPublicKeyName(oldCertName);
+	      if(keyName.get(-1).toEscapedString() > oldKeyName.get(-1).toEscapedString())
 		map_it->second = newCertName;
-	      else if(keyName == oldKeyName && newCertName > oldCertName)
+	      else if(keyName == oldKeyName && newCertName.get(-1).toVersion() > oldCertName.get(-1).toVersion())
 		map_it->second = newCertName;
 	    }
 	  else
@@ -174,17 +175,18 @@ BrowseContactDialog::updateCertificateMap(bool filter)
   
       for(; it != certNameList.end(); it++)
 	{
-          try {
-            m_certificateNameList.push_back(Name (*it));
-          }
-          catch(error::Name)
-            {
-              _LOG_ERROR ("Error parsing: [" << *it << "]");
-            }
-          catch(error::name::Component)
-            {
-              _LOG_ERROR ("Error parsing: [" << *it << "]");
-            }
+          m_certificateNameList.push_back(Name (*it));
+          // try {
+          //   m_certificateNameList.push_back(Name (*it));
+          // }
+          // catch(error::Name)
+          //   {
+          //     _LOG_ERROR ("Error parsing: [" << *it << "]");
+          //   }
+          // catch(error::name::Component)
+          //   {
+          //     _LOG_ERROR ("Error parsing: [" << *it << "]");
+          //   }
 	}
     }
 }
@@ -201,13 +203,13 @@ BrowseContactDialog::fetchCertificate()
 }
 
 void
-BrowseContactDialog::onCertificateFetched(const security::IdentityCertificate& identityCertificate)
+BrowseContactDialog::onCertificateFetched(const IdentityCertificate& identityCertificate)
 {
   Name certName = identityCertificate.getName();
   Name certNameNoVersion = certName.getPrefix(certName.size()-1);
-  m_certificateMap.insert(pair<Name, security::IdentityCertificate>(certNameNoVersion, identityCertificate));
+  m_certificateMap.insert(pair<Name, IdentityCertificate>(certNameNoVersion, identityCertificate));
   m_profileMap.insert(pair<Name, Profile>(certNameNoVersion, Profile(identityCertificate)));
-  string name(m_profileMap[certNameNoVersion].getProfileEntry("name")->buf(), m_profileMap[certNameNoVersion].getProfileEntry("name")->size());
+  string name = m_profileMap[certNameNoVersion].getProfileEntry("name");
   // Name contactName = m_profileMap[certNameNoVersion].getIdentityName();
   {
       UniqueRecLock lock(m_mutex);
@@ -270,8 +272,7 @@ BrowseContactDialog::updateSelection(const QItemSelection &selected,
 	  QTableWidgetItem *type = new QTableWidgetItem(QString::fromStdString(pro_it->first));
 	  ui->InfoTable->setItem(rowCount, 0, type);
 	  
-	  string valueString(pro_it->second.buf(), pro_it->second.size());
-	  QTableWidgetItem *value = new QTableWidgetItem(QString::fromStdString(valueString));
+	  QTableWidgetItem *value = new QTableWidgetItem(QString::fromStdString(pro_it->second));
 	  ui->InfoTable->setItem(rowCount, 1, value);	  
 	}
     }

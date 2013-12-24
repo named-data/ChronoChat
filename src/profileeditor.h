@@ -16,7 +16,7 @@
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
-#include <ndn.cxx/security/identity/identity-manager.h>
+#include <ndn-cpp/security/identity/identity-manager.hpp>
 #endif
 
 namespace Ui {
@@ -28,12 +28,12 @@ class ProfileEditor : public QDialog
     Q_OBJECT
 
 public:
-  explicit ProfileEditor(ndn::Ptr<ContactManager> contactManager, 
+  explicit ProfileEditor(ndn::ptr_lib::shared_ptr<ContactManager> contactManager, 
                          QWidget *parent = 0);
   
   ~ProfileEditor();
 
-  inline void
+  void
   setCurrentIdentity(const ndn::Name& name)
   { m_currentIdentity = name; }
   
@@ -57,8 +57,8 @@ signals:
 private:
   Ui::ProfileEditor *ui;
   QSqlTableModel* m_tableModel;
-  ndn::Ptr<ContactManager> m_contactManager;
-  ndn::Ptr<ndn::security::IdentityManager> m_identityManager;
+  ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;
+  ndn::ptr_lib::shared_ptr<ndn::IdentityManager> m_identityManager;
   ndn::Name m_currentIdentity;
 };
 

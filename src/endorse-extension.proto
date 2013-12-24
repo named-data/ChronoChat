@@ -1,0 +1,10 @@
+package Chronos;
+
+message EndorseExtensionMsg
+{
+  message EndorseEntry
+  {
+    required string name = 1;
+  }	
+  repeated EndorseEntry endorseEntry = 1;
+}

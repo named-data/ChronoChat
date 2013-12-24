@@ -10,14 +10,13 @@
 
 #include "contact-item.h"
 #include "exception.h"
-
-#include <ndn.cxx/fields/signature-sha256-with-rsa.h>
+#include "null-ptrs.h"
 
 #include "logging.h"
 
 using namespace std;
 using namespace ndn;
-using namespace ndn::security;
+using namespace ndn::ptr_lib;
 
 INIT_LOGGER("ContactItem");
 
@@ -32,15 +31,10 @@ ContactItem::ContactItem(const EndorseCertificate& selfEndorseCertificate,
   m_namespace = endorsedkeyName.getSubName(0, endorsedkeyName.size() - 1);
 
 
-  Ptr<ProfileData> profileData = selfEndorseCertificate.getProfileData();
-  Ptr<const Blob> nameBlob = profileData->getProfile().getProfileEntry("name");
-  m_name = string(nameBlob->buf(), nameBlob->size());
+  const ProfileData& profileData = selfEndorseCertificate.getProfileData();
+  m_name = profileData.getProfile().getProfileEntry("name");
   m_alias = alias.empty() ? m_name : alias;
-  Ptr<const Blob> institutionBlob = profileData->getProfile().getProfileEntry("institution");
-  if(institutionBlob != NULL)
-    m_institution = string(institutionBlob->buf(), institutionBlob->size());
-  else
-    m_institution = string();
+  m_institution = profileData.getProfile().getProfileEntry("institution");
 }
 
 ContactItem::ContactItem(const ContactItem& contactItem)
@@ -57,7 +51,7 @@ ContactItem::ContactItem(const ContactItem& contactItem)
 bool 
 ContactItem::canBeTrustedFor(const Name& name)
 {
-  vector<Ptr<Regex> >::iterator it = m_trustScope.begin();
+  vector<shared_ptr<Regex> >::iterator it = m_trustScope.begin();
 
   for(; it != m_trustScope.end(); it++)
     if((*it)->match(name))

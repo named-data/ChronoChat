@@ -11,18 +11,17 @@
 #ifndef PANEL_POLICY_MANAGER_H
 #define PANEL_POLICY_MANAGER_H
 
-#include <ndn.cxx/security/policy/policy-manager.h>
-#include <ndn.cxx/security/policy/identity-policy-rule.h>
-#include <ndn.cxx/security/cache/certificate-cache.h>
+#include <ndn-cpp/security/policy/policy-manager.hpp>
+#include <ndn-cpp-et/policy-manager/identity-policy-rule.hpp>
+#include <ndn-cpp-et/cache/ttl-certificate-cache.hpp>
 #include <map>
 
 #include "endorse-certificate.h"
 
-class PanelPolicyManager : public ndn::security::PolicyManager
+class PanelPolicyManager : public ndn::PolicyManager
 {
 public:
-  PanelPolicyManager(const int & stepLimit = 10,                        
-                     ndn::Ptr<ndn::security::CertificateCache> certificateCache = NULL);
+  PanelPolicyManager(const int & stepLimit = 10);
 
   ~PanelPolicyManager()
   {}
@@ -51,11 +50,11 @@ public:
    * @param unverifiedCallback the callback function that will be called if the received data packet cannot be validated
    * @return the indication of next verification step, NULL if there is no further step
    */
-  ndn::Ptr<ndn::security::ValidationRequest>
-  checkVerificationPolicy(ndn::Ptr<ndn::Data> data, 
-                          const int & stepCount, 
-                          const ndn::DataCallback& verifiedCallback,
-                          const ndn::UnverifiedCallback& unverifiedCallback);
+  ndn::ptr_lib::shared_ptr<ndn::ValidationRequest>
+  checkVerificationPolicy(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, 
+                          int stepCount, 
+                          const ndn::OnVerified& onVerified,
+                          const ndn::OnVerifyFailed& onVerifyFailed);
 
     
   /**
@@ -82,32 +81,24 @@ public:
   void
   removeTrustAnchor(const ndn::Name& keyName);
 
-// private:
-//   void 
-//   onCertificateVerified(ndn::Ptr<ndn::Data> certData, 
-//                         ndn::Ptr<ndn::Data> originalData,
-//                         const ndn::DataCallback& verifiedCallback, 
-//                         const ndn::UnverifiedCallback& unverifiedCallback);
-
-//   void
-//   onCertificateUnverified(ndn::Ptr<ndn::Data> certData, 
-//                           ndn::Ptr<ndn::Data> originalData,
-//                           const ndn::UnverifiedCallback& unverifiedCallback);
-
-  ndn::Ptr<ndn::security::Publickey>
+  ndn::ptr_lib::shared_ptr<ndn::PublicKey>
   getTrustedKey(const ndn::Name& inviterCertName);
 
 private:
+  static bool
+  isSameKey(const ndn::Blob& keyA, const ndn::Blob& keyB);
+
+private:
   int m_stepLimit;
-  ndn::Ptr<ndn::security::CertificateCache> m_certificateCache;
-  ndn::Ptr<ndn::Regex> m_localPrefixRegex;
-  ndn::Ptr<ndn::security::IdentityPolicyRule> m_invitationDataSigningRule;
-  ndn::Ptr<ndn::Regex> m_kskRegex;
-  ndn::Ptr<ndn::security::IdentityPolicyRule> m_dskRule;
-  ndn::Ptr<ndn::security::IdentityPolicyRule> m_endorseeRule;
-  ndn::Ptr<ndn::Regex> m_keyNameRegex;
-  ndn::Ptr<ndn::Regex> m_signingCertificateRegex;
-  std::map<ndn::Name, ndn::security::Publickey> m_trustAnchors;
+  ndn::TTLCertificateCache m_certificateCache;
+  ndn::ptr_lib::shared_ptr<ndn::Regex> m_localPrefixRegex;
+  ndn::ptr_lib::shared_ptr<ndn::IdentityPolicyRule> m_invitationDataSigningRule;
+  ndn::ptr_lib::shared_ptr<ndn::Regex> m_kskRegex;
+  ndn::ptr_lib::shared_ptr<ndn::IdentityPolicyRule> m_dskRule;
+  ndn::ptr_lib::shared_ptr<ndn::IdentityPolicyRule> m_endorseeRule;
+  ndn::ptr_lib::shared_ptr<ndn::Regex> m_keyNameRegex;
+  ndn::ptr_lib::shared_ptr<ndn::Regex> m_signingCertificateRegex;
+  std::map<ndn::Name, ndn::PublicKey, ndn::Name::BreadthFirstLess> m_trustAnchors;
   
 };
 

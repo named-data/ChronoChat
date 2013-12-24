@@ -36,7 +36,7 @@ class AddContactPanel : public QDialog
   Q_OBJECT
 
 public:
-  explicit AddContactPanel(ndn::Ptr<ContactManager> contactManager,
+  explicit AddContactPanel(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
                            QWidget *parent = 0);
 
   ~AddContactPanel();
@@ -47,6 +47,9 @@ private:
 
   bool
   isCorrectName(const ndn::Name& name);
+
+  static bool
+  isSameBlob(const ndn::Blob& blobA, const ndn::Blob& blobB);
 
 private slots:
   void
@@ -83,10 +86,10 @@ signals:
 private:
   Ui::AddContactPanel *ui;
   ndn::Name m_searchIdentity;
-  ndn::Ptr<ContactManager> m_contactManager;
+  ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;
   WarningDialog* m_warningDialog;
-  ndn::Ptr<EndorseCertificate> m_currentEndorseCertificate;
-  ndn::Ptr<ndn::Data> m_currentCollectEndorse;
+  ndn::ptr_lib::shared_ptr<EndorseCertificate> m_currentEndorseCertificate;
+  ndn::ptr_lib::shared_ptr<ndn::Data> m_currentCollectEndorse;
   bool m_currentEndorseCertificateReady;
   bool m_currentCollectEndorseReady;
 };

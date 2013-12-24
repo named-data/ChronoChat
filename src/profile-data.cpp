@@ -9,15 +9,20 @@
  */
 
 #include "profile-data.h"
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include "exception.h"
-#include <ndn.cxx/fields/signature-sha256-with-rsa.h>
 #include "logging.h"
 
 
 using namespace ndn;
 using namespace std;
+using namespace boost::posix_time;
 
 INIT_LOGGER("ProfileData");
+
+ProfileData::ProfileData()
+  : Data()
+{}
 
 ProfileData::ProfileData(const Profile& profile)
   : Data()
@@ -25,40 +30,31 @@ ProfileData::ProfileData(const Profile& profile)
   , m_profile(profile)
 {
   Name dataName = m_identity;
-
-  dataName.append("PROFILE").appendVersion();
+  
+  time_duration now = microsec_clock::universal_time () - ptime(boost::gregorian::date (1970, boost::gregorian::Jan, 1));
+  uint64_t version = (now.total_seconds () << 12) | (0xFFF & (now.fractional_seconds () / 244));
+  dataName.append("PROFILE").appendVersion(version);
   setName(dataName);
-  Ptr<Blob> profileBlob = profile.toDerBlob();
-  setContent(Content(profileBlob->buf(), profileBlob->size()));
+
+  string content;
+  profile.encode(&content);
+  setContent((const uint8_t *)&content[0], content.size());
+
+  getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
+
 }
 
 ProfileData::ProfileData(const ProfileData& profileData)
-  : Data()
+  : Data(profileData)
   , m_identity(profileData.m_identity)
   , m_profile(profileData.m_profile)
-{
-  Ptr<const signature::Sha256WithRsa> dataSig = boost::dynamic_pointer_cast<const signature::Sha256WithRsa>(profileData.getSignature());
-  Ptr<signature::Sha256WithRsa> newSig = Ptr<signature::Sha256WithRsa>::Create();
-
-  Ptr<SignedBlob> newSignedBlob = NULL;
-  if(profileData.getSignedBlob() != NULL)
-    newSignedBlob = Ptr<SignedBlob>(new SignedBlob(*profileData.getSignedBlob()));
-  
-  newSig->setKeyLocator(dataSig->getKeyLocator());
-  newSig->setPublisherKeyDigest(dataSig->getPublisherKeyDigest());
-  newSig->setSignatureBits(dataSig->getSignatureBits());
-  
-  setName(profileData.getName());
-  setSignature(newSig);
-  setContent(profileData.getContent());
-  setSignedBlob(newSignedBlob);
-}
+{}
 
 ProfileData::ProfileData(const Data& data)
-  : Data()
+  : Data(data)
 {
   const Name& dataName = data.getName();
-  name::Component appFlag(string("PROFILE"));  
+  Name::Component appFlag(Name::fromEscapedString("PROFILE"));  
 
   int profileIndex = -1;
   for(int i = 0; i < dataName.size(); i++)
@@ -73,24 +69,8 @@ ProfileData::ProfileData(const Data& data)
   if(profileIndex < 0)
     throw LnException("No PROFILE component in data name!");
 
-  m_identity = dataName.getSubName(0, profileIndex);
+  m_identity = dataName.getPrefix(profileIndex);
 
-  Ptr<const signature::Sha256WithRsa> dataSig = boost::dynamic_pointer_cast<const signature::Sha256WithRsa>(data.getSignature());
-  Ptr<signature::Sha256WithRsa> newSig = Ptr<signature::Sha256WithRsa>::Create();
-  
-  Ptr<SignedBlob> newSignedBlob = NULL;
-  if(data.getSignedBlob() != NULL)
-    newSignedBlob = Ptr<SignedBlob>(new SignedBlob(*data.getSignedBlob()));
-    
-  newSig->setKeyLocator(dataSig->getKeyLocator());
-  newSig->setPublisherKeyDigest(dataSig->getPublisherKeyDigest());
-  newSig->setSignatureBits(dataSig->getSignatureBits());
-  
-  setName(data.getName());
-  setSignature(newSig);
-  setContent(data.getContent());
-  setSignedBlob(newSignedBlob);
-
-  m_profile = *Profile::fromDerBlob(data.content());
-
+  string encoded((const char*)data.getContent().buf(), data.getContent().size());
+  m_profile = *Profile::decode(encoded);
 }

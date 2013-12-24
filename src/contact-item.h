@@ -11,14 +11,14 @@
 #ifndef LINKNDN_CONTACT_ITEM_H
 #define LINKNDN_CONTACT_ITEM_H
 
-#include <ndn.cxx/data.h>
-#include <ndn.cxx/regex/regex.h>
+#include <ndn-cpp/data.hpp>
+#include <ndn-cpp-et/regex/regex.hpp>
 #include <vector>
 #include "endorse-certificate.h"
 
 class ContactItem
 {
-  typedef std::vector<ndn::Ptr<EndorseCertificate> > EndorseCertificateList;
+  typedef std::vector<ndn::ptr_lib::shared_ptr<EndorseCertificate> > EndorseCertificateList;
 
 public:
   ContactItem(const EndorseCertificate& selfEndorseCertificate,
@@ -30,35 +30,35 @@ public:
   virtual
   ~ContactItem() {}
 
-  inline const EndorseCertificate&
+  const EndorseCertificate&
   getSelfEndorseCertificate() const
   { return m_selfEndorseCertificate; }
 
-  inline const ndn::Name&
+  const ndn::Name&
   getNameSpace() const
   { return m_namespace; }
 
-  inline const std::string&
+  const std::string&
   getAlias() const
   { return m_alias; }
 
-  inline const std::string&
+  const std::string&
   getName() const
   { return m_name; }
 
-  inline const std::string&
+  const std::string&
   getInstitution() const
   { return m_institution; }
 
-  inline const ndn::Name
+  const ndn::Name
   getPublicKeyName() const
   { return m_selfEndorseCertificate.getPublicKeyName(); }
 
-  inline bool
+  bool
   isIntroducer() const
   { return m_isIntroducer; }
 
-  inline void
+  void
   setIsIntroducer(bool isIntroducer) 
   { m_isIntroducer = isIntroducer; }
 
@@ -72,7 +72,7 @@ public:
   bool
   canBeTrustedFor(const ndn::Name& name);
 
-  inline const std::vector<ndn::Name>&
+  const std::vector<ndn::Name>&
   getTrustScopeList() const
   { return m_trustScopeName; }
 
@@ -87,7 +87,7 @@ protected:
 
   bool m_isIntroducer;
 
-  std::vector<ndn::Ptr<ndn::Regex> > m_trustScope;
+  std::vector<ndn::ptr_lib::shared_ptr<ndn::Regex> > m_trustScope;
   std::vector<ndn::Name> m_trustScopeName;
 };
 

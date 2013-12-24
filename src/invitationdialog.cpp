@@ -14,6 +14,7 @@
 
 using namespace std;
 using namespace ndn;
+using namespace ndn::ptr_lib;
 
 InvitationDialog::InvitationDialog(QWidget *parent) :
     QDialog(parent),
@@ -34,8 +35,8 @@ InvitationDialog::~InvitationDialog()
 
 void
 InvitationDialog::setInvitation(const string& alias,
-                                Ptr<ChronosInvitation> invitation, 
-                                Ptr<security::IdentityCertificate> identityCertificate)
+                                shared_ptr<ChronosInvitation> invitation, 
+                                shared_ptr<IdentityCertificate> identityCertificate)
 {
   m_inviterAlias = alias;
   string msg = alias;
@@ -43,7 +44,7 @@ InvitationDialog::setInvitation(const string& alias,
   ui->msgLabel->setText(QString::fromStdString(msg));
 
   m_invitation = invitation;
-  ui->chatroomLine->setText(QString::fromStdString(invitation->getChatroom().get(0).toUri()));
+  ui->chatroomLine->setText(QString::fromStdString(invitation->getChatroom().get(0).toEscapedString()));
 
   m_identityCertificate = identityCertificate;
 }
@@ -63,8 +64,8 @@ InvitationDialog::onCancelClicked()
 
   emit invitationRejected(*m_invitation); 
 
-  m_invitation = NULL;
-  m_identityCertificate = NULL;
+  m_invitation = make_shared<ChronosInvitation>();
+  m_identityCertificate = make_shared<IdentityCertificate>();
   m_inviterAlias.clear();
 
   this->close();
