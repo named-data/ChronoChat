@@ -32,6 +32,9 @@
 #include "contact-manager.h"
 #include "chronos-invitation.h"
 #include "panel-policy-manager.h"
+#include <boost/thread/locks.hpp>
+#include <boost/thread/recursive_mutex.hpp>
+#include <boost/thread/thread.hpp>
 #endif
 
 
@@ -49,6 +52,16 @@ public:
   ~ContactPanel();
 
 private:
+  
+  void 
+  startFace();
+
+  void
+  shutdownFace();
+
+  void
+  eventLoop();
+  
   void 
   connectToDaemon();
 
@@ -275,6 +288,11 @@ private:
   ndn::ptr_lib::shared_ptr<ndn::IdentityManager> m_identityManager;
   ndn::ptr_lib::shared_ptr<ndn::Transport> m_transport;
   ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
+
+  boost::recursive_mutex m_mutex;
+  boost::thread m_thread;
+  bool m_running;
+
   uint64_t m_invitationListenerId;
 
   ndn::Name m_defaultIdentity;

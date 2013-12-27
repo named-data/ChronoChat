@@ -21,7 +21,7 @@ public:
 
   ProfileData(const Profile& profile);
 
-  ProfileData(const ProfileData& profileData);
+  // ProfileData(const ProfileData& profileData);
 
   ProfileData(const ndn::Data& data);
 

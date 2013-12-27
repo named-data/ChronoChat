@@ -171,7 +171,7 @@ PanelPolicyManager::inferSigningIdentity(const Name & dataName)
 void
 PanelPolicyManager::addTrustAnchor(const EndorseCertificate& selfEndorseCertificate)
 { 
-  // _LOG_DEBUG("Add Anchor: " << selfEndorseCertificate.getPublicKeyName().toUri());
+  _LOG_DEBUG("Add Anchor: " << selfEndorseCertificate.getPublicKeyName().toUri());
   m_trustAnchors.insert(pair <Name, PublicKey > (selfEndorseCertificate.getPublicKeyName(), selfEndorseCertificate.getPublicKeyInfo())); 
 }
 
@@ -185,6 +185,7 @@ shared_ptr<PublicKey>
 PanelPolicyManager::getTrustedKey(const Name& inviterCertName)
 {
   Name keyLocatorName = inviterCertName.getPrefix(-1);
+  _LOG_DEBUG("inviter cert name: " << inviterCertName.toUri());
   m_keyNameRegex->match(keyLocatorName);
   Name keyName = m_keyNameRegex->expand();
 

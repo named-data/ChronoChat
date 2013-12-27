@@ -79,20 +79,20 @@ InvitationPolicyManager::checkVerificationPolicy(const shared_ptr<Data>& data,
   if(m_invitationPolicyRule->satisfy(*data))
     {
       // Name keyName = IdentityCertificate::certificateNameToPublicKeyName(keyLocatorName);
-      // map<Name, Publickey>::iterator it = m_trustAnchors.find(keyName);
+      // map<Name, PublicKey>::iterator it = m_trustAnchors.find(keyName);
       // if(m_trustAnchors.end() != it)
       //   {
-      //     if(verifySignature(*data, it->second))
-      //       verifiedCallback(data);
+      //     if(Sha256WithRsaHandler::verifySignature(*data, it->second))
+      //       onVerified(data);
       //     else
-      //       unverifiedCallback(data);
+      //       onVerifyFailed(data);
 
-      //     return NULL;
+      //     return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
       //   }
 
       shared_ptr<const Certificate> trustedCert = m_certificateCache.getCertificate(keyLocatorName);
       
-      if(!trustedCert){
+      if(trustedCert != ndn::TCC_NULL_CERTIFICATE_PTR){
 	if(Sha256WithRsaHandler::verifySignature(*data, trustedCert->getPublicKeyInfo()))
 	  onVerified(data);
 	else

@@ -19,6 +19,7 @@
 #include "profile.h"
 #include <ndn-cpp/security/certificate/identity-certificate.hpp>
 #include <ndn-cpp/security/policy/validation-request.hpp>
+#include <ndn-cpp/security/certificate/certificate.hpp>
 
 
 static std::string CHRONOCHAT_NULL_STR;
@@ -31,5 +32,6 @@ static ndn::ptr_lib::shared_ptr<ndn::IdentityCertificate> CHRONOCHAT_NULL_IDENTI
 static ndn::ptr_lib::shared_ptr<Profile> CHRONOCHAT_NULL_PROFILE_PTR;
 static ndn::ptr_lib::shared_ptr<ndn::PublicKey> CHRONOCHAT_NULL_PUBLICKEY_PTR;
 static ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+static ndn::ptr_lib::shared_ptr<const ndn::Certificate> CHRONOCHAT_NULL_CONST_CERTIFICATE_PTR;
 
 #endif
