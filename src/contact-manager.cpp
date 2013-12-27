@@ -28,48 +28,47 @@ using namespace std;
 
 INIT_LOGGER("ContactManager");
 
-ContactManager::ContactManager(shared_ptr<IdentityManager> identityManager, QObject* parent)
-  : QObject(parent)
+ContactManager::ContactManager(shared_ptr<IdentityManager> identityManager, 
+                               shared_ptr<Face> face,
+                               shared_ptr<Transport> transport,
+                               QObject* parent)
+  : QObject(parent),
+    m_face(face),
+    m_transport(transport)
 {
   m_identityManager = identityManager;
   m_contactStorage = make_shared<ContactStorage>();
   m_dnsStorage = make_shared<DnsStorage>();
 
-  m_transport = make_shared<TcpTransport>();
-  m_face = make_shared<Face>(m_transport, make_shared<TcpTransport::ConnectionInfo>("localhost"));
-  
-  connectToDaemon();
-
   initializeSecurity();
 }
 
 ContactManager::~ContactManager()
-{
-}
+{}
 
-void
-ContactManager::connectToDaemon()
-{
-  //Hack! transport does not connect to daemon unless an interest is expressed.
-  Name name("/ndn");
-  shared_ptr<ndn::Interest> interest = make_shared<ndn::Interest>(name);
-  m_face->expressInterest(*interest, 
-                          bind(&ContactManager::onConnectionData, this, _1, _2),
-                          bind(&ContactManager::onConnectionDataTimeout, this, _1));
-}
+// void
+// ContactManager::connectToDaemon()
+// {
+//   //Hack! transport does not connect to daemon unless an interest is expressed.
+//   Name name("/ndn");
+//   shared_ptr<ndn::Interest> interest = make_shared<ndn::Interest>(name);
+//   m_face->expressInterest(*interest, 
+//                           bind(&ContactManager::onConnectionData, this, _1, _2),
+//                           bind(&ContactManager::onConnectionDataTimeout, this, _1));
+// }
 
-void
-ContactManager::onConnectionData(const shared_ptr<const ndn::Interest>& interest,
-                            const shared_ptr<Data>& data)
-{
-  _LOG_DEBUG("onConnectionData");
-}
+// void
+// ContactManager::onConnectionData(const shared_ptr<const ndn::Interest>& interest,
+//                             const shared_ptr<Data>& data)
+// {
+//   _LOG_DEBUG("onConnectionData");
+// }
 
-void
-ContactManager::onConnectionDataTimeout(const shared_ptr<const ndn::Interest>& interest)
-{
-  _LOG_DEBUG("onConnectionDataTimeout");
-}
+// void
+// ContactManager::onConnectionDataTimeout(const shared_ptr<const ndn::Interest>& interest)
+// {
+//   _LOG_DEBUG("onConnectionDataTimeout");
+// }
 
 void
 ContactManager::initializeSecurity()
@@ -291,7 +290,7 @@ ContactManager::onKeyTimeoutNotify(const Name& identity)
 }
 
 void
-ContactManager::fetchIdCertificate(const ndn::Name& certName)
+ContactManager::fetchIdCertificate(const Name& certName)
 {
   Name interestName = certName;
   
@@ -308,7 +307,9 @@ ContactManager::fetchIdCertificate(const ndn::Name& certName)
 
 void
 ContactManager::onIdCertificateTimeoutNotify(const Name& identity)
-{ emit contactCertificateFetchFailed (identity); }
+{ 
+  emit contactCertificateFetchFailed (identity); 
+}
 
 
 void
@@ -320,7 +321,9 @@ ContactManager::onIdCertificateVerified(const shared_ptr<Data>& data, const Name
 
 void
 ContactManager::onIdCertificateVerifyFailed(const shared_ptr<Data>& data, const Name& identity)
-{ emit contactCertificateFetchFailed (identity); }
+{ 
+  emit contactCertificateFetchFailed (identity); 
+}
 
 void
 ContactManager::onTargetData(const shared_ptr<const ndn::Interest>& interest, 
@@ -405,7 +408,7 @@ ContactManager::sendInterest(const Interest& interest,
                              int retry /* = 1 */,
                              int stepCount /* = 0 */)
 {
-  m_face->expressInterest(interest, 
+  uint64_t id = m_face->expressInterest(interest, 
                           boost::bind(&ContactManager::onTargetData, 
                                       this,
                                       _1,
@@ -422,6 +425,8 @@ ContactManager::sendInterest(const Interest& interest,
                                       onVerified,
                                       onVerifyFailed,
                                       timeoutNotify));
+
+  _LOG_DEBUG("id: " << id << " entry id: " << m_face->getNode().getEntryIndexForExpressedInterest(interest.getName()));
 }
 
 void

@@ -45,8 +45,8 @@ BrowseContactDialog::BrowseContactDialog(shared_ptr<ContactManager> contactManag
 
   connect(ui->ContactList->selectionModel(), SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
           this, SLOT(updateSelection(const QItemSelection &, const QItemSelection &)));
-  connect(&*m_contactManager, SIGNAL(contactCertificateFetched(const ndn::security::IdentityCertificate &)),
-	  this, SLOT(onCertificateFetched(const ndn::security::IdentityCertificate &)));
+  connect(&*m_contactManager, SIGNAL(contactCertificateFetched(const ndn::IdentityCertificate &)),
+	  this, SLOT(onCertificateFetched(const ndn::IdentityCertificate &)));
   connect(&*m_contactManager, SIGNAL(contactCertificateFetchFailed(const ndn::Name&)),
           this, SLOT(onCertificateFetchFailed(const ndn::Name&)));
   connect(&*m_contactManager, SIGNAL(warning(QString)),
@@ -71,7 +71,7 @@ BrowseContactDialog::getCertNames(std::vector<std::string> &names)
   try{
     using namespace boost::asio::ip;
     tcp::iostream request_stream;
-    request_stream.expires_from_now(boost::posix_time::milliseconds(3000));
+    request_stream.expires_from_now(boost::posix_time::milliseconds(5000));
     request_stream.connect("ndncert.named-data.net","80");
     if(!request_stream)
       {
@@ -137,6 +137,11 @@ BrowseContactDialog::updateCertificateMap(bool filter)
 {
   vector<string> certNameList;
   getCertNames(certNameList);
+  _LOG_DEBUG("Get Certificate Name List");
+  for(int i = 0; i < certNameList.size(); i++)
+    {
+      _LOG_DEBUG(" " << certNameList[i]);
+    }
   
   if(filter)
     {
@@ -198,6 +203,8 @@ BrowseContactDialog::fetchCertificate()
   int count = 0;
   for(; it != m_certificateNameList.end(); it++)
     {
+      _LOG_DEBUG("fetch " << it->toUri());
+      usleep(1000);
       m_contactManager->fetchIdCertificate(*it);
     }
 }
@@ -205,8 +212,8 @@ BrowseContactDialog::fetchCertificate()
 void
 BrowseContactDialog::onCertificateFetched(const IdentityCertificate& identityCertificate)
 {
-  Name certName = identityCertificate.getName();
-  Name certNameNoVersion = certName.getPrefix(certName.size()-1);
+  Name certNameNoVersion = identityCertificate.getName().getPrefix(-1);
+  _LOG_DEBUG("Fetch: " << certNameNoVersion.toUri());
   m_certificateMap.insert(pair<Name, IdentityCertificate>(certNameNoVersion, identityCertificate));
   m_profileMap.insert(pair<Name, Profile>(certNameNoVersion, Profile(identityCertificate)));
   string name = m_profileMap[certNameNoVersion].getProfileEntry("name");
@@ -221,7 +228,9 @@ BrowseContactDialog::onCertificateFetched(const IdentityCertificate& identityCer
 
 void
 BrowseContactDialog::onCertificateFetchFailed(const Name& identity)
-{}
+{
+  _LOG_DEBUG("Cannot fetch " << identity.toUri());
+}
 
 void
 BrowseContactDialog::refreshList()

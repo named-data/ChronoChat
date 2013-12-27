@@ -31,6 +31,8 @@ class ContactManager : public QObject
 
 public:
   ContactManager(ndn::ptr_lib::shared_ptr<ndn::IdentityManager> identityManager,
+                 ndn::ptr_lib::shared_ptr<ndn::Face> m_face,
+                 ndn::ptr_lib::shared_ptr<ndn::Transport> m_transport,
                  QObject* parent = 0);
 
   ~ContactManager();
@@ -89,15 +91,15 @@ public:
   { return m_identityManager; }
 
 private:
-  void 
-  connectToDaemon();
+  // void 
+  // connectToDaemon();
 
-  void
-  onConnectionData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
-                   const ndn::ptr_lib::shared_ptr<ndn::Data>& data);
+  // void
+  // onConnectionData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
+  //                  const ndn::ptr_lib::shared_ptr<ndn::Data>& data);
  
-  void
-  onConnectionDataTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest);
+  // void
+  // onConnectionDataTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest);
   
   void
   initializeSecurity();

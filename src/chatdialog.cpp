@@ -35,6 +35,7 @@ Q_DECLARE_METATYPE(std::vector<Sync::MissingDataInfo> )
 Q_DECLARE_METATYPE(size_t)
 
 ChatDialog::ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
+                       ndn::ptr_lib::shared_ptr<ndn::IdentityManager> identityManager,
                        const ndn::Name& chatroomPrefix,
 		       const ndn::Name& localPrefix,
                        const ndn::Name& defaultIdentity,
@@ -48,6 +49,7 @@ ChatDialog::ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
   , m_localPrefix(localPrefix)
   , m_defaultIdentity(defaultIdentity)
   , m_invitationPolicyManager(new InvitationPolicyManager(m_chatroomPrefix.get(-1).toEscapedString(), m_defaultIdentity))
+  , m_identityManager(identityManager)
   , m_nick(nick)
   , m_sock(NULL)
   , m_lastMsgTime(0)
@@ -85,13 +87,10 @@ ChatDialog::ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
 
   m_timer = new QTimer(this);
 
+  startFace();
+
   ndn::Name certificateName = m_identityManager->getDefaultCertificateNameForIdentity(m_defaultIdentity);
-  m_syncPolicyManager = ndn::ptr_lib::make_shared<SyncPolicyManager>(m_defaultIdentity, certificateName, m_chatroomPrefix);
-
-  m_transport = ndn::ptr_lib::make_shared<ndn::TcpTransport>();
-  m_face = ndn::ptr_lib::make_shared<ndn::Face>(m_transport, ndn::ptr_lib::make_shared<ndn::TcpTransport::ConnectionInfo>("localhost"));
-
-  connectToDaemon();
+  m_syncPolicyManager = ndn::ptr_lib::make_shared<SyncPolicyManager>(m_defaultIdentity, certificateName, m_chatroomPrefix, m_face, m_transport);
 
   connect(ui->inviteButton, SIGNAL(clicked()),
           this, SLOT(openInviteListDialog()));
@@ -129,7 +128,45 @@ ChatDialog::~ChatDialog()
       delete m_sock;
       m_sock = NULL;
     }
+  shutdownFace();
+}
+
+void
+ChatDialog::startFace()
+{
+  m_transport = ndn::ptr_lib::make_shared<ndn::TcpTransport>();
+  m_face = ndn::ptr_lib::make_shared<ndn::Face>(m_transport, ndn::ptr_lib::make_shared<ndn::TcpTransport::ConnectionInfo>("localhost"));
+  
+  connectToDaemon();
+
+  m_running = true;
+  m_thread = boost::thread (&ChatDialog::eventLoop, this);  
+}
+
+void
+ChatDialog::shutdownFace()
+{
+  {
+    boost::unique_lock<boost::recursive_mutex> lock(m_mutex);
+    m_running = false;
+  }
+  
+  m_thread.join();
   m_face->shutdown();
+}
+
+void
+ChatDialog::eventLoop()
+{
+  while (m_running)
+    {
+      try{
+        m_face->processEvents();
+        usleep(1000);
+      }catch(std::exception& e){
+        _LOG_DEBUG(" " << e.what() );
+      }
+    }
 }
 
 void
@@ -314,7 +351,12 @@ ChatDialog::sendInvitation(ndn::ptr_lib::shared_ptr<ContactItem> contact, bool i
   ndn::ptr_lib::shared_ptr<const ndn::Sha256WithRsaSignature> sha256sig = ndn::ptr_lib::dynamic_pointer_cast<const ndn::Sha256WithRsaSignature>(m_identityManager->signByCertificate(signedBlob.buf(), signedBlob.size(), certificateName));
   const ndn::Blob& sigBits = sha256sig->getSignature();
 
+  _LOG_DEBUG("size A: " << interestName.size());
+
   interestName.append(sigBits);
+
+  _LOG_DEBUG("size B: " << interestName.size());
+
   //TODO... remove version from invitation interest
   //  interestName.appendVersion();
 
@@ -421,6 +463,8 @@ ChatDialog::initializeSync()
   
   m_sock = new Sync::SyncSocket(m_chatroomPrefix.toUri(),
                                 m_syncPolicyManager,
+                                m_face,
+                                m_transport,
                                 boost::bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
                                 boost::bind(&ChatDialog::processRemoveWrapper, this, _1));
   
@@ -854,6 +898,8 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       usleep(100000);
       m_sock = new Sync::SyncSocket(m_chatroomPrefix.toUri(),
                                     m_syncPolicyManager,
+                                    m_face,
+                                    m_transport,
                                     bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
                                     bind(&ChatDialog::processRemoveWrapper, this, _1));
       usleep(100000);

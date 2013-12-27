@@ -44,11 +44,11 @@ ProfileData::ProfileData(const Profile& profile)
 
 }
 
-ProfileData::ProfileData(const ProfileData& profileData)
-  : Data(profileData)
-  , m_identity(profileData.m_identity)
-  , m_profile(profileData.m_profile)
-{}
+// ProfileData::ProfileData(const ProfileData& profileData)
+//   : Data(profileData)
+//   , m_identity(profileData.m_identity)
+//   , m_profile(profileData.m_profile)
+// {}
 
 ProfileData::ProfileData(const Data& data)
   : Data(data)

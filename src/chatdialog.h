@@ -33,6 +33,10 @@
 #include <sync-seq-no.h>
 #include "chatbuf.pb.h"
 #include "digesttreescene.h"
+
+#include <boost/thread/locks.hpp>
+#include <boost/thread/recursive_mutex.hpp>
+#include <boost/thread/thread.hpp>
 #endif
 
 typedef ndn::func_lib::function<void()> OnEventualTimeout;
@@ -49,6 +53,7 @@ class ChatDialog : public QDialog
 
 public:
   explicit ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
+                      ndn::ptr_lib::shared_ptr<ndn::IdentityManager> identityManager,
                       const ndn::Name& chatroomPrefix,
                       const ndn::Name& localPrefix,
                       const ndn::Name& defaultIdentity,
@@ -109,6 +114,15 @@ protected:
   changeEvent(QEvent *e);
 
 private:
+
+  void 
+  startFace();
+
+  void
+  shutdownFace();
+
+  void
+  eventLoop();
 
   void
   connectToDaemon();
@@ -333,6 +347,10 @@ private:
   ndn::ptr_lib::shared_ptr<ndn::IdentityManager> m_identityManager;
   ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
   ndn::ptr_lib::shared_ptr<ndn::Transport> m_transport;
+
+  boost::recursive_mutex m_mutex;
+  boost::thread m_thread;
+  bool m_running;
 
   ndn::Name m_newLocalPrefix;
   bool m_newLocalPrefixReady;

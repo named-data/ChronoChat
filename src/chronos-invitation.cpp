@@ -22,7 +22,7 @@ INIT_LOGGER("ChronosInvitation");
 ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
   : m_interestName(originalInterestName)
 {
-  Name interestName = originalInterestName.getPrefix(-1);
+  Name interestName = originalInterestName;
   if(interestName.get(0).toEscapedString() != string("ndn")
      || interestName.get(1).toEscapedString() != string("broadcast")
      || interestName.get(2).toEscapedString() != string("chronos")

@@ -56,14 +56,16 @@ ContactPanel::ContactPanel(QWidget *parent)
 {
   qRegisterMetaType<IdentityCertificate>("IdentityCertificate");
   qRegisterMetaType<ChronosInvitation>("ChronosInvitation");
-  
+
+  startFace();  
+
   createAction();
 
   shared_ptr<BasicIdentityStorage> publicStorage = make_shared<BasicIdentityStorage>();
   shared_ptr<OSXPrivateKeyStorage> privateStorage = make_shared<OSXPrivateKeyStorage>();
   m_identityManager = make_shared<IdentityManager>(publicStorage, privateStorage);
 
-  m_contactManager = make_shared<ContactManager>(m_identityManager);
+  m_contactManager = make_shared<ContactManager>(m_identityManager, m_face, m_transport);
 
   connect(&*m_contactManager, SIGNAL(noNdnConnection(const QString&)),
           this, SLOT(showError(const QString&)));
@@ -96,10 +98,6 @@ ContactPanel::ContactPanel(QWidget *parent)
  
   ui->setupUi(this);
 
-  m_transport = make_shared<TcpTransport>();
-  m_face = make_shared<Face>(m_transport, make_shared<TcpTransport::ConnectionInfo>("localhost"));
-  
-  connectToDaemon();
   
   m_localPrefix = Name("/private/local");
   setLocalPrefix();
@@ -201,6 +199,46 @@ ContactPanel::~ContactPanel()
   map<Name, ChatDialog*>::iterator it = m_chatDialogs.begin();
   for(; it != m_chatDialogs.end(); it++)
     delete it->second;
+
+  shutdownFace();
+}
+
+void
+ContactPanel::startFace()
+{
+  m_transport = make_shared<TcpTransport>();
+  m_face = make_shared<Face>(m_transport, make_shared<TcpTransport::ConnectionInfo>("localhost"));
+  
+  connectToDaemon();
+
+  m_running = true;
+  m_thread = boost::thread (&ContactPanel::eventLoop, this);  
+}
+
+void
+ContactPanel::shutdownFace()
+{
+  {
+    boost::unique_lock<boost::recursive_mutex> lock(m_mutex);
+    m_running = false;
+  }
+  
+  m_thread.join();
+  m_face->shutdown();
+}
+
+void
+ContactPanel::eventLoop()
+{
+  while (m_running)
+    {
+      try{
+        m_face->processEvents();
+        usleep(100);
+      }catch(std::exception& e){
+        _LOG_DEBUG(" " << e.what() );
+      }
+    }
 }
 
 void
@@ -251,6 +289,7 @@ ContactPanel::loadTrustAnchor()
   vector<shared_ptr<ContactItem> >::const_iterator it = m_contactList.begin();
   for(; it != m_contactList.end(); it++)
     {
+      _LOG_DEBUG("load contact: " << (*it)->getNameSpace().toUri());
       m_policyManager->addTrustAnchor((*it)->getSelfEndorseCertificate());
     }
 }
@@ -419,6 +458,7 @@ ContactPanel::onInvitation(const shared_ptr<const Name>& prefix,
                            uint64_t registeredPrefixId)
 {
   _LOG_DEBUG("Receive invitation!" << interest->getName().toUri());
+
   
   shared_ptr<ChronosInvitation> invitation;
   try{
@@ -464,6 +504,8 @@ ContactPanel::onInvitation(const shared_ptr<const Name>& prefix,
       popChatInvitation(invitation, invitation->getInviterNameSpace(), certificate);
       return;
     }
+
+  _LOG_DEBUG("Cannot find the inviter's key in trust anchors");
 
   Interest newInterest(invitation->getInviterCertificateName());
   OnVerified onVerified = boost::bind(&ContactPanel::onInvitationCertVerified, this, _1, invitation);
@@ -818,7 +860,7 @@ ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, boo
   Name inviteeNamespace(invitee.toStdString());
   shared_ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
 
-  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName);
+  ChatDialog* chatDialog = new ChatDialog(m_contactManager, m_identityManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName);
   m_chatDialogs.insert(pair <Name, ChatDialog*> (chatroomName, chatDialog));
 
   connect(chatDialog, SIGNAL(closeChatDialog(const ndn::Name&)),
@@ -844,7 +886,7 @@ ContactPanel::startChatroom2(const ChronosInvitation& invitation,
   Name chatroomName("/ndn/broadcast/chronos");
   chatroomName.append(invitation.getChatroom());
 
-  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName, true);
+  ChatDialog* chatDialog = new ChatDialog(m_contactManager, m_identityManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName, true);
 
   connect(chatDialog, SIGNAL(closeChatDialog(const ndn::Name&)),
           this, SLOT(removeChatDialog(const ndn::Name&)));
@@ -867,7 +909,12 @@ void
 ContactPanel::acceptInvitation(const ChronosInvitation& invitation, 
                                const IdentityCertificate& identityCertificate)
 {
-  Data data(invitation.getInterestName());
+  Name dataName = invitation.getInterestName();
+  time_t nowSeconds = time(NULL);
+  struct tm current = *gmtime(&nowSeconds);
+  MillisecondsSince1970 version = timegm(&current) * 1000.0;
+  dataName.appendVersion(version);
+  Data data(dataName);
   string content = m_localPrefix.toUri();
   data.setContent((const uint8_t *)&content[0], content.size());
   data.getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
