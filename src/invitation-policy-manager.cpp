@@ -10,8 +10,8 @@
 
 #include "invitation-policy-manager.h"
 #include "null-ptrs.h"
-#include <ndn-cpp/sha256-with-rsa-signature.hpp>
-#include <ndn-cpp/security/signature/sha256-with-rsa-handler.hpp>
+#include <ndn-cpp/security/verifier.hpp>
+#include <ndn-cpp/security/signature/signature-sha256-with-rsa.hpp>
 
 #include "logging.h"
 
@@ -65,101 +65,104 @@ InvitationPolicyManager::checkVerificationPolicy(const shared_ptr<Data>& data,
       return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
     }
 
-  const Sha256WithRsaSignature* sha256sig = dynamic_cast<const Sha256WithRsaSignature*> (data->getSignature());    
+  try{
+    SignatureSha256WithRsa sig(data->getSignature());    
 
-  if(ndn_KeyLocatorType_KEYNAME != sha256sig->getKeyLocator().getType())
-    {
-      _LOG_ERROR("KeyLocator is not name!");
-      onVerifyFailed(data);
-      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
-    }
+    const Name & keyLocatorName = sig.getKeyLocator().getName();
 
-  const Name & keyLocatorName = sha256sig->getKeyLocator().getKeyName();
+    if(m_invitationPolicyRule->satisfy(*data))
+      {
+        // Name keyName = IdentityCertificate::certificateNameToPublicKeyName(keyLocatorName);
+        // map<Name, PublicKey>::iterator it = m_trustAnchors.find(keyName);
+        // if(m_trustAnchors.end() != it)
+        //   {
+        //     if(Sha256WithRsaHandler::verifySignature(*data, it->second))
+        //       onVerified(data);
+        //     else
+        //       onVerifyFailed(data);
 
-  if(m_invitationPolicyRule->satisfy(*data))
-    {
-      // Name keyName = IdentityCertificate::certificateNameToPublicKeyName(keyLocatorName);
-      // map<Name, PublicKey>::iterator it = m_trustAnchors.find(keyName);
-      // if(m_trustAnchors.end() != it)
-      //   {
-      //     if(Sha256WithRsaHandler::verifySignature(*data, it->second))
-      //       onVerified(data);
-      //     else
-      //       onVerifyFailed(data);
+        //     return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+        //   }
 
-      //     return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
-      //   }
-
-      shared_ptr<const Certificate> trustedCert = m_certificateCache.getCertificate(keyLocatorName);
+        shared_ptr<const Certificate> trustedCert = m_certificateCache.getCertificate(keyLocatorName);
       
-      if(trustedCert != ndn::TCC_NULL_CERTIFICATE_PTR){
-	if(Sha256WithRsaHandler::verifySignature(*data, trustedCert->getPublicKeyInfo()))
-	  onVerified(data);
-	else
-	  onVerifyFailed(data);
-
-	return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
-      }
-
-      OnVerified recursiveVerifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateVerified, 
-                                                         this, 
-                                                         _1, 
-                                                         data, 
-                                                         onVerified, 
-                                                         onVerifyFailed);
-      
-      OnVerifyFailed recursiveUnverifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateVerifyFailed, 
-                                                               this, 
-                                                               _1, 
-                                                               data, 
-                                                               onVerifyFailed);
-
-
-      shared_ptr<Interest> interest = make_shared<Interest>(keyLocatorName);
-      
-      shared_ptr<ValidationRequest> nextStep = make_shared<ValidationRequest>(interest, 
-                                                                              recursiveVerifiedCallback,
-                                                                              recursiveUnverifiedCallback,
-                                                                              0,
-                                                                              stepCount + 1);
-      return nextStep;
-    }
-
-  if(m_kskRegex->match(data->getName()))
-    {
-      Name keyName = m_kskRegex->expand();
-      map<Name, PublicKey>::iterator it = m_trustAnchors.find(keyName);
-      if(m_trustAnchors.end() != it)
-        {
-          IdentityCertificate identityCertificate(*data);
-          if(isSameKey(it->second.getKeyDer(), identityCertificate.getPublicKeyInfo().getKeyDer()))
-            {
-              onVerified(data);
-            }
+        if(trustedCert != ndn::TCC_NULL_CERTIFICATE_PTR){
+          if(Verifier::verifySignature(*data, sig, trustedCert->getPublicKeyInfo()))
+            onVerified(data);
           else
             onVerifyFailed(data);
+
+          return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
         }
-      else
-        onVerifyFailed(data);
 
-      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
-    }
+        OnVerified recursiveVerifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateVerified, 
+                                                           this, 
+                                                           _1, 
+                                                           data, 
+                                                           onVerified, 
+                                                           onVerifyFailed);
+      
+        OnVerifyFailed recursiveUnverifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateVerifyFailed, 
+                                                                 this, 
+                                                                 _1, 
+                                                                 data, 
+                                                                 onVerifyFailed);
 
-  if(m_dskRule->satisfy(*data))
-    {
-      m_keyNameRegex->match(keyLocatorName);
-      Name keyName = m_keyNameRegex->expand();
 
-      if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
-        if(Sha256WithRsaHandler::verifySignature(*data, m_trustAnchors[keyName]))
-          onVerified(data);
+        shared_ptr<Interest> interest = make_shared<Interest>(keyLocatorName);
+      
+        shared_ptr<ValidationRequest> nextStep = make_shared<ValidationRequest>(interest, 
+                                                                                recursiveVerifiedCallback,
+                                                                                recursiveUnverifiedCallback,
+                                                                                0,
+                                                                                stepCount + 1);
+        return nextStep;
+      }
+
+    if(m_kskRegex->match(data->getName()))
+      {
+        Name keyName = m_kskRegex->expand();
+        map<Name, PublicKey>::iterator it = m_trustAnchors.find(keyName);
+        if(m_trustAnchors.end() != it)
+          {
+            IdentityCertificate identityCertificate(*data);
+            if(it->second == identityCertificate.getPublicKeyInfo())
+              {
+                onVerified(data);
+              }
+            else
+              onVerifyFailed(data);
+          }
         else
           onVerifyFailed(data);
-      else
-        onVerifyFailed(data);
 
-      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;	
-    }
+        return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+      }
+
+    if(m_dskRule->satisfy(*data))
+      {
+        m_keyNameRegex->match(keyLocatorName);
+        Name keyName = m_keyNameRegex->expand();
+
+        if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
+          if(Verifier::verifySignature(*data, sig, m_trustAnchors[keyName]))
+            onVerified(data);
+          else
+            onVerifyFailed(data);
+        else
+          onVerifyFailed(data);
+
+        return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;	
+      }
+  }catch(SignatureSha256WithRsa::Error &e){
+    _LOG_DEBUG("checkVerificationPolicy " << e.what());
+    onVerifyFailed(data);
+    return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+  }catch(KeyLocator::Error &e){
+    _LOG_DEBUG("checkVerificationPolicy " << e.what());
+    onVerifyFailed(data);
+    return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+  }
 
   onVerifyFailed(data);
   return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
@@ -218,7 +221,7 @@ InvitationPolicyManager::onDskCertificateVerified(const shared_ptr<Data>& certDa
       if(it == m_dskCertificates.end())
         m_dskCertificates.insert(pair <Name, shared_ptr<IdentityCertificate> > (certName, certificate));
 
-      if(Sha256WithRsaHandler::verifySignature(*originalData, certificate->getPublicKeyInfo()))
+      if(Verifier::verifySignature(*originalData, originalData->getSignature(), certificate->getPublicKeyInfo()))
         {
           onVerified(originalData);
           return;
@@ -245,25 +248,4 @@ InvitationPolicyManager::getValidatedDskCertificate(const ndn::Name& certName)
     return it->second;
   else
     return CHRONOCHAT_NULL_IDENTITYCERTIFICATE_PTR;
-}
-
-
-bool
-InvitationPolicyManager::isSameKey(const Blob& keyA, const Blob& keyB)
-{
-  size_t size = keyA.size();
-
-  if(size != keyB.size())
-    return false;
-
-  const uint8_t* ap = keyA.buf();
-  const uint8_t* bp = keyB.buf();
-  
-  for(int i = 0; i < size; i++)
-    {
-      if(ap[i] != bp[i])
-        return false;
-    }
-
-  return true;
 }

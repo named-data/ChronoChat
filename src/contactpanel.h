@@ -285,8 +285,7 @@ private:
   ndn::ptr_lib::shared_ptr<std::vector<bool> > m_collectStatus;
 
   ndn::ptr_lib::shared_ptr<PanelPolicyManager> m_policyManager;
-  ndn::ptr_lib::shared_ptr<ndn::IdentityManager> m_identityManager;
-  ndn::ptr_lib::shared_ptr<ndn::Transport> m_transport;
+  ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
   ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
 
   boost::recursive_mutex m_mutex;

@@ -17,6 +17,8 @@
 class ChronosInvitation
 {
 public:
+  struct Error : public std::runtime_error { Error(const std::string &what) : std::runtime_error(what) {} };
+
   ChronosInvitation() {}
 
   ChronosInvitation(const ndn::Name& interestName);
@@ -42,7 +44,7 @@ public:
   getInviterCertificateName() const
   { return m_inviterCertificateName; }
 
-  const ndn::Blob&
+  const ndn::Buffer&
   getSignatureBits() const
   { return m_signatureBits; }
 
@@ -50,7 +52,7 @@ public:
   getInviterNameSpace() const
   { return m_inviterNameSpace; }
 
-  const ndn::Blob&
+  const ndn::Buffer&
   getSignedBlob() const
   { return m_signedBlob; }
   
@@ -65,10 +67,10 @@ private:
   ndn::Name m_chatroom;
   ndn::Name m_inviterPrefix;
   ndn::Name m_inviterCertificateName;
-  ndn::Blob m_signatureBits;
+  ndn::Buffer m_signatureBits;
   ndn::Name m_inviterNameSpace;
 
-  ndn::Blob m_signedBlob;
+  ndn::Buffer m_signedBlob;
 };
 
 #endif

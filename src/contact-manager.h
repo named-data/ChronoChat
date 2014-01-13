@@ -19,6 +19,7 @@
 #include "endorse-certificate.h"
 #include "profile.h"
 #include <ndn-cpp/face.hpp>
+#include <ndn-cpp/security/key-chain.hpp>
 #include <ndn-cpp/security/policy/validation-request.hpp>
 #include <ndn-cpp-et/policy-manager/simple-policy-manager.hpp>
 #endif
@@ -30,9 +31,8 @@ class ContactManager : public QObject
   Q_OBJECT
 
 public:
-  ContactManager(ndn::ptr_lib::shared_ptr<ndn::IdentityManager> identityManager,
+  ContactManager(ndn::ptr_lib::shared_ptr<ndn::KeyChain> keyChain,
                  ndn::ptr_lib::shared_ptr<ndn::Face> m_face,
-                 ndn::ptr_lib::shared_ptr<ndn::Transport> m_transport,
                  QObject* parent = 0);
 
   ~ContactManager();
@@ -71,7 +71,7 @@ public:
 
   ndn::Name
   getDefaultIdentity()
-  { return m_identityManager->getDefaultIdentity(); }
+  { return m_keyChain->getDefaultIdentity(); }
 
   void
   publishEndorsedDataInDns(const ndn::Name& identity);
@@ -86,21 +86,11 @@ public:
   void
   removeContact(const ndn::Name& contactNameSpace);
   
-  ndn::ptr_lib::shared_ptr<ndn::IdentityManager>
-  getIdentityManager()
-  { return m_identityManager; }
+  // ndn::ptr_lib::shared_ptr<ndn::KeyChain>
+  // getKeyChain()
+  // { return m_keyChain; }
 
-private:
-  // void 
-  // connectToDaemon();
-
-  // void
-  // onConnectionData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
-  //                  const ndn::ptr_lib::shared_ptr<ndn::Data>& data);
- 
-  // void
-  // onConnectionDataTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest);
-  
+private:  
   void
   initializeSecurity();
 
@@ -237,9 +227,8 @@ private:
   ndn::ptr_lib::shared_ptr<ContactStorage> m_contactStorage;
   ndn::ptr_lib::shared_ptr<DnsStorage> m_dnsStorage;
   ndn::ptr_lib::shared_ptr<ndn::SimplePolicyManager> m_policyManager;
-  ndn::ptr_lib::shared_ptr<ndn::IdentityManager> m_identityManager;
+  ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
   ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
-  ndn::ptr_lib::shared_ptr<ndn::Transport> m_transport;
   ndn::Name m_defaultIdentity;
 };
 

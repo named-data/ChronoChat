@@ -71,9 +71,6 @@ private:
                                ndn::ptr_lib::shared_ptr<ndn::Data> originalData,
                                const ndn::OnVerifyFailed& onVerifyFailed);
 
-  static bool
-  isSameKey(const ndn::Blob& keyA, const ndn::Blob& keyB);
-
 private:
   std::string m_chatroomName;
   ndn::Name m_signingIdentity;

@@ -17,6 +17,8 @@
 class DnsStorage
 {
 public:
+  struct Error : public std::runtime_error { Error(const std::string &what) : std::runtime_error(what) {} };
+
   DnsStorage();
 
   ~DnsStorage();
@@ -35,7 +37,7 @@ public:
 
 private:
   void
-  updateDnsData(const ndn::Blob& data, const std::string& identity, const std::string& name, const std::string& type, const std::string& dataName);
+  updateDnsData(const ndn::Block& data, const std::string& identity, const std::string& name, const std::string& type, const std::string& dataName);
 
 private:
   sqlite3 *m_db;

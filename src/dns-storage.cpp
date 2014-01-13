@@ -10,7 +10,6 @@
 
 #include "dns-storage.h"
 #include "null-ptrs.h"
-#include "exception.h"
 
 #include <boost/filesystem.hpp>
 #include "logging.h"
@@ -45,7 +44,7 @@ DnsStorage::DnsStorage()
 
   int res = sqlite3_open((chronosDir / "dns.db").c_str (), &m_db);
   if (res != SQLITE_OK)
-    throw LnException("Chronos DNS DB cannot be open/created");
+    throw Error("Chronos DNS DB cannot be open/created");
 
   // Check if SelfProfile table exists
   sqlite3_stmt *stmt;
@@ -62,7 +61,7 @@ DnsStorage::DnsStorage()
       char *errmsg = 0;
       res = sqlite3_exec (m_db, INIT_DD_TABLE.c_str (), NULL, NULL, &errmsg);
       if (res != SQLITE_OK && errmsg != 0)
-        throw LnException("Init \"error\" in DnsData");
+        throw Error("Init \"error\" in DnsData");
     }
 }
 
@@ -72,7 +71,7 @@ DnsStorage::~DnsStorage()
 }
 
 void
-DnsStorage::updateDnsData(const ndn::Blob& data, const std::string& identity, const std::string& name, const std::string& type, const string& dataName)
+DnsStorage::updateDnsData(const ndn::Block& data, const std::string& identity, const std::string& name, const std::string& type, const string& dataName)
 {  
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT data_name FROM DnsData where dns_identity=? and dns_name=? and dns_type=?", -1, &stmt, 0);
@@ -87,7 +86,7 @@ DnsStorage::updateDnsData(const ndn::Blob& data, const std::string& identity, co
       sqlite3_bind_text(stmt, 1, identity.c_str(), identity.size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 2, name.c_str(), name.size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 3, type.c_str(), type.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 4, (const char*)data.buf(), data.size(), SQLITE_TRANSIENT); 
+      sqlite3_bind_text(stmt, 4, (const char*)data.wire(), data.size(), SQLITE_TRANSIENT); 
       sqlite3_bind_text(stmt, 5, dataName.c_str(), dataName.size(), SQLITE_TRANSIENT);
       sqlite3_step(stmt);
       sqlite3_finalize(stmt);
@@ -96,7 +95,7 @@ DnsStorage::updateDnsData(const ndn::Blob& data, const std::string& identity, co
     {
       sqlite3_finalize(stmt);
       sqlite3_prepare_v2 (m_db, "UPDATE DnsData SET dns_value=?, data_name=? WHERE dns_identity=? and dns_name=?, dns_type=?", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, (const char*)data.buf(), data.size(), SQLITE_TRANSIENT);
+      sqlite3_bind_text(stmt, 1, (const char*)data.wire(), data.size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 2, dataName.c_str(), dataName.size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 3, identity.c_str(), identity.size(), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 4, name.c_str(), name.size(), SQLITE_TRANSIENT);
@@ -112,9 +111,9 @@ DnsStorage::updateDnsSelfProfileData(const Data& data, const Name& identity)
   string dnsIdentity = identity.toUri();
   string dnsName("N/A");
   string dnsType("PROFILE");
-  Blob dnsValue = data.wireEncode();
+  
 
-  updateDnsData(dnsValue, dnsIdentity, dnsName, dnsType, data.getName().toUri());
+  updateDnsData(data.wireEncode(), dnsIdentity, dnsName, dnsType, data.getName().toUri());
 }
 
 void
@@ -123,9 +122,8 @@ DnsStorage::updateDnsEndorseOthers(const Data& data, const Name& identity, const
   string dnsIdentity = identity.toUri();
   string dnsName = endorsee.toUri();
   string dnsType("ENDORSEE");
-  Blob dnsValue = data.wireEncode();
 
-  updateDnsData(dnsValue, dnsIdentity, dnsName, dnsType, data.getName().toUri());
+  updateDnsData(data.wireEncode(), dnsIdentity, dnsName, dnsType, data.getName().toUri());
 }
   
 void
@@ -134,9 +132,8 @@ DnsStorage::updateDnsOthersEndorse(const Data& data, const Name& identity)
   string dnsIdentity = identity.toUri();
   string dnsName("N/A");
   string dnsType("ENDORSED");
-  Blob dnsValue = data.wireEncode();
 
-  updateDnsData(dnsValue, dnsIdentity, dnsName, dnsType, data.getName().toUri());
+  updateDnsData(data.wireEncode(), dnsIdentity, dnsName, dnsType, data.getName().toUri());
 }
 
 shared_ptr<Data>
@@ -149,7 +146,7 @@ DnsStorage::getData(const Name& dataName)
   if(sqlite3_step (stmt) == SQLITE_ROW)
     {
       shared_ptr<Data> data = make_shared<Data>();
-      data->wireDecode(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      data->wireDecode(Block(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
       sqlite3_finalize(stmt);
       return data;
     }

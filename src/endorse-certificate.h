@@ -21,6 +21,8 @@
 class ProfileExtension : public ndn::CertificateExtension
 {
 public:
+  struct Error : public ndn::CertificateExtension::Error { Error(const std::string &what) : ndn::CertificateExtension::Error(what) {} };
+
   ProfileExtension(const ProfileData& profileData);
   
   ProfileExtension(const ProfileExtension& profileExtension);
@@ -36,6 +38,8 @@ public:
 class EndorseExtension : public ndn::CertificateExtension
 {
 public:
+  struct Error : public ndn::CertificateExtension::Error { Error(const std::string &what) : ndn::CertificateExtension::Error(what) {} };
+
   EndorseExtension(const std::vector<std::string>& endorseList);
 
   EndorseExtension(const EndorseExtension& endorseExtension);
@@ -48,13 +52,15 @@ public:
   getEndorseList();
 
 private:
-  static ndn::Blob
+  static ndn::Buffer
   encodeEndorseList(const std::vector<std::string>& endorsedList);
 };
 
 class EndorseCertificate : public ndn::Certificate
 {
 public:
+  struct Error : public ndn::Certificate::Error { Error(const std::string &what) : ndn::Certificate::Error(what) {} };
+
   EndorseCertificate() {}
 
   EndorseCertificate(const ndn::IdentityCertificate& kskCertificate,

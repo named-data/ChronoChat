@@ -10,7 +10,6 @@
 
 #include "profile-data.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include "exception.h"
 #include "logging.h"
 
 
@@ -40,8 +39,6 @@ ProfileData::ProfileData(const Profile& profile)
   profile.encode(&content);
   setContent((const uint8_t *)&content[0], content.size());
 
-  getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
-
 }
 
 // ProfileData::ProfileData(const ProfileData& profileData)
@@ -67,10 +64,10 @@ ProfileData::ProfileData(const Data& data)
     }
 
   if(profileIndex < 0)
-    throw LnException("No PROFILE component in data name!");
+    throw Error("No PROFILE component in data name!");
 
   m_identity = dataName.getPrefix(profileIndex);
 
-  string encoded((const char*)data.getContent().buf(), data.getContent().size());
+  string encoded(reinterpret_cast<const char*>(data.getContent().value()), data.getContent().value_size());
   m_profile = *Profile::decode(encoded);
 }
