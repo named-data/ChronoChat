@@ -16,7 +16,7 @@
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
-#include <ndn-cpp/security/identity/identity-manager.hpp>
+#include <ndn-cpp/security/key-chain.hpp>
 #endif
 
 namespace Ui {
@@ -58,7 +58,7 @@ private:
   Ui::ProfileEditor *ui;
   QSqlTableModel* m_tableModel;
   ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;
-  ndn::ptr_lib::shared_ptr<ndn::IdentityManager> m_identityManager;
+  ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
   ndn::Name m_currentIdentity;
 };
 

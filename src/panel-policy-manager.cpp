@@ -10,8 +10,8 @@
 
 #include "panel-policy-manager.h"
 #include "null-ptrs.h"
-#include <ndn-cpp/sha256-with-rsa-signature.hpp>
-#include <ndn-cpp/security/signature/sha256-with-rsa-handler.hpp>
+#include <ndn-cpp/security/verifier.hpp>
+#include <ndn-cpp/security/signature/signature-sha256-with-rsa.hpp>
 // #include <boost/bind.hpp>
 
 #include "logging.h"
@@ -86,66 +86,68 @@ PanelPolicyManager::checkVerificationPolicy(const shared_ptr<Data>& data,
       return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
     }
 
-  const Sha256WithRsaSignature* sha256sig = dynamic_cast<const Sha256WithRsaSignature*>(data->getSignature());    
+  try{
+    SignatureSha256WithRsa sig(data->getSignature());    
+    const Name & keyLocatorName = sig.getKeyLocator().getName();
 
-  if(ndn_KeyLocatorType_KEYNAME != sha256sig->getKeyLocator().getType())
-    {
-      _LOG_ERROR("Keylocator is not name!");
-      onVerifyFailed(data);
-      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
-    }
+    if(m_kskRegex->match(data->getName()))
+      {
+        Name keyName = m_kskRegex->expand();
+        map<Name, PublicKey>::iterator it = m_trustAnchors.find(keyName);
+        if(m_trustAnchors.end() != it)
+          {
+            // _LOG_DEBUG("found key!");
+            IdentityCertificate identityCertificate(*data);
+            if(it->second == identityCertificate.getPublicKeyInfo())
+              onVerified(data);
+            else
+              onVerifyFailed(data);
+          }
+        else
+          onVerifyFailed(data);
 
-  const Name & keyLocatorName = sha256sig->getKeyLocator().getKeyName();
+        return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+      }
 
-  if(m_kskRegex->match(data->getName()))
-    {
-      Name keyName = m_kskRegex->expand();
-      map<Name, PublicKey>::iterator it = m_trustAnchors.find(keyName);
-      if(m_trustAnchors.end() != it)
-        {
-          // _LOG_DEBUG("found key!");
-          IdentityCertificate identityCertificate(*data);
-          if(isSameKey(it->second.getKeyDer(), identityCertificate.getPublicKeyInfo().getKeyDer()))
+    if(m_dskRule->satisfy(*data))
+      {
+        m_keyNameRegex->match(keyLocatorName);
+        Name keyName = m_keyNameRegex->expand();
+
+        if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
+          if(Verifier::verifySignature(*data, sig, m_trustAnchors[keyName]))
             onVerified(data);
           else
             onVerifyFailed(data);
-        }
-      else
-        onVerifyFailed(data);
-
-      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
-    }
-
-  if(m_dskRule->satisfy(*data))
-    {
-      m_keyNameRegex->match(keyLocatorName);
-      Name keyName = m_keyNameRegex->expand();
-
-      if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
-        if(Sha256WithRsaHandler::verifySignature(*data, m_trustAnchors[keyName]))
-          onVerified(data);
         else
           onVerifyFailed(data);
-      else
-        onVerifyFailed(data);
 
-      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;	
-    }
+        return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;	
+      }
 
-  if(m_endorseeRule->satisfy(*data))
-    {
-      m_keyNameRegex->match(keyLocatorName);
-      Name keyName = m_keyNameRegex->expand();
-      if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
-        if(Sha256WithRsaHandler::verifySignature(*data, m_trustAnchors[keyName]))
-          onVerified(data);
+    if(m_endorseeRule->satisfy(*data))
+      {
+        m_keyNameRegex->match(keyLocatorName);
+        Name keyName = m_keyNameRegex->expand();
+        if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
+          if(Verifier::verifySignature(*data, sig, m_trustAnchors[keyName]))
+            onVerified(data);
+          else
+            onVerifyFailed(data);
         else
           onVerifyFailed(data);
-      else
-        onVerifyFailed(data);
 
-      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
-    }
+        return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+      }
+  }catch(SignatureSha256WithRsa::Error &e){
+    _LOG_DEBUG("checkVerificationPolicy: " << e.what());
+    onVerifyFailed(data);
+    return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+  }catch(KeyLocator::Error &e){
+    _LOG_DEBUG("checkVerificationPolicy: " << e.what());
+    onVerifyFailed(data);
+    return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+  }
 
   _LOG_DEBUG("Unverified!");
 
@@ -192,24 +194,4 @@ PanelPolicyManager::getTrustedKey(const Name& inviterCertName)
   if(m_trustAnchors.end() != m_trustAnchors.find(keyName))
     return make_shared<PublicKey>(m_trustAnchors[keyName]);
   return CHRONOCHAT_NULL_PUBLICKEY_PTR;
-}
-
-bool
-PanelPolicyManager::isSameKey(const Blob& keyA, const Blob& keyB)
-{
-  size_t size = keyA.size();
-
-  if(size != keyB.size())
-    return false;
-
-  const uint8_t* ap = keyA.buf();
-  const uint8_t* bp = keyB.buf();
-  
-  for(int i = 0; i < size; i++)
-    {
-      if(ap[i] != bp[i])
-        return false;
-    }
-
-  return true;
 }

@@ -14,20 +14,21 @@
 #include <sqlite3.h>
 #include "contact-item.h"
 #include "endorse-certificate.h"
-#include <ndn-cpp/security/identity/identity-manager.hpp>
 
 
 class ContactStorage
 {
 
 public:
+  struct Error : public std::runtime_error { Error(const std::string &what) : std::runtime_error(what) {} };
+
   ContactStorage();
   
   ~ContactStorage() 
   {sqlite3_close(m_db);}
 
   void
-  setSelfProfileEntry(const ndn::Name& identity, const std::string& profileType, const ndn::Blob& profileValue);
+  setSelfProfileEntry(const ndn::Name& identity, const std::string& profileType, const ndn::Buffer& profileValue);
 
   ndn::ptr_lib::shared_ptr<Profile>
   getSelfProfile(const ndn::Name& identity);
@@ -55,7 +56,7 @@ public:
 
 
   //SelfEndorse
-  ndn::Blob
+  ndn::Block
   getSelfEndorseCertificate(const ndn::Name& identity);
 
   void
@@ -66,7 +67,7 @@ public:
 
 
   //ProfileEndorse
-  ndn::Blob
+  ndn::Block
   getEndorseCertificate(const ndn::Name& identity);
 
   void
@@ -84,7 +85,7 @@ public:
   updateCollectEndorse(const EndorseCertificate& endorseCertificate);
 
   void
-  getCollectEndorseList(const ndn::Name& name, std::vector<ndn::Blob>& endorseList);
+  getCollectEndorseList(const ndn::Name& name, std::vector<ndn::Buffer>& endorseList);
   
 
 private:

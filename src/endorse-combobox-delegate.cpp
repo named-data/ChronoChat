@@ -15,7 +15,6 @@
 
 #ifndef Q_MOC_RUN
 #include "logging.h"
-#include "exception.h"
 #endif
 
 INIT_LOGGER("EndorseComboBoxDelegate");

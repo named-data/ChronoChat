@@ -16,7 +16,6 @@
 
 #ifndef Q_MOC_RUN
 #include "logging.h"
-#include "exception.h"
 #endif
 
 using namespace ndn;
@@ -31,7 +30,7 @@ ProfileEditor::ProfileEditor(shared_ptr<ContactManager> contactManager,
     , ui(new Ui::ProfileEditor)
     , m_tableModel(new QSqlTableModel())
     , m_contactManager(contactManager)
-    , m_identityManager(contactManager->getIdentityManager())
+    , m_keyChain(new KeyChain())
 {
   ui->setupUi(this);
   
@@ -85,7 +84,7 @@ ProfileEditor::onDeleteClicked()
 void
 ProfileEditor::onOkClicked()
 {
-  Name defaultCertName = m_identityManager->getDefaultCertificateNameForIdentity(m_currentIdentity);
+  Name defaultCertName = m_keyChain->getDefaultCertificateNameForIdentity(m_currentIdentity);
   if(defaultCertName.size() == 0)
     {
       emit noKeyOrCert(QString::fromStdString("Corresponding certificate is missing!\nHave you installed the certificate?"));

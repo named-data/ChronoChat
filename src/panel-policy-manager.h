@@ -85,10 +85,6 @@ public:
   getTrustedKey(const ndn::Name& inviterCertName);
 
 private:
-  static bool
-  isSameKey(const ndn::Blob& keyA, const ndn::Blob& keyB);
-
-private:
   int m_stepLimit;
   ndn::TTLCertificateCache m_certificateCache;
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_localPrefixRegex;

@@ -25,7 +25,7 @@
 #ifndef Q_MOC_RUN
 #include <ndn-cpp/data.hpp>
 #include <ndn-cpp/face.hpp>
-#include <ndn-cpp/security/identity/identity-manager.hpp>
+#include <ndn-cpp/security/key-chain.hpp>
 #include "invitation-policy-manager.h"
 #include "contact-item.h"
 
@@ -53,7 +53,6 @@ class ChatDialog : public QDialog
 
 public:
   explicit ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
-                      ndn::ptr_lib::shared_ptr<ndn::IdentityManager> identityManager,
                       const ndn::Name& chatroomPrefix,
                       const ndn::Name& localPrefix,
                       const ndn::Name& defaultIdentity,
@@ -344,9 +343,8 @@ private:
   ndn::Name m_defaultIdentity;
   ndn::ptr_lib::shared_ptr<InvitationPolicyManager> m_invitationPolicyManager;
   ndn::ptr_lib::shared_ptr<SyncPolicyManager> m_syncPolicyManager; 
-  ndn::ptr_lib::shared_ptr<ndn::IdentityManager> m_identityManager;
+  ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
   ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
-  ndn::ptr_lib::shared_ptr<ndn::Transport> m_transport;
 
   boost::recursive_mutex m_mutex;
   boost::thread m_thread;

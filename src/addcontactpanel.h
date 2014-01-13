@@ -48,8 +48,8 @@ private:
   bool
   isCorrectName(const ndn::Name& name);
 
-  static bool
-  isSameBlob(const ndn::Blob& blobA, const ndn::Blob& blobB);
+  // static bool
+  // isSameBlob(const ndn::Blob& blobA, const ndn::Blob& blobB);
 
 private slots:
   void

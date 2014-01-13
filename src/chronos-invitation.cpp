@@ -11,7 +11,6 @@
 #include "chronos-invitation.h"
 
 #include <ndn-cpp/security/certificate/identity-certificate.hpp>
-#include "exception.h"
 #include "logging.h"
 
 using namespace std;
@@ -27,7 +26,7 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
      || interestName.get(1).toEscapedString() != string("broadcast")
      || interestName.get(2).toEscapedString() != string("chronos")
      || interestName.get(3).toEscapedString() != string("invitation"))
-    throw LnException("Wrong ChronosInvitation Name");
+    throw Error("Wrong ChronosInvitation Name");
     
   int i = 4;
   int size = interestName.size();
@@ -39,7 +38,7 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
       break;
 
   if(i >= size)
-    throw LnException("Wrong ChronosInvitation Name, No chatroom tag");
+    throw Error("Wrong ChronosInvitation Name, No chatroom tag");
   m_inviteeNameSpace = interestName.getSubName(inviteeBegin, i - inviteeBegin);
 
   string inviterPrefixStr("inviter-prefix");
@@ -49,7 +48,7 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
       break;
 
   if(i > size)
-    throw LnException("Wrong ChronosInvitation Name, No inviter-prefix tag");
+    throw Error("Wrong ChronosInvitation Name, No inviter-prefix tag");
   m_chatroom = interestName.getSubName(chatroomBegin, i - chatroomBegin);
 
   string inviterStr("inviter");
@@ -59,7 +58,7 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
       break;
   
   if(i > size)
-    throw LnException("Wrong ChronosInvitation Name, No inviter tag");
+    throw Error("Wrong ChronosInvitation Name, No inviter tag");
   m_inviterPrefix = interestName.getSubName(inviterPrefixBegin, i - inviterPrefixBegin);
 
   int inviterCertBegin = (++i);
@@ -71,7 +70,7 @@ ChronosInvitation::ChronosInvitation(const ndn::Name& originalInterestName)
   m_inviterNameSpace = keyName.getPrefix(-1);
 
   string signedName = interestName.getSubName(0, size - 1).toUri();
-  m_signedBlob = Blob((const uint8_t*)signedName.c_str(), signedName.size());
+  m_signedBlob = Buffer(signedName.c_str(), signedName.size());
 }
 
 ChronosInvitation::ChronosInvitation(const ChronosInvitation& invitation)

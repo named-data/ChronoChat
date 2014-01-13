@@ -17,6 +17,8 @@
 class ProfileData : public ndn::Data
 {
 public:
+  struct Error : public ndn::Data::Error { Error(const std::string &what) : ndn::Data::Error(what) {} };
+
   ProfileData();
 
   ProfileData(const Profile& profile);

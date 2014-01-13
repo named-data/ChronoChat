@@ -21,16 +21,14 @@
 #include <QtSql/QSqlError>
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp/security/identity/osx-private-key-storage.hpp>
-#include <ndn-cpp/security/identity/basic-identity-storage.hpp>
-#include <ndn-cpp/security/signature/sha256-with-rsa-handler.hpp>
+#include <ndn-cpp/security/verifier.hpp>
+#include <ndn-cpp/security/signature/signature-sha256-with-rsa.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 #include "panel-policy-manager.h"
 #include "null-ptrs.h"
 #include "logging.h"
-#include "exception.h"
 #endif
 
 namespace fs = boost::filesystem;
@@ -61,11 +59,9 @@ ContactPanel::ContactPanel(QWidget *parent)
 
   createAction();
 
-  shared_ptr<BasicIdentityStorage> publicStorage = make_shared<BasicIdentityStorage>();
-  shared_ptr<OSXPrivateKeyStorage> privateStorage = make_shared<OSXPrivateKeyStorage>();
-  m_identityManager = make_shared<IdentityManager>(publicStorage, privateStorage);
+  m_keyChain = make_shared<KeyChain>();
 
-  m_contactManager = make_shared<ContactManager>(m_identityManager, m_face, m_transport);
+  m_contactManager = make_shared<ContactManager>(m_keyChain, m_face);
 
   connect(&*m_contactManager, SIGNAL(noNdnConnection(const QString&)),
           this, SLOT(showError(const QString&)));
@@ -76,10 +72,10 @@ ContactPanel::ContactPanel(QWidget *parent)
 
   loadTrustAnchor();
 
-  m_defaultIdentity = m_identityManager->getDefaultIdentity();
+  m_defaultIdentity = m_keyChain->getDefaultIdentity();
   if(m_defaultIdentity.size() == 0)
     showError(QString::fromStdString("certificate of ") + QString::fromStdString(m_defaultIdentity.toUri()) + " is missing!\nHave you installed the certificate?");
-  Name defaultCertName = m_identityManager->getDefaultCertificateNameForIdentity(m_defaultIdentity);
+  Name defaultCertName = m_keyChain->getDefaultCertificateNameForIdentity(m_defaultIdentity);
   if(defaultCertName.size() == 0)
     showError(QString::fromStdString("certificate of ") + QString::fromStdString(m_defaultIdentity.toUri()) + " is missing!\nHave you installed the certificate?");
 
@@ -206,8 +202,7 @@ ContactPanel::~ContactPanel()
 void
 ContactPanel::startFace()
 {
-  m_transport = make_shared<TcpTransport>();
-  m_face = make_shared<Face>(m_transport, make_shared<TcpTransport::ConnectionInfo>("localhost"));
+  m_face = make_shared<Face>();
   
   connectToDaemon();
 
@@ -248,8 +243,8 @@ ContactPanel::connectToDaemon()
   Name name("/ndn");
   ndn::Interest interest(name);
   m_face->expressInterest(interest, 
-                          bind(&ContactPanel::onConnectionData, this, _1, _2),
-                          bind(&ContactPanel::onConnectionDataTimeout, this, _1));
+                          func_lib::bind(&ContactPanel::onConnectionData, this, _1, _2),
+                          func_lib::bind(&ContactPanel::onConnectionDataTimeout, this, _1));
 }
 
 void
@@ -299,11 +294,10 @@ ContactPanel::setLocalPrefix(int retry)
 {
   Name interestName("/local/ndn/prefix");
   Interest interest(interestName);
-  interest.setChildSelector(ndn_Interest_CHILD_SELECTOR_RIGHT);
 
   m_face->expressInterest(interest, 
-                          bind(&ContactPanel::onLocalPrefix, this, _1, _2), 
-                          bind(&ContactPanel::onLocalPrefixTimeout, this, _1, 10));
+                          func_lib::bind(&ContactPanel::onLocalPrefix, this, _1, _2), 
+                          func_lib::bind(&ContactPanel::onLocalPrefixTimeout, this, _1, 10));
   
 }
 
@@ -311,7 +305,7 @@ void
 ContactPanel::onLocalPrefix(const shared_ptr<const Interest>& interest, 
                             const shared_ptr<Data>& data)
 {
-  string originPrefix((const char*)data->getContent().buf(), data->getContent().size());
+  string originPrefix((const char*)data->getContent().value(), data->getContent().value_size());
   string prefix = QString::fromStdString (originPrefix).trimmed ().toUtf8().constData();
   string randomSuffix = getRandomString();
   m_localPrefix = Name(prefix);
@@ -338,9 +332,9 @@ ContactPanel::setInvitationListener()
   m_inviteListenPrefix = Name("/ndn/broadcast/chronos/invitation");
   m_inviteListenPrefix.append(m_defaultIdentity);
   _LOG_DEBUG("Listening for invitation on prefix: " << m_inviteListenPrefix.toUri());
-  m_invitationListenerId = m_face->registerPrefix(m_inviteListenPrefix, 
-                                                  boost::bind(&ContactPanel::onInvitation, this, _1, _2, _3, _4),
-                                                  boost::bind(&ContactPanel::onInvitationRegisterFailed, this, _1));
+  m_invitationListenerId = m_face->setInterestFilter(m_inviteListenPrefix, 
+                                                     func_lib::bind(&ContactPanel::onInvitation, this, _1, _2, _3, _4),
+                                                     func_lib::bind(&ContactPanel::onInvitationRegisterFailed, this, _1));
 }
 
 void
@@ -352,7 +346,7 @@ ContactPanel::sendInterest(const Interest& interest,
                            int stepCount /* = 0 */)
 {
   m_face->expressInterest(interest, 
-                          boost::bind(&ContactPanel::onTargetData, 
+                          func_lib::bind(&ContactPanel::onTargetData, 
                                       this,
                                       _1,
                                       _2,
@@ -360,7 +354,7 @@ ContactPanel::sendInterest(const Interest& interest,
                                       onVerified, 
                                       onVerifyFailed,
                                       timeoutNotify),
-                          boost::bind(&ContactPanel::onTargetTimeout,
+                          func_lib::bind(&ContactPanel::onTargetTimeout,
                                       this,
                                       _1,
                                       retry,
@@ -383,8 +377,8 @@ ContactPanel::onTargetData(const shared_ptr<const ndn::Interest>& interest,
   if (nextStep)
     m_face->expressInterest
       (*nextStep->interest_, 
-       bind(&ContactPanel::onCertData, this, _1, _2, nextStep), 
-       bind(&ContactPanel::onCertTimeout, this, _1, onVerifyFailed, data, nextStep));
+       func_lib::bind(&ContactPanel::onCertData, this, _1, _2, nextStep), 
+       func_lib::bind(&ContactPanel::onCertTimeout, this, _1, onVerifyFailed, data, nextStep));
 
 }
 
@@ -418,8 +412,8 @@ ContactPanel::onCertData(const shared_ptr<const ndn::Interest>& interest,
   if (nextStep)
     m_face->expressInterest
       (*nextStep->interest_, 
-       bind(&ContactPanel::onCertData, this, _1, _2, nextStep), 
-       bind(&ContactPanel::onCertTimeout, this, _1, previousStep->onVerifyFailed_, cert, nextStep));
+       func_lib::bind(&ContactPanel::onCertData, this, _1, _2, nextStep), 
+       func_lib::bind(&ContactPanel::onCertTimeout, this, _1, previousStep->onVerifyFailed_, cert, nextStep));
 }
 
 void
@@ -430,12 +424,12 @@ ContactPanel::onCertTimeout(const shared_ptr<const ndn::Interest>& interest,
 {
   if(nextStep->retry_ > 0)
     m_face->expressInterest(*interest, 
-                            bind(&ContactPanel::onCertData,
+                            func_lib::bind(&ContactPanel::onCertData,
                                  this,
                                  _1,
                                  _2,
                                  nextStep),
-                            bind(&ContactPanel::onCertTimeout,
+                            func_lib::bind(&ContactPanel::onCertTimeout,
                                  this,
                                  _1,
                                  onVerifyFailed,
@@ -478,7 +472,11 @@ ContactPanel::onInvitation(const shared_ptr<const Name>& prefix,
     }
 
   shared_ptr<PublicKey> keyPtr = m_policyManager->getTrustedKey(invitation->getInviterCertificateName());
-  if(CHRONOCHAT_NULL_PUBLICKEY_PTR != keyPtr && Sha256WithRsaHandler::verifySignature(invitation->getSignedBlob(), invitation->getSignatureBits(), *keyPtr))
+
+  SignatureSha256WithRsa invitationSig;
+  Block sigBlock(invitation->getSignatureBits().buf(), invitation->getSignatureBits().size());
+  invitationSig.setValue(sigBlock);
+  if(CHRONOCHAT_NULL_PUBLICKEY_PTR != keyPtr && Verifier::verifySignature(invitation->getSignedBlob(), invitationSig, *keyPtr))
     {
       shared_ptr<IdentityCertificate> certificate = make_shared<IdentityCertificate>();
       // hack: incomplete certificate, we don't send it to the wire nor store it anywhere, we only use it to carry information
@@ -508,9 +506,9 @@ ContactPanel::onInvitation(const shared_ptr<const Name>& prefix,
   _LOG_DEBUG("Cannot find the inviter's key in trust anchors");
 
   Interest newInterest(invitation->getInviterCertificateName());
-  OnVerified onVerified = boost::bind(&ContactPanel::onInvitationCertVerified, this, _1, invitation);
-  OnVerifyFailed onVerifyFailed = boost::bind(&ContactPanel::onInvitationCertVerifyFailed, this, _1);
-  TimeoutNotify timeoutNotify = boost::bind(&ContactPanel::onInvitationCertTimeoutNotify, this);
+  OnVerified onVerified = func_lib::bind(&ContactPanel::onInvitationCertVerified, this, _1, invitation);
+  OnVerifyFailed onVerifyFailed = func_lib::bind(&ContactPanel::onInvitationCertVerifyFailed, this, _1);
+  TimeoutNotify timeoutNotify = func_lib::bind(&ContactPanel::onInvitationCertTimeoutNotify, this);
 
   sendInterest(newInterest, onVerified, onVerifyFailed, timeoutNotify);
 }
@@ -520,8 +518,12 @@ ContactPanel::onInvitationCertVerified(const shared_ptr<Data>& data,
                                        shared_ptr<ChronosInvitation> invitation)
 {
   shared_ptr<IdentityCertificate> certificate = make_shared<IdentityCertificate>(*data);
+
+  SignatureSha256WithRsa invitationSig;
+  Block sigBlock(invitation->getSignatureBits().buf(), invitation->getSignatureBits().size());
+  invitationSig.setValue(sigBlock);
   
-  if(Sha256WithRsaHandler::verifySignature(invitation->getSignedBlob(), invitation->getSignatureBits(), certificate->getPublicKeyInfo()))
+  if(Verifier::verifySignature(invitation->getSignedBlob(), invitationSig, certificate->getPublicKeyInfo()))
     {
       Name keyName = certificate->getPublicKeyName();
       Name inviterNameSpace = keyName.getPrefix(-1);
@@ -568,12 +570,11 @@ ContactPanel::collectEndorsement()
       Name interestName = (*it)->getNameSpace();
       interestName.append("DNS").append(m_defaultIdentity).append("ENDORSEE");
       Interest interest(interestName);
-      interest.setChildSelector(ndn_Interest_CHILD_SELECTOR_RIGHT);
-      interest.setInterestLifetimeMilliseconds(1000);
+      interest.setInterestLifetime(1000);
 
-      OnVerified onVerified = boost::bind(&ContactPanel::onDnsEndorseeVerified, this, _1, count);
-      OnVerifyFailed onVerifyFailed = boost::bind(&ContactPanel::onDnsEndorseeVerifyFailed, this, _1, count);
-      TimeoutNotify timeoutNotify = boost::bind(&ContactPanel::onDnsEndorseeTimeoutNotify, this, count);
+      OnVerified onVerified = func_lib::bind(&ContactPanel::onDnsEndorseeVerified, this, _1, count);
+      OnVerifyFailed onVerifyFailed = func_lib::bind(&ContactPanel::onDnsEndorseeVerifyFailed, this, _1, count);
+      TimeoutNotify timeoutNotify = func_lib::bind(&ContactPanel::onDnsEndorseeTimeoutNotify, this, count);
   
       sendInterest(interest, onVerified, onVerifyFailed, timeoutNotify, 0);
     }
@@ -583,7 +584,7 @@ void
 ContactPanel::onDnsEndorseeVerified(const shared_ptr<Data>& data, int count)
 {
   Data endorseData;
-  endorseData.wireDecode(data->getContent().buf(), data->getContent().size());
+  endorseData.wireDecode(Block(data->getContent().value(), data->getContent().value_size()));
   EndorseCertificate endorseCertificate(endorseData);
 
   m_contactManager->getContactStorage()->updateCollectEndorse(endorseCertificate);
@@ -731,7 +732,7 @@ ContactPanel::updateDefaultIdentity(const QString& identity, const QString& nick
 { 
   // _LOG_DEBUG(identity.toStdString());
   Name defaultIdentity = Name(identity.toStdString());
-  Name defaultCertName = m_identityManager->getDefaultCertificateNameForIdentity(defaultIdentity);
+  Name defaultCertName = m_keyChain->getDefaultCertificateNameForIdentity(defaultIdentity);
   if(defaultCertName.size() == 0)
     {
       showWarning(QString::fromStdString("Corresponding certificate is missing!\nHave you installed the certificate?"));
@@ -740,7 +741,7 @@ ContactPanel::updateDefaultIdentity(const QString& identity, const QString& nick
   m_defaultIdentity = defaultIdentity;
   m_profileEditor->setCurrentIdentity(m_defaultIdentity);
   m_nickName = nickName.toStdString();
-  m_face->removeRegisteredPrefix(m_invitationListenerId);
+  m_face->unsetInterestFilter(m_invitationListenerId);
   m_contactManager->setDefaultIdentity(m_defaultIdentity);
   setInvitationListener();
   collectEndorsement();
@@ -860,7 +861,7 @@ ContactPanel::startChatroom(const QString& chatroom, const QString& invitee, boo
   Name inviteeNamespace(invitee.toStdString());
   shared_ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
 
-  ChatDialog* chatDialog = new ChatDialog(m_contactManager, m_identityManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName);
+  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName);
   m_chatDialogs.insert(pair <Name, ChatDialog*> (chatroomName, chatDialog));
 
   connect(chatDialog, SIGNAL(closeChatDialog(const ndn::Name&)),
@@ -886,7 +887,7 @@ ContactPanel::startChatroom2(const ChronosInvitation& invitation,
   Name chatroomName("/ndn/broadcast/chronos");
   chatroomName.append(invitation.getChatroom());
 
-  ChatDialog* chatDialog = new ChatDialog(m_contactManager, m_identityManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName, true);
+  ChatDialog* chatDialog = new ChatDialog(m_contactManager, chatroomName, m_localPrefix, m_defaultIdentity, m_nickName, true);
 
   connect(chatDialog, SIGNAL(closeChatDialog(const ndn::Name&)),
           this, SLOT(removeChatDialog(const ndn::Name&)));
@@ -917,18 +918,17 @@ ContactPanel::acceptInvitation(const ChronosInvitation& invitation,
   Data data(dataName);
   string content = m_localPrefix.toUri();
   data.setContent((const uint8_t *)&content[0], content.size());
-  data.getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
 
   Name certificateName;
   Name inferredIdentity = m_policyManager->inferSigningIdentity(data.getName());
 
   if(inferredIdentity.getComponentCount() == 0)
-    certificateName = m_identityManager->getDefaultCertificateName();
+    certificateName = m_keyChain->getDefaultCertificateName();
   else
-    certificateName = m_identityManager->getDefaultCertificateNameForIdentity(inferredIdentity);   
-  m_identityManager->signByCertificate(data, certificateName);
+    certificateName = m_keyChain->getDefaultCertificateNameForIdentity(inferredIdentity);   
+  m_keyChain->sign(data, certificateName);
 
-  m_transport->send(*data.wireEncode());
+  m_face->put(data);
 
   startChatroom2(invitation, identityCertificate);
 }
@@ -939,17 +939,16 @@ ContactPanel::rejectInvitation(const ChronosInvitation& invitation)
   Data data(invitation.getInterestName());
   string content("nack");
   data.setContent((const uint8_t *)&content[0], content.size());
-  data.getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
 
   Name certificateName;
   Name inferredIdentity = m_policyManager->inferSigningIdentity(data.getName());
   if(inferredIdentity.getComponentCount() == 0)
-    certificateName = m_identityManager->getDefaultCertificateName();
+    certificateName = m_keyChain->getDefaultCertificateName();
   else
-    certificateName = m_identityManager->getDefaultCertificateNameForIdentity(inferredIdentity);   
-  m_identityManager->signByCertificate(data, certificateName);
+    certificateName = m_keyChain->getDefaultCertificateNameForIdentity(inferredIdentity);   
+  m_keyChain->sign(data, certificateName);
 
-  m_transport->send(*data.wireEncode());
+  m_face->put(data);
 }
 
 void

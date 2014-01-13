@@ -21,7 +21,7 @@
 #include <sync-intro-certificate.h>
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
-#include <ndn-cpp/sha256-with-rsa-signature.hpp>
+#include <ndn-cpp/security/signature/signature-sha256-with-rsa.hpp>
 #include "logging.h"
 #endif
 
@@ -35,7 +35,6 @@ Q_DECLARE_METATYPE(std::vector<Sync::MissingDataInfo> )
 Q_DECLARE_METATYPE(size_t)
 
 ChatDialog::ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
-                       ndn::ptr_lib::shared_ptr<ndn::IdentityManager> identityManager,
                        const ndn::Name& chatroomPrefix,
 		       const ndn::Name& localPrefix,
                        const ndn::Name& defaultIdentity,
@@ -49,7 +48,7 @@ ChatDialog::ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
   , m_localPrefix(localPrefix)
   , m_defaultIdentity(defaultIdentity)
   , m_invitationPolicyManager(new InvitationPolicyManager(m_chatroomPrefix.get(-1).toEscapedString(), m_defaultIdentity))
-  , m_identityManager(identityManager)
+  , m_keyChain(new ndn::KeyChain())
   , m_nick(nick)
   , m_sock(NULL)
   , m_lastMsgTime(0)
@@ -89,8 +88,8 @@ ChatDialog::ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
 
   startFace();
 
-  ndn::Name certificateName = m_identityManager->getDefaultCertificateNameForIdentity(m_defaultIdentity);
-  m_syncPolicyManager = ndn::ptr_lib::make_shared<SyncPolicyManager>(m_defaultIdentity, certificateName, m_chatroomPrefix, m_face, m_transport);
+  ndn::Name certificateName = m_keyChain->getDefaultCertificateNameForIdentity(m_defaultIdentity);
+  m_syncPolicyManager = ndn::ptr_lib::make_shared<SyncPolicyManager>(m_defaultIdentity, certificateName, m_chatroomPrefix, m_face);
 
   connect(ui->inviteButton, SIGNAL(clicked()),
           this, SLOT(openInviteListDialog()));
@@ -134,8 +133,7 @@ ChatDialog::~ChatDialog()
 void
 ChatDialog::startFace()
 {
-  m_transport = ndn::ptr_lib::make_shared<ndn::TcpTransport>();
-  m_face = ndn::ptr_lib::make_shared<ndn::Face>(m_transport, ndn::ptr_lib::make_shared<ndn::TcpTransport::ConnectionInfo>("localhost"));
+  m_face = ndn::ptr_lib::make_shared<ndn::Face>();
   
   connectToDaemon();
 
@@ -334,7 +332,7 @@ ChatDialog::sendInvitation(ndn::ptr_lib::shared_ptr<ContactItem> contact, bool i
 {
   m_invitationPolicyManager->addTrustAnchor(contact->getSelfEndorseCertificate());
 
-  ndn::Name certificateName = m_identityManager->getDefaultCertificateNameForIdentity(m_defaultIdentity);
+  ndn::Name certificateName = m_keyChain->getDefaultCertificateNameForIdentity(m_defaultIdentity);
 
   ndn::Name interestName("/ndn/broadcast/chronos/invitation");
   interestName.append(contact->getNameSpace());
@@ -346,16 +344,11 @@ ChatDialog::sendInvitation(ndn::ptr_lib::shared_ptr<ContactItem> contact, bool i
   interestName.append(certificateName);
 
   string signedUri = interestName.toUri();
-  ndn::Blob signedBlob((const uint8_t*)signedUri.c_str(), signedUri.size());
 
-  ndn::ptr_lib::shared_ptr<const ndn::Sha256WithRsaSignature> sha256sig = ndn::ptr_lib::dynamic_pointer_cast<const ndn::Sha256WithRsaSignature>(m_identityManager->signByCertificate(signedBlob.buf(), signedBlob.size(), certificateName));
-  const ndn::Blob& sigBits = sha256sig->getSignature();
+  ndn::Signature sig = m_keyChain->sign(reinterpret_cast<const uint8_t*>(signedUri.c_str()), signedUri.size(), certificateName);
+  const ndn::Block& sigValue = sig.getValue();
 
-  _LOG_DEBUG("size A: " << interestName.size());
-
-  interestName.append(sigBits);
-
-  _LOG_DEBUG("size B: " << interestName.size());
+  interestName.append(sigValue);
 
   //TODO... remove version from invitation interest
   //  interestName.appendVersion();
@@ -385,7 +378,7 @@ ChatDialog::onInviteReplyVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& dat
                                   const ndn::Name& identity, 
                                   bool isIntroducer)
 {
-  string content((const char*)data->getContent().buf(), data->getContent().size());
+  string content(reinterpret_cast<const char*>(data->getContent().value()), data->getContent().value_size());
   if(content == string("nack"))
     invitationRejected(identity);
   else
@@ -422,8 +415,8 @@ void
 ChatDialog::invitationAccepted(const ndn::Name& identity, ndn::ptr_lib::shared_ptr<ndn::Data> data, const string& inviteePrefix, bool isIntroducer)
 {
   _LOG_DEBUG(" " << identity.toUri() << " Accepted your invitation!");
-  const ndn::Sha256WithRsaSignature* sha256sig = dynamic_cast<const ndn::Sha256WithRsaSignature*>(data->getSignature());
-  const ndn::Name & keyLocatorName = sha256sig->getKeyLocator().getKeyName();
+  ndn::SignatureSha256WithRsa sig(data->getSignature());
+  const ndn::Name & keyLocatorName = sig.getKeyLocator().getName();
   ndn::ptr_lib::shared_ptr<ndn::IdentityCertificate> dskCertificate = m_invitationPolicyManager->getValidatedDskCertificate(keyLocatorName);
   m_syncPolicyManager->addChatDataRule(inviteePrefix, *dskCertificate, isIntroducer);
   publishIntroCert(*dskCertificate, isIntroducer);
@@ -434,15 +427,15 @@ ChatDialog::publishIntroCert(const ndn::IdentityCertificate& dskCertificate, boo
 {
   SyncIntroCertificate syncIntroCertificate(m_chatroomPrefix,
                                             dskCertificate.getPublicKeyName(),
-                                            m_identityManager->getDefaultKeyNameForIdentity(m_defaultIdentity),
+                                            m_keyChain->getDefaultKeyNameForIdentity(m_defaultIdentity),
                                             dskCertificate.getNotBefore(),
                                             dskCertificate.getNotAfter(),
                                             dskCertificate.getPublicKeyInfo(),
                                             (isIntroducer ? SyncIntroCertificate::INTRODUCER : SyncIntroCertificate::PRODUCER));
-  ndn::Name certName = m_identityManager->getDefaultCertificateNameForIdentity(m_defaultIdentity);
+  ndn::Name certName = m_keyChain->getDefaultCertificateNameForIdentity(m_defaultIdentity);
   _LOG_DEBUG("Publish Intro Certificate: " << syncIntroCertificate.getName());
-  m_identityManager->signByCertificate(syncIntroCertificate, certName);
-  m_transport->send(*syncIntroCertificate.wireEncode());
+  m_keyChain->sign(syncIntroCertificate, certName);
+  m_face->put(syncIntroCertificate);
 }
 
 void
@@ -464,7 +457,6 @@ ChatDialog::initializeSync()
   m_sock = new Sync::SyncSocket(m_chatroomPrefix.toUri(),
                                 m_syncPolicyManager,
                                 m_face,
-                                m_transport,
                                 boost::bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
                                 boost::bind(&ChatDialog::processRemoveWrapper, this, _1));
   
@@ -604,8 +596,8 @@ void
 ChatDialog::processDataWrapper(const ndn::ptr_lib::shared_ptr<ndn::Data>& data)
 {
   string name = data->getName().toUri();
-  const char* buf = (const char*)data->getContent().buf();
-  size_t len = data->getContent().size();
+  const char* buf = reinterpret_cast<const char*>(data->getContent().value());
+  size_t len = data->getContent().value_size();
 
   char *tempBuf = new char[len];
   memcpy(tempBuf, buf, len);
@@ -617,8 +609,8 @@ void
 ChatDialog::processDataNoShowWrapper(const ndn::ptr_lib::shared_ptr<ndn::Data>& data)
 {
   string name = data->getName().toUri();
-  const char* buf = (const char*)data->getContent().buf();
-  size_t len = data->getContent().size();
+  const char* buf = reinterpret_cast<const char*>(data->getContent().value());
+  size_t len = data->getContent().value_size();
 
   char *tempBuf = new char[len];
   memcpy(tempBuf, buf, len);
@@ -899,7 +891,6 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
       m_sock = new Sync::SyncSocket(m_chatroomPrefix.toUri(),
                                     m_syncPolicyManager,
                                     m_face,
-                                    m_transport,
                                     bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
                                     bind(&ChatDialog::processRemoveWrapper, this, _1));
       usleep(100000);
@@ -1050,8 +1041,7 @@ ChatDialog::updateLocalPrefix()
   m_newLocalPrefixReady = false;
   ndn::Name interestName("/local/ndn/prefix");
   ndn::Interest interest(interestName);
-  interest.setChildSelector(ndn_Interest_CHILD_SELECTOR_RIGHT);
-  interest.setInterestLifetimeMilliseconds(1000);
+  interest.setInterestLifetime(1000);
 
   m_face->expressInterest(interest, 
                           bind(&ChatDialog::onLocalPrefix, this, _1, _2), 
@@ -1078,7 +1068,7 @@ void
 ChatDialog::onLocalPrefix(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
                           const ndn::ptr_lib::shared_ptr<ndn::Data>& data)
 {
-  string dataString((const char*)data->getContent().buf(), data->getContent().size());
+  string dataString(reinterpret_cast<const char*>(data->getContent().value()), data->getContent().value_size());
   QString originPrefix = QString::fromStdString (dataString).trimmed ();
   string trimmedString = originPrefix.toStdString();
   m_newLocalPrefix = ndn::Name(trimmedString);

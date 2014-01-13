@@ -13,7 +13,7 @@
 #include <QMessageBox>
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp/security/signature/sha256-with-rsa-handler.hpp>
+#include <ndn-cpp/security/verifier.hpp>
 #include <boost/iostreams/stream.hpp>
 #include "null-ptrs.h"
 #include "endorse-collection.pb.h"
@@ -207,7 +207,8 @@ AddContactPanel::displayContactInfo()
 {
   // _LOG_TRACE("displayContactInfo");
   const Profile& profile = m_currentEndorseCertificate->getProfileData().getProfile();
-  const Blob& profileBlob = m_currentEndorseCertificate->getProfileData().getContent();
+  const Block& profileContent = m_currentEndorseCertificate->getProfileData().getContent();
+  Buffer profileBlock(profileContent.value(), profileContent.value_size());
 
   map<string, int> endorseCount;
 
@@ -216,7 +217,8 @@ AddContactPanel::displayContactInfo()
       Chronos::EndorseCollection endorseCollection;
       
       boost::iostreams::stream
-        <boost::iostreams::array_source> is ((const char*)m_currentCollectEndorse->getContent().buf(), m_currentCollectEndorse->getContent().size());
+        <boost::iostreams::array_source> is (reinterpret_cast<const char*>(m_currentCollectEndorse->getContent().value()), 
+                                             m_currentCollectEndorse->getContent().value_size());
       
       endorseCollection.ParseFromIstream(&is);
 
@@ -224,7 +226,8 @@ AddContactPanel::displayContactInfo()
         {
           try{
             Data data;
-            data.wireDecode((const uint8_t*)endorseCollection.endorsement(i).blob().c_str(), endorseCollection.endorsement(i).blob().size());
+            data.wireDecode(Block(reinterpret_cast<const uint8_t*>(endorseCollection.endorsement(i).blob().c_str()),
+                                  endorseCollection.endorsement(i).blob().size()));
             EndorseCertificate endorseCert(data);
             
             Name signerKeyName = endorseCert.getSigner();
@@ -237,11 +240,12 @@ AddContactPanel::displayContactInfo()
             if(!contact->isIntroducer() || !contact->canBeTrustedFor(m_currentEndorseCertificate->getProfileData().getIdentityName()))
               continue;
           
-            if(!Sha256WithRsaHandler::verifySignature(data, contact->getSelfEndorseCertificate().getPublicKeyInfo()))
+            if(!Verifier::verifySignature(data, data.getSignature(), contact->getSelfEndorseCertificate().getPublicKeyInfo()))
               continue;
 
-            const Blob& tmpProfileBlob = endorseCert.getProfileData().getContent();
-            if(!isSameBlob(profileBlob, tmpProfileBlob))
+            const Block& tmpProfileContent = endorseCert.getProfileData().getContent();
+            Buffer tmpProfileBlock(tmpProfileContent.value(), tmpProfileContent.value_size());
+            if(profileBlock != tmpProfileBlock)
               continue;
 
           const vector<string>& endorseList = endorseCert.getEndorseList();
@@ -286,26 +290,26 @@ AddContactPanel::displayContactInfo()
   }
 }
 
-bool
-AddContactPanel::isSameBlob(const ndn::Blob& blobA, const ndn::Blob& blobB)
-{
-  size_t size = blobA.size();
+// bool
+// AddContactPanel::isSameBlob(const ndn::Blob& blobA, const ndn::Blob& blobB)
+// {
+//   size_t size = blobA.size();
 
-  if(size != blobB.size())
-    return false;
+//   if(size != blobB.size())
+//     return false;
 
-  const uint8_t* ap = blobA.buf();
-  const uint8_t* bp = blobB.buf();
+//   const uint8_t* ap = blobA.buf();
+//   const uint8_t* bp = blobB.buf();
   
-  for(int i = 0; i < size; i++)
-    {
-      if(ap[i] != bp[i])
-        return false;
-    }
+//   for(int i = 0; i < size; i++)
+//     {
+//       if(ap[i] != bp[i])
+//         return false;
+//     }
 
-  return true;
+//   return true;
 
-}
+// }
 
 
 #if WAF

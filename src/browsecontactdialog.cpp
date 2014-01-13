@@ -17,7 +17,6 @@
 #include <boost/asio.hpp>
 #include <boost/tokenizer.hpp>
 #include "logging.h"
-#include "exception.h"
 // #include "ndn.cxx/error.h"
 #endif
 

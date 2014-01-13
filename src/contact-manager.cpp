@@ -8,12 +8,25 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
+#if __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreorder"
+#pragma clang diagnostic ignored "-Wtautological-compare"
+#pragma clang diagnostic ignored "-Wunused-variable"
+#pragma clang diagnostic ignored "-Wunused-function"
+#elif __GNUC__
+#pragma GCC diagnostic ignored "-Wreorder"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+
+
 #include "contact-manager.h"
 
 #ifndef Q_MOC_RUN
 #include <ndn-cpp/face.hpp>
-#include <ndn-cpp/sha256-with-rsa-signature.hpp>
-#include <ndn-cpp/security/signature/sha256-with-rsa-handler.hpp>
+#include <ndn-cpp/security/signature/signature-sha256-with-rsa.hpp>
+#include <ndn-cpp/security/verifier.hpp>
 #include <cryptopp/base64.h>
 #include <ndn-cpp-et/policy-manager/identity-policy-rule.hpp>
 #include <fstream>
@@ -28,15 +41,13 @@ using namespace std;
 
 INIT_LOGGER("ContactManager");
 
-ContactManager::ContactManager(shared_ptr<IdentityManager> identityManager, 
+ContactManager::ContactManager(shared_ptr<KeyChain> keyChain, 
                                shared_ptr<Face> face,
-                               shared_ptr<Transport> transport,
                                QObject* parent)
   : QObject(parent),
-    m_face(face),
-    m_transport(transport)
+    m_face(face)
 {
-  m_identityManager = identityManager;
+  m_keyChain = keyChain;
   m_contactStorage = make_shared<ContactStorage>();
   m_dnsStorage = make_shared<DnsStorage>();
 
@@ -45,30 +56,6 @@ ContactManager::ContactManager(shared_ptr<IdentityManager> identityManager,
 
 ContactManager::~ContactManager()
 {}
-
-// void
-// ContactManager::connectToDaemon()
-// {
-//   //Hack! transport does not connect to daemon unless an interest is expressed.
-//   Name name("/ndn");
-//   shared_ptr<ndn::Interest> interest = make_shared<ndn::Interest>(name);
-//   m_face->expressInterest(*interest, 
-//                           bind(&ContactManager::onConnectionData, this, _1, _2),
-//                           bind(&ContactManager::onConnectionDataTimeout, this, _1));
-// }
-
-// void
-// ContactManager::onConnectionData(const shared_ptr<const ndn::Interest>& interest,
-//                             const shared_ptr<Data>& data)
-// {
-//   _LOG_DEBUG("onConnectionData");
-// }
-
-// void
-// ContactManager::onConnectionDataTimeout(const shared_ptr<const ndn::Interest>& interest)
-// {
-//   _LOG_DEBUG("onConnectionDataTimeout");
-// }
 
 void
 ContactManager::initializeSecurity()
@@ -124,7 +111,7 @@ iVUF1QIBEQAA");
                             true,
                             new CryptoPP::Base64Decoder(new CryptoPP::StringSink(decoded)));
   Data data;
-  data.wireDecode((const uint8_t*)decoded.c_str(), decoded.size());
+  data.wireDecode(Block(reinterpret_cast<const uint8_t*>(decoded.c_str()), decoded.size()));
   shared_ptr<IdentityCertificate> anchor = make_shared<IdentityCertificate>(data);
   m_policyManager->addTrustAnchor(anchor);  
 
@@ -154,7 +141,7 @@ F7Wh5ayeo8NBKDsCAwEAAQAA");
                             true,
                             new CryptoPP::Base64Decoder(new CryptoPP::StringSink(decoded2)));
   Data data2;
-  data2.wireDecode((const uint8_t*)decoded2.c_str(), decoded2.size());
+  data2.wireDecode(Block(reinterpret_cast<const uint8_t*>(decoded.c_str()), decoded.size()));
   shared_ptr<IdentityCertificate>anchor2 = make_shared<IdentityCertificate>(data2);
   m_policyManager->addTrustAnchor(anchor2);  
 
@@ -169,11 +156,10 @@ ContactManager::fetchSelfEndorseCertificate(const ndn::Name& identity)
   interestName.append("DNS").append("PROFILE");
   
   Interest interest(interestName);
-  interest.setChildSelector(ndn_Interest_CHILD_SELECTOR_RIGHT);
 
-  OnVerified onVerified = boost::bind(&ContactManager::onDnsSelfEndorseCertificateVerified, this, _1, identity);
-  OnVerifyFailed onVerifyFailed = boost::bind(&ContactManager::onDnsSelfEndorseCertificateVerifyFailed, this, _1, identity);
-  TimeoutNotify timeoutNotify = boost::bind(&ContactManager::onDnsSelfEndorseCertificateTimeoutNotify, this, identity);
+  OnVerified onVerified = func_lib::bind(&ContactManager::onDnsSelfEndorseCertificateVerified, this, _1, identity);
+  OnVerifyFailed onVerifyFailed = func_lib::bind(&ContactManager::onDnsSelfEndorseCertificateVerifyFailed, this, _1, identity);
+  TimeoutNotify timeoutNotify = func_lib::bind(&ContactManager::onDnsSelfEndorseCertificateTimeoutNotify, this, identity);
 
   sendInterest(interest, onVerified, onVerifyFailed, timeoutNotify);
 }
@@ -188,9 +174,9 @@ ContactManager::onDnsSelfEndorseCertificateVerified(const shared_ptr<Data>& data
 {
   try{
     Data plainData;
-    plainData.wireDecode(data->getContent().buf(), data->getContent().size());
+    plainData.wireDecode(Block(data->getContent().value(), data->getContent().value_size()));
     EndorseCertificate selfEndorseCertificate(plainData);
-    if(Sha256WithRsaHandler::verifySignature(plainData, selfEndorseCertificate.getPublicKeyInfo()))
+    if(Verifier::verifySignature(plainData, plainData.getSignature(), selfEndorseCertificate.getPublicKeyInfo()))
       emit contactFetched (selfEndorseCertificate); 
     else
       emit contactFetchFailed (identity);
@@ -212,12 +198,11 @@ ContactManager::fetchCollectEndorse(const ndn::Name& identity)
   interestName.append("DNS").append("ENDORSED");
 
   Interest interest(interestName);
-  interest.setChildSelector(ndn_Interest_CHILD_SELECTOR_RIGHT);
-  interest.setInterestLifetimeMilliseconds(1000);
+  interest.setInterestLifetime(1000);
 
-  OnVerified onVerified = boost::bind(&ContactManager::onDnsCollectEndorseVerified, this, _1, identity);
-  OnVerifyFailed onVerifyFailed = boost::bind(&ContactManager::onDnsCollectEndorseVerifyFailed, this, _1, identity);
-  TimeoutNotify timeoutNotify = boost::bind(&ContactManager::onDnsCollectEndorseTimeoutNotify, this, identity);
+  OnVerified onVerified = func_lib::bind(&ContactManager::onDnsCollectEndorseVerified, this, _1, identity);
+  OnVerifyFailed onVerifyFailed = func_lib::bind(&ContactManager::onDnsCollectEndorseVerifyFailed, this, _1, identity);
+  TimeoutNotify timeoutNotify = func_lib::bind(&ContactManager::onDnsCollectEndorseTimeoutNotify, this, identity);
 
   sendInterest(interest, onVerified, onVerifyFailed, timeoutNotify);
 }
@@ -243,12 +228,11 @@ ContactManager::fetchKey(const ndn::Name& certName)
   Name interestName = certName;
   
   Interest interest(interestName);
-  interest.setChildSelector(ndn_Interest_CHILD_SELECTOR_RIGHT);
-  interest.setInterestLifetimeMilliseconds(1000);
+  interest.setInterestLifetime(1000);
 
-  OnVerified onVerified = boost::bind(&ContactManager::onKeyVerified, this, _1, certName);
-  OnVerifyFailed onVerifyFailed = boost::bind(&ContactManager::onKeyVerifyFailed, this, _1, certName);
-  TimeoutNotify timeoutNotify = boost::bind(&ContactManager::onKeyTimeoutNotify, this, certName);
+  OnVerified onVerified = func_lib::bind(&ContactManager::onKeyVerified, this, _1, certName);
+  OnVerifyFailed onVerifyFailed = func_lib::bind(&ContactManager::onKeyVerifyFailed, this, _1, certName);
+  TimeoutNotify timeoutNotify = func_lib::bind(&ContactManager::onKeyTimeoutNotify, this, certName);
 
   sendInterest(interest, onVerified, onVerifyFailed, timeoutNotify);
 }
@@ -262,12 +246,12 @@ ContactManager::onKeyVerified(const shared_ptr<Data>& data, const Name& identity
   Profile profile(identityCertificate);
   ProfileData profileData(profile);
 
-  Name certificateName = m_identityManager->getDefaultCertificateName();
-  m_identityManager->signByCertificate(profileData, certificateName);
+  Name certificateName = m_keyChain->getDefaultCertificateName();
+  m_keyChain->sign(profileData, certificateName);
 
   try{
     EndorseCertificate endorseCertificate(identityCertificate, profileData);
-    m_identityManager->signByCertificate(endorseCertificate, certificateName);
+    m_keyChain->sign(endorseCertificate, certificateName);
     emit contactKeyFetched (endorseCertificate); 
   }catch(std::exception& e){
     _LOG_ERROR("Exception: " << e.what());
@@ -295,8 +279,7 @@ ContactManager::fetchIdCertificate(const Name& certName)
   Name interestName = certName;
   
   Interest interest(interestName);
-  interest.setChildSelector(ndn_Interest_CHILD_SELECTOR_RIGHT);
-  interest.setInterestLifetimeMilliseconds(1000);
+  interest.setInterestLifetime(1000);
 
   OnVerified onVerified = boost::bind(&ContactManager::onIdCertificateVerified, this, _1, certName);
   OnVerifyFailed onVerifyFailed = boost::bind(&ContactManager::onIdCertificateVerifyFailed, this, _1, certName);
@@ -426,7 +409,7 @@ ContactManager::sendInterest(const Interest& interest,
                                       onVerifyFailed,
                                       timeoutNotify));
 
-  _LOG_DEBUG("id: " << id << " entry id: " << m_face->getNode().getEntryIndexForExpressedInterest(interest.getName()));
+  // _LOG_DEBUG("id: " << id << " entry id: " << m_face->getNode().getEntryIndexForExpressedInterest(interest.getName()));
 }
 
 void
@@ -443,11 +426,12 @@ ContactManager::updateProfileData(const Name& identity)
     return;
 
   // Check if profile exists
-  Blob profileDataBlob = m_contactStorage->getSelfEndorseCertificate(identity);
-  if(CHRONOCHAT_NULL_BLOB != profileDataBlob)
+  try{
+    Block profileDataBlob = m_contactStorage->getSelfEndorseCertificate(identity);
     m_contactStorage->updateSelfEndorseCertificate(*newEndorseCertificate, identity);
-  else
+  }catch(ContactStorage::Error &e){
     m_contactStorage->addSelfEndorseCertificate(*newEndorseCertificate, identity);
+  }
 
   publishSelfEndorseCertificateInDNS(*newEndorseCertificate);
 }
@@ -455,17 +439,18 @@ ContactManager::updateProfileData(const Name& identity)
 void
 ContactManager::updateEndorseCertificate(const ndn::Name& identity, const ndn::Name& signerIdentity)
 {
-  Blob oldEndorseCertificateBlob = m_contactStorage->getEndorseCertificate(identity);
   shared_ptr<EndorseCertificate> newEndorseCertificate = generateEndorseCertificate(identity, signerIdentity);
 
   if(CHRONOCHAT_NULL_ENDORSECERTIFICATE_PTR == newEndorseCertificate)
     return;
 
-  if(CHRONOCHAT_NULL_BLOB != oldEndorseCertificateBlob)
+  try{
+    Block oldEndorseCertificateBlob = m_contactStorage->getEndorseCertificate(identity);
     m_contactStorage->updateEndorseCertificate(*newEndorseCertificate, identity);
-  else
+  }catch(ContactStorage::Error &e){
     m_contactStorage->addEndorseCertificate(*newEndorseCertificate, identity);
- 
+  }
+
   publishEndorseCertificateInDNS(*newEndorseCertificate, signerIdentity);
 }
 
@@ -476,8 +461,8 @@ ContactManager::generateEndorseCertificate(const Name& identity, const Name& sig
   if(contact == CHRONOCHAT_NULL_CONTACTITEM_PTR)
     return CHRONOCHAT_NULL_ENDORSECERTIFICATE_PTR;
 
-  Name signerKeyName = m_identityManager->getDefaultKeyNameForIdentity(signerIdentity);
-  Name signerCertName = m_identityManager->getDefaultCertificateNameForIdentity(signerIdentity);
+  Name signerKeyName = m_keyChain->getDefaultKeyNameForIdentity(signerIdentity);
+  Name signerCertName = m_keyChain->getDefaultCertificateNameForIdentity(signerIdentity);
 
   vector<string> endorseList;
   m_contactStorage->getEndorseList(identity, endorseList);
@@ -485,7 +470,7 @@ ContactManager::generateEndorseCertificate(const Name& identity, const Name& sig
   
   try{
     shared_ptr<EndorseCertificate> cert = make_shared<EndorseCertificate>(contact->getSelfEndorseCertificate(), signerKeyName, endorseList); 
-    m_identityManager->signByCertificate(*cert, signerCertName);
+    m_keyChain->sign(*cert, signerCertName);
     return cert;
   }catch(std::exception& e){
     _LOG_ERROR("Exception: " << e.what());
@@ -505,14 +490,14 @@ shared_ptr<EndorseCertificate>
 ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
                                                 const Profile& profile)
 {
-  Name certificateName = m_identityManager->getDefaultCertificateNameForIdentity(identity);
+  Name certificateName = m_keyChain->getDefaultCertificateNameForIdentity(identity);
   if(0 == certificateName.size())
     return CHRONOCHAT_NULL_ENDORSECERTIFICATE_PTR;
 
   ProfileData profileData(profile);
-  m_identityManager->signByCertificate(profileData, certificateName);
+  m_keyChain->sign(profileData, certificateName);
 
-  shared_ptr<IdentityCertificate> signingCert = m_identityManager->getCertificate(certificateName);
+  shared_ptr<IdentityCertificate> signingCert = m_keyChain->getCertificate(certificateName);
   if(CHRONOCHAT_NULL_IDENTITYCERTIFICATE_PTR == signingCert)
     return CHRONOCHAT_NULL_ENDORSECERTIFICATE_PTR;
 
@@ -521,14 +506,14 @@ ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
   shared_ptr<IdentityCertificate> kskCert;
   if(signingKeyName.get(-1).toEscapedString().substr(0,4) == string("dsk-"))
     {
-      const Sha256WithRsaSignature* dskCertSig = dynamic_cast<const Sha256WithRsaSignature*>(signingCert->getSignature());
+      SignatureSha256WithRsa dskCertSig(signingCert->getSignature());
       // HACK! KSK certificate should be retrieved from network.
-      Name keyName = IdentityCertificate::certificateNameToPublicKeyName(dskCertSig->getKeyLocator().getKeyName());
+      Name keyName = IdentityCertificate::certificateNameToPublicKeyName(dskCertSig.getKeyLocator().getName());
 
       // TODO: check null existing cases.
-      Name kskCertName = m_identityManager->getDefaultCertificateNameForIdentity(keyName.getPrefix(-1));
+      Name kskCertName = m_keyChain->getDefaultCertificateNameForIdentity(keyName.getPrefix(-1));
 
-      kskCert = m_identityManager->getCertificate(kskCertName);
+      kskCert = m_keyChain->getCertificate(kskCertName);
     }
   else
     {
@@ -545,7 +530,7 @@ ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
   
   try{
     shared_ptr<EndorseCertificate> selfEndorseCertificate = make_shared<EndorseCertificate>(*kskCert, profileData, endorseList);
-    m_identityManager->signByCertificate(*selfEndorseCertificate, kskCert->getName());
+    m_keyChain->sign(*selfEndorseCertificate, kskCert->getName());
 
     return selfEndorseCertificate;
   }catch(std::exception& e){
@@ -573,12 +558,12 @@ ContactManager::publishSelfEndorseCertificateInDNS(const EndorseCertificate& sel
 
   data.setContent(selfEndorseCertificate.wireEncode());
 
-  Name signCertName = m_identityManager->getDefaultCertificateNameForIdentity(identity);
-  m_identityManager->signByCertificate(data, signCertName);
+  Name signCertName = m_keyChain->getDefaultCertificateNameForIdentity(identity);
+  m_keyChain->sign(data, signCertName);
 
   m_dnsStorage->updateDnsSelfProfileData(data, identity);
   
-   m_transport->send(*data.wireEncode());
+  m_face->put(data);
 }
 
 void
@@ -599,12 +584,12 @@ ContactManager::publishEndorseCertificateInDNS(const EndorseCertificate& endorse
 
   data.setContent(endorseCertificate.wireEncode());
 
-  Name signCertName = m_identityManager->getDefaultCertificateNameForIdentity(signerIdentity);
-  m_identityManager->signByCertificate(data, signCertName);
+  Name signCertName = m_keyChain->getDefaultCertificateNameForIdentity(signerIdentity);
+  m_keyChain->sign(data, signCertName);
 
   m_dnsStorage->updateDnsEndorseOthers(data, signerIdentity, endorsee);
 
-  m_transport->send(*data.wireEncode());
+  m_face->put(data);
 }
 
 void
@@ -620,29 +605,29 @@ ContactManager::publishEndorsedDataInDns(const Name& identity)
   dnsName.append("DNS").append("ENDORSED").appendVersion(version);
   data.setName(dnsName);
   
-  vector<Blob> collectEndorseList;
+  vector<Buffer> collectEndorseList;
   m_contactStorage->getCollectEndorseList(identity, collectEndorseList);
   
   Chronos::EndorseCollection endorseCollection;
 
-  vector<Blob>::const_iterator it = collectEndorseList.begin();
+  vector<Buffer>::const_iterator it = collectEndorseList.begin();
   for(; it != collectEndorseList.end(); it++)
     {
-      string entryStr((const char*)it->buf(), it->size());
+      string entryStr(reinterpret_cast<const char*>(it->buf()), it->size());
       endorseCollection.add_endorsement()->set_blob(entryStr);
     }
 
   string encoded;
   endorseCollection.SerializeToString(&encoded);
 
-  data.setContent((const uint8_t*)encoded.c_str(), encoded.size());
+  data.setContent(reinterpret_cast<const uint8_t*>(encoded.c_str()), encoded.size());
   
-  Name signCertName = m_identityManager->getDefaultCertificateNameForIdentity(identity);
-  m_identityManager->signByCertificate(data, signCertName);
+  Name signCertName = m_keyChain->getDefaultCertificateNameForIdentity(identity);
+  m_keyChain->sign(data, signCertName);
 
   m_dnsStorage->updateDnsOthersEndorse(data, identity);
 
-  m_transport->send(*data.wireEncode());
+  m_face->put(data);
 }
 
 void
@@ -650,14 +635,14 @@ ContactManager::addContact(const IdentityCertificate& identityCertificate, const
 {
   ProfileData profileData(profile);
   
-  Name certificateName = m_identityManager->getDefaultCertificateNameForIdentity (m_defaultIdentity);
-  m_identityManager->signByCertificate(profileData, certificateName);
+  Name certificateName = m_keyChain->getDefaultCertificateNameForIdentity (m_defaultIdentity);
+  m_keyChain->sign(profileData, certificateName);
 
 
   try{
     EndorseCertificate endorseCertificate(identityCertificate, profileData);
     
-    m_identityManager->signByCertificate(endorseCertificate, certificateName);
+    m_keyChain->sign(endorseCertificate, certificateName);
 
     ContactItem contactItem(endorseCertificate);
 

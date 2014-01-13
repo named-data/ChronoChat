@@ -9,7 +9,6 @@
  */
 
 #include "endorse-certificate.h"
-#include "exception.h"
 #include "endorse-extension.pb.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/iostreams/stream.hpp>
@@ -23,7 +22,7 @@ using namespace boost::posix_time;
 INIT_LOGGER("EndorseCertificate");
 
 ProfileExtension::ProfileExtension(const ProfileData & profileData)
-  : CertificateExtension("1.3.6.1.5.32.2.1", true, profileData.wireEncode())
+  : CertificateExtension("1.3.6.1.5.32.2.1", true, Buffer(profileData.wireEncode().wire(), profileData.wireEncode().size()))
 {}
 
 ProfileExtension::ProfileExtension(const ProfileExtension& profileExtension)
@@ -34,14 +33,14 @@ ProfileExtension::ProfileExtension(const CertificateExtension& extension)
   : CertificateExtension(extension.getOid(), extension.getIsCritical(), extension.getValue())
 {
   if(extensionId_ != OID("1.3.6.1.5.32.2.1"))
-    throw LnException("Wrong ProfileExtension Number!");
+    throw Error("Wrong ProfileExtension Number!");
 }
 
 shared_ptr<ProfileData>
 ProfileExtension::getProfileData()
 {
   Data data;
-  data.wireDecode(extensionValue_.buf(), extensionValue_.size());
+  data.wireDecode(Block(extensionValue_.buf(), extensionValue_.size()));
   return make_shared<ProfileData>(data);
 }
 
@@ -57,7 +56,7 @@ EndorseExtension::EndorseExtension(const CertificateExtension& extension)
   : CertificateExtension(extension.getOid(), extension.getIsCritical(), extension.getValue())
 {
   if(extensionId_ != OID("1.3.6.1.5.32.2.2"))
-    throw LnException("Wrong EndorseExtension Number!");
+    throw Error("Wrong EndorseExtension Number!");
 }
 
 vector<string>
@@ -78,7 +77,7 @@ EndorseExtension::getEndorseList()
   return endorseList;
 }
 
-Blob
+Buffer
 EndorseExtension::encodeEndorseList(const vector<string>& endorseList)
 {
   Chronos::EndorseExtensionMsg endorseExtension;
@@ -90,7 +89,7 @@ EndorseExtension::encodeEndorseList(const vector<string>& endorseList)
   string encoded;
   endorseExtension.SerializeToString(&encoded);
   
-  return Blob((const uint8_t*)encoded.c_str(), encoded.size());
+  return Buffer(encoded.c_str(), encoded.size());
 }
 
 EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate,
@@ -168,7 +167,7 @@ EndorseCertificate::EndorseCertificate(const Data& data)
 	}
     }
   if(profileIndex < 0)
-    throw LnException("No PROFILE-CERT component in data name!");
+    throw Error("No PROFILE-CERT component in data name!");
 
   m_keyName = dataName.getSubName(0, profileIndex);
   m_signer = dataName.getSubName(profileIndex + 1, dataName.size() - profileIndex - 2);
