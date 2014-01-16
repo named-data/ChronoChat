@@ -13,8 +13,8 @@
 
 #include <vector>
 #include <ndn-cpp/data.hpp>
-#include <ndn-cpp/security/certificate/identity-certificate.hpp>
-#include <ndn-cpp/security/certificate/certificate-extension.hpp>
+#include <ndn-cpp/security/identity-certificate.hpp>
+#include <ndn-cpp/security/certificate-extension.hpp>
 
 #include "profile-data.h"
 

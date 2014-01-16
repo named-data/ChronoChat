@@ -8,33 +8,33 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "chat-policy-rule.h"
-#include <ndn-cpp/security/signature/signature-sha256-with-rsa.hpp>
+#include "sec-rule-chrono-chat.h"
+#include <ndn-cpp/security/signature-sha256-with-rsa.hpp>
 
 using namespace ndn;
 using namespace std;
 using namespace ndn::ptr_lib;
 
 
-ChatPolicyRule::ChatPolicyRule(shared_ptr<Regex> dataRegex,
-			       shared_ptr<Regex> signerRegex)
-  : PolicyRule(PolicyRule::IDENTITY_POLICY, true)
+SecRuleChronoChat::SecRuleChronoChat(shared_ptr<Regex> dataRegex,
+                                     shared_ptr<Regex> signerRegex)
+  : SecRule(SecRule::IDENTITY_RULE, true)
   , m_dataRegex(dataRegex)
   , m_signerRegex(signerRegex)
 {}
 
-ChatPolicyRule::ChatPolicyRule(const ChatPolicyRule& rule)
-  : PolicyRule(PolicyRule::IDENTITY_POLICY, true)
+SecRuleChronoChat::SecRuleChronoChat(const SecRuleChronoChat& rule)
+  : SecRule(SecRule::IDENTITY_RULE, true)
   , m_dataRegex(rule.m_dataRegex)
   , m_signerRegex(rule.m_signerRegex)
 {}
 
 bool 
-ChatPolicyRule::matchDataName(const Data & data)
+SecRuleChronoChat::matchDataName(const Data & data)
 { return m_dataRegex->match(data.getName()); }
 
 bool 
-ChatPolicyRule::matchSignerName(const Data & data)
+SecRuleChronoChat::matchSignerName(const Data & data)
 { 
   try{
     SignatureSha256WithRsa sig(data.getSignature());
@@ -48,9 +48,9 @@ ChatPolicyRule::matchSignerName(const Data & data)
 }
 
 bool
-ChatPolicyRule::satisfy(const Data & data)
+SecRuleChronoChat::satisfy(const Data & data)
 { return (matchDataName(data) && matchSignerName(data)) ? true : false ; }
 
 bool
-ChatPolicyRule::satisfy(const Name & dataName, const Name & signerName)
+SecRuleChronoChat::satisfy(const Name & dataName, const Name & signerName)
 { return (m_dataRegex->match(dataName) && m_signerRegex->match(signerName)); }

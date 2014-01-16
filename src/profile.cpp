@@ -9,7 +9,6 @@
  */
 
 #include "profile.h"
-#include "null-ptrs.h"
 #include "logging.h"
 
 using namespace std;
@@ -93,7 +92,7 @@ Profile::getProfileEntry(const string& profileType) const
   if(m_entries.find(profileType) != m_entries.end())
     return m_entries.at(profileType);
 
-  return CHRONOCHAT_NULL_STR;
+  return string();
 }
 
 void

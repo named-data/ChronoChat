@@ -22,12 +22,10 @@
 
 #ifndef Q_MOC_RUN
 #include <ndn-cpp/security/verifier.hpp>
-#include <ndn-cpp/security/signature/signature-sha256-with-rsa.hpp>
+#include <ndn-cpp/security/signature-sha256-with-rsa.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
-#include "panel-policy-manager.h"
-#include "null-ptrs.h"
 #include "logging.h"
 #endif
 
@@ -50,7 +48,7 @@ ContactPanel::ContactPanel(QWidget *parent)
   , m_startChatDialog(new StartChatDialog)
   , m_invitationDialog(new InvitationDialog)
   , m_settingDialog(new SettingDialog)
-  , m_policyManager(new PanelPolicyManager())
+  , m_policy(new SecPolicyChronoChatPanel())
 {
   qRegisterMetaType<IdentityCertificate>("IdentityCertificate");
   qRegisterMetaType<ChronosInvitation>("ChronosInvitation");
@@ -285,7 +283,7 @@ ContactPanel::loadTrustAnchor()
   for(; it != m_contactList.end(); it++)
     {
       _LOG_DEBUG("load contact: " << (*it)->getNameSpace().toUri());
-      m_policyManager->addTrustAnchor((*it)->getSelfEndorseCertificate());
+      m_policy->addTrustAnchor((*it)->getSelfEndorseCertificate());
     }
 }
 
@@ -372,7 +370,7 @@ ContactPanel::onTargetData(const shared_ptr<const ndn::Interest>& interest,
                            const OnVerifyFailed& onVerifyFailed,
                            const TimeoutNotify& timeoutNotify)
 {
-  shared_ptr<ValidationRequest> nextStep = m_policyManager->checkVerificationPolicy(data, stepCount, onVerified, onVerifyFailed);
+  shared_ptr<ValidationRequest> nextStep = m_policy->checkVerificationPolicy(data, stepCount, onVerified, onVerifyFailed);
 
   if (nextStep)
     m_face->expressInterest
@@ -404,7 +402,7 @@ ContactPanel::onCertData(const shared_ptr<const ndn::Interest>& interest,
                          const shared_ptr<Data>& cert,
                          shared_ptr<ValidationRequest> previousStep)
 {
-  shared_ptr<ValidationRequest> nextStep = m_policyManager->checkVerificationPolicy(cert, 
+  shared_ptr<ValidationRequest> nextStep = m_policy->checkVerificationPolicy(cert, 
                                                                                     previousStep->stepCount_, 
                                                                                     previousStep->onVerified_, 
                                                                                     previousStep->onVerifyFailed_);
@@ -471,12 +469,12 @@ ContactPanel::onInvitation(const shared_ptr<const Name>& prefix,
       return;
     }
 
-  shared_ptr<PublicKey> keyPtr = m_policyManager->getTrustedKey(invitation->getInviterCertificateName());
+  shared_ptr<PublicKey> keyPtr = m_policy->getTrustedKey(invitation->getInviterCertificateName());
 
   SignatureSha256WithRsa invitationSig;
   Block sigBlock(invitation->getSignatureBits().buf(), invitation->getSignatureBits().size());
   invitationSig.setValue(sigBlock);
-  if(CHRONOCHAT_NULL_PUBLICKEY_PTR != keyPtr && Verifier::verifySignature(invitation->getSignedBlob(), invitationSig, *keyPtr))
+  if(static_cast<bool>(keyPtr) && Verifier::verifySignature(invitation->getSignedBlob(), invitationSig, *keyPtr))
     {
       shared_ptr<IdentityCertificate> certificate = make_shared<IdentityCertificate>();
       // hack: incomplete certificate, we don't send it to the wire nor store it anywhere, we only use it to carry information
@@ -793,13 +791,13 @@ void
 ContactPanel::addContactIntoPanelPolicy(const Name& contactNameSpace)
 {
   shared_ptr<ContactItem> contact = m_contactManager->getContact(contactNameSpace);
-  if(contact != CHRONOCHAT_NULL_CONTACTITEM_PTR)
-    m_policyManager->addTrustAnchor(contact->getSelfEndorseCertificate());
+  if(static_cast<bool>(contact))
+    m_policy->addTrustAnchor(contact->getSelfEndorseCertificate());
 }
 
 void
 ContactPanel::removeContactFromPanelPolicy(const Name& keyName)
-{ m_policyManager->removeTrustAnchor(keyName); }
+{ m_policy->removeTrustAnchor(keyName); }
 
 void
 ContactPanel::refreshContactList()
@@ -920,7 +918,7 @@ ContactPanel::acceptInvitation(const ChronosInvitation& invitation,
   data.setContent((const uint8_t *)&content[0], content.size());
 
   Name certificateName;
-  Name inferredIdentity = m_policyManager->inferSigningIdentity(data.getName());
+  Name inferredIdentity = m_policy->inferSigningIdentity(data.getName());
 
   if(inferredIdentity.getComponentCount() == 0)
     certificateName = m_keyChain->getDefaultCertificateName();
@@ -941,7 +939,7 @@ ContactPanel::rejectInvitation(const ChronosInvitation& invitation)
   data.setContent((const uint8_t *)&content[0], content.size());
 
   Name certificateName;
-  Name inferredIdentity = m_policyManager->inferSigningIdentity(data.getName());
+  Name inferredIdentity = m_policy->inferSigningIdentity(data.getName());
   if(inferredIdentity.getComponentCount() == 0)
     certificateName = m_keyChain->getDefaultCertificateName();
   else

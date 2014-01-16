@@ -9,7 +9,6 @@
  */
 
 #include "contact-item.h"
-#include "null-ptrs.h"
 
 #include "logging.h"
 

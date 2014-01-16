@@ -26,7 +26,7 @@
 #include <ndn-cpp/data.hpp>
 #include <ndn-cpp/face.hpp>
 #include <ndn-cpp/security/key-chain.hpp>
-#include "invitation-policy-manager.h"
+#include "sec-policy-chrono-chat-invitation.h"
 #include "contact-item.h"
 
 #include <sync-socket.h>
@@ -152,7 +152,7 @@ private:
                const ndn::OnVerified& onVerified,
                const ndn::OnVerifyFailed& onVerifyFailed,
                const OnEventualTimeout& timeoutNotify,
-               const ndn::ptr_lib::shared_ptr<ndn::PolicyManager>& policyManager);
+               const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy);
 
   void
   onTargetTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
@@ -161,27 +161,27 @@ private:
                   const ndn::OnVerified& onVerified,
                   const ndn::OnVerifyFailed& onVerifyFailed,
                   const OnEventualTimeout& timeoutNotify,
-                  const ndn::ptr_lib::shared_ptr<ndn::PolicyManager>& policyManager);
+                  const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy);
   
   void
   onCertData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
              const ndn::ptr_lib::shared_ptr<ndn::Data>& cert,
              ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> previousStep,
-             const ndn::ptr_lib::shared_ptr<ndn::PolicyManager>& policyManager);
+             const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy);
 
   void
   onCertTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
                 const ndn::OnVerifyFailed& onVerifyFailed,
                 const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
                 ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> nextStep,
-                const ndn::ptr_lib::shared_ptr<ndn::PolicyManager>& policyManager);
+                const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy);
 
   void
   sendInterest(const ndn::Interest& interest,
                const ndn::OnVerified& onVerified,
                const ndn::OnVerifyFailed& onVerifyFailed,
                const OnEventualTimeout& timeoutNotify,
-               const ndn::ptr_lib::shared_ptr<ndn::PolicyManager>& policyManager,
+               const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy,
                int retry = 1,
                int stepCount = 0);
   
@@ -341,8 +341,8 @@ private:
   ndn::Name m_localPrefix;
   ndn::Name m_localChatPrefix;
   ndn::Name m_defaultIdentity;
-  ndn::ptr_lib::shared_ptr<InvitationPolicyManager> m_invitationPolicyManager;
-  ndn::ptr_lib::shared_ptr<SyncPolicyManager> m_syncPolicyManager; 
+  ndn::ptr_lib::shared_ptr<SecPolicyChronoChatInvitation> m_invitationPolicy;
+  ndn::ptr_lib::shared_ptr<SecPolicySync> m_syncPolicy; 
   ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
   ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
 

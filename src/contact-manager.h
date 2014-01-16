@@ -20,8 +20,8 @@
 #include "profile.h"
 #include <ndn-cpp/face.hpp>
 #include <ndn-cpp/security/key-chain.hpp>
-#include <ndn-cpp/security/policy/validation-request.hpp>
-#include <ndn-cpp-et/policy-manager/simple-policy-manager.hpp>
+#include <ndn-cpp/security/validation-request.hpp>
+#include <ndn-cpp-et/policy/sec-policy-simple.hpp>
 #endif
 
 typedef ndn::func_lib::function<void()> TimeoutNotify;
@@ -224,9 +224,10 @@ private slots:
   
   
 private:
+
   ndn::ptr_lib::shared_ptr<ContactStorage> m_contactStorage;
   ndn::ptr_lib::shared_ptr<DnsStorage> m_dnsStorage;
-  ndn::ptr_lib::shared_ptr<ndn::SimplePolicyManager> m_policyManager;
+  ndn::ptr_lib::shared_ptr<ndn::SecPolicySimple> m_policy;
   ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
   ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
   ndn::Name m_defaultIdentity;

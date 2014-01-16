@@ -84,6 +84,7 @@ signals:
   newContactAdded();
 
 private:
+
   Ui::AddContactPanel *ui;
   ndn::Name m_searchIdentity;
   ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;

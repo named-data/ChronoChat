@@ -8,23 +8,23 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHAT_POLICY_RULE_H
-#define CHAT_POLICY_RULE_H
+#ifndef SEC_RULE_CHRONO_CHAT_H
+#define SEC_RULE_CHRONO_CHAT_H
 
-#include <ndn-cpp-et/policy-manager/policy-rule.hpp>
+#include <ndn-cpp-et/policy/sec-rule.hpp>
 #include <ndn-cpp-et/regex/regex.hpp>
 
-class ChatPolicyRule : public ndn::PolicyRule
+class SecRuleChronoChat : public ndn::SecRule
 {
   
 public:
-  ChatPolicyRule(ndn::ptr_lib::shared_ptr<ndn::Regex> dataRegex,
-                 ndn::ptr_lib::shared_ptr<ndn::Regex> signerRegex);
+  SecRuleChronoChat(ndn::ptr_lib::shared_ptr<ndn::Regex> dataRegex,
+                    ndn::ptr_lib::shared_ptr<ndn::Regex> signerRegex);
 
-  ChatPolicyRule(const ChatPolicyRule& rule);
+  SecRuleChronoChat(const SecRuleChronoChat& rule);
 
   virtual
-  ~ChatPolicyRule() {};
+  ~SecRuleChronoChat() {};
 
   bool 
   matchDataName(const ndn::Data & data);

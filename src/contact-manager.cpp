@@ -25,13 +25,12 @@
 
 #ifndef Q_MOC_RUN
 #include <ndn-cpp/face.hpp>
-#include <ndn-cpp/security/signature/signature-sha256-with-rsa.hpp>
+#include <ndn-cpp/security/signature-sha256-with-rsa.hpp>
 #include <ndn-cpp/security/verifier.hpp>
 #include <cryptopp/base64.h>
-#include <ndn-cpp-et/policy-manager/identity-policy-rule.hpp>
+#include <ndn-cpp-et/policy/sec-rule-identity.hpp>
 #include <fstream>
 #include "endorse-collection.pb.h"
-#include "null-ptrs.h"
 #include "logging.h"
 #endif
 
@@ -60,29 +59,29 @@ ContactManager::~ContactManager()
 void
 ContactManager::initializeSecurity()
 {
-  m_policyManager = make_shared<SimplePolicyManager>();
+  m_policy = make_shared<SecPolicySimple>();
 
-  m_policyManager->addVerificationPolicyRule(make_shared<IdentityPolicyRule>("^([^<DNS>]*)<DNS><ENDORSED>",
+  m_policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><ENDORSED>",
                                                                              "^([^<KEY>]*)<KEY>(<>*)[<ksk-.*><dsk-.*>]<ID-CERT>$",
                                                                              "==", "\\1", "\\1\\2", true));
-  m_policyManager->addVerificationPolicyRule(make_shared<IdentityPolicyRule>("^([^<DNS>]*)<DNS><PROFILE>",
+  m_policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><PROFILE>",
                                                                              "^([^<KEY>]*)<KEY>(<>*)[<ksk-.*><dsk-.*>]<ID-CERT>$",
                                                                              "==", "\\1", "\\1\\2", true));
-  m_policyManager->addVerificationPolicyRule(make_shared<IdentityPolicyRule>("^([^<PROFILE-CERT>]*)<PROFILE-CERT>",
+  m_policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<PROFILE-CERT>]*)<PROFILE-CERT>",
                                                                              "^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>$", 
                                                                              "==", "\\1", "\\1\\2", true));
-  m_policyManager->addVerificationPolicyRule(make_shared<IdentityPolicyRule>("^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>",
+  m_policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>",
                                                                              "^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>$",
                                                                              ">", "\\1\\2", "\\1", true));
-  m_policyManager->addVerificationPolicyRule(make_shared<IdentityPolicyRule>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>",
+  m_policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>",
                                                                              "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$",
                                                                              "==", "\\1", "\\1\\2", true));
-  m_policyManager->addVerificationPolicyRule(make_shared<IdentityPolicyRule>("^(<>*)$", 
+  m_policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^(<>*)$", 
                                                                              "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
                                                                              ">", "\\1", "\\1\\2", true));
   
 
-  m_policyManager->addSigningPolicyRule(make_shared<IdentityPolicyRule>("^([^<DNS>]*)<DNS><PROFILE>",
+  m_policy->addSigningPolicyRule(make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><PROFILE>",
                                                                         "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT>",
                                                                         "==", "\\1", "\\1\\2", true));
 
@@ -113,7 +112,7 @@ iVUF1QIBEQAA");
   Data data;
   data.wireDecode(Block(reinterpret_cast<const uint8_t*>(decoded.c_str()), decoded.size()));
   shared_ptr<IdentityCertificate> anchor = make_shared<IdentityCertificate>(data);
-  m_policyManager->addTrustAnchor(anchor);  
+  m_policy->addTrustAnchor(anchor);  
 
 #ifdef _DEBUG
 
@@ -143,7 +142,7 @@ F7Wh5ayeo8NBKDsCAwEAAQAA");
   Data data2;
   data2.wireDecode(Block(reinterpret_cast<const uint8_t*>(decoded.c_str()), decoded.size()));
   shared_ptr<IdentityCertificate>anchor2 = make_shared<IdentityCertificate>(data2);
-  m_policyManager->addTrustAnchor(anchor2);  
+  m_policy->addTrustAnchor(anchor2);  
 
 #endif
 }
@@ -316,7 +315,7 @@ ContactManager::onTargetData(const shared_ptr<const ndn::Interest>& interest,
                              const OnVerifyFailed& onVerifyFailed,
                              const TimeoutNotify& timeoutNotify)
 {
-  shared_ptr<ValidationRequest> nextStep = m_policyManager->checkVerificationPolicy(data, stepCount, onVerified, onVerifyFailed);
+  shared_ptr<ValidationRequest> nextStep = m_policy->checkVerificationPolicy(data, stepCount, onVerified, onVerifyFailed);
 
   if (nextStep)
     m_face->expressInterest
@@ -348,7 +347,7 @@ ContactManager::onCertData(const shared_ptr<const ndn::Interest>& interest,
                            const shared_ptr<Data>& cert,
                            shared_ptr<ValidationRequest> previousStep)
 {
-  shared_ptr<ValidationRequest> nextStep = m_policyManager->checkVerificationPolicy(cert, 
+  shared_ptr<ValidationRequest> nextStep = m_policy->checkVerificationPolicy(cert, 
                                                                                     previousStep->stepCount_, 
                                                                                     previousStep->onVerified_, 
                                                                                     previousStep->onVerifyFailed_);
@@ -417,12 +416,12 @@ ContactManager::updateProfileData(const Name& identity)
 {
   // Get current profile;
   shared_ptr<Profile> newProfile = m_contactStorage->getSelfProfile(identity);
-  if(CHRONOCHAT_NULL_PROFILE_PTR == newProfile)
+  if(static_cast<bool>(newProfile))
     return;
 
   shared_ptr<EndorseCertificate> newEndorseCertificate = getSignedSelfEndorseCertificate(identity, *newProfile);
 
-  if(CHRONOCHAT_NULL_ENDORSECERTIFICATE_PTR == newEndorseCertificate)
+  if(static_cast<bool>(newEndorseCertificate))
     return;
 
   // Check if profile exists
@@ -441,7 +440,7 @@ ContactManager::updateEndorseCertificate(const ndn::Name& identity, const ndn::N
 {
   shared_ptr<EndorseCertificate> newEndorseCertificate = generateEndorseCertificate(identity, signerIdentity);
 
-  if(CHRONOCHAT_NULL_ENDORSECERTIFICATE_PTR == newEndorseCertificate)
+  if(static_cast<bool>(newEndorseCertificate))
     return;
 
   try{
@@ -458,8 +457,8 @@ shared_ptr<EndorseCertificate>
 ContactManager::generateEndorseCertificate(const Name& identity, const Name& signerIdentity)
 {
   shared_ptr<ContactItem> contact = getContact(identity);
-  if(contact == CHRONOCHAT_NULL_CONTACTITEM_PTR)
-    return CHRONOCHAT_NULL_ENDORSECERTIFICATE_PTR;
+  if(static_cast<bool>(contact))
+    return shared_ptr<EndorseCertificate>();
 
   Name signerKeyName = m_keyChain->getDefaultKeyNameForIdentity(signerIdentity);
   Name signerCertName = m_keyChain->getDefaultCertificateNameForIdentity(signerIdentity);
@@ -474,7 +473,7 @@ ContactManager::generateEndorseCertificate(const Name& identity, const Name& sig
     return cert;
   }catch(std::exception& e){
     _LOG_ERROR("Exception: " << e.what());
-    return CHRONOCHAT_NULL_ENDORSECERTIFICATE_PTR;
+    return shared_ptr<EndorseCertificate>();
   } 
 }
 
@@ -492,14 +491,14 @@ ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
 {
   Name certificateName = m_keyChain->getDefaultCertificateNameForIdentity(identity);
   if(0 == certificateName.size())
-    return CHRONOCHAT_NULL_ENDORSECERTIFICATE_PTR;
+    return shared_ptr<EndorseCertificate>();
 
   ProfileData profileData(profile);
   m_keyChain->sign(profileData, certificateName);
 
   shared_ptr<IdentityCertificate> signingCert = m_keyChain->getCertificate(certificateName);
-  if(CHRONOCHAT_NULL_IDENTITYCERTIFICATE_PTR == signingCert)
-    return CHRONOCHAT_NULL_ENDORSECERTIFICATE_PTR;
+  if(static_cast<bool>(signingCert))
+    return shared_ptr<EndorseCertificate>();
 
   Name signingKeyName = IdentityCertificate::certificateNameToPublicKeyName(signingCert->getName());
 
@@ -520,8 +519,8 @@ ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
       kskCert = signingCert;
     }
 
-  if(CHRONOCHAT_NULL_IDENTITYCERTIFICATE_PTR == kskCert)
-    return CHRONOCHAT_NULL_ENDORSECERTIFICATE_PTR;
+  if(static_cast<bool>(kskCert))
+    return shared_ptr<EndorseCertificate>();
 
   vector<string> endorseList;
   Profile::const_iterator it = profile.begin();
@@ -535,7 +534,7 @@ ContactManager::getSignedSelfEndorseCertificate(const Name& identity,
     return selfEndorseCertificate;
   }catch(std::exception& e){
     _LOG_ERROR("Exception: " << e.what());
-    return CHRONOCHAT_NULL_ENDORSECERTIFICATE_PTR;
+    return shared_ptr<EndorseCertificate>();
   } 
 }
 
@@ -661,7 +660,7 @@ void
 ContactManager::removeContact(const ndn::Name& contactNameSpace)
 {
   shared_ptr<ContactItem> contact = getContact(contactNameSpace);
-  if(contact == CHRONOCHAT_NULL_CONTACTITEM_PTR)
+  if(static_cast<bool>(contact))
     return;
   m_contactStorage->removeContact(contactNameSpace);
   emit contactRemoved(contact->getPublicKeyName());
