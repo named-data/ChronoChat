@@ -19,7 +19,7 @@
 
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp/security/certificate/identity-certificate.hpp>
+#include <ndn-cpp/security/identity-certificate.hpp>
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include "profile.h"

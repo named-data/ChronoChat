@@ -8,22 +8,22 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef PANEL_POLICY_MANAGER_H
-#define PANEL_POLICY_MANAGER_H
+#ifndef SEC_POLICY_CHRONO_CHAT_PANEL_H
+#define SEC_POLICY_CHRONO_CHAT_PANEL_H
 
-#include <ndn-cpp/security/policy/policy-manager.hpp>
-#include <ndn-cpp-et/policy-manager/identity-policy-rule.hpp>
+#include <ndn-cpp/security/sec-policy.hpp>
+#include <ndn-cpp-et/policy/sec-rule-identity.hpp>
 #include <ndn-cpp-et/cache/ttl-certificate-cache.hpp>
 #include <map>
 
 #include "endorse-certificate.h"
 
-class PanelPolicyManager : public ndn::PolicyManager
+class SecPolicyChronoChatPanel : public ndn::SecPolicy
 {
 public:
-  PanelPolicyManager(const int & stepLimit = 10);
+  SecPolicyChronoChatPanel(const int & stepLimit = 10);
 
-  ~PanelPolicyManager()
+  ~SecPolicyChronoChatPanel()
   {}
 
   /**
@@ -88,10 +88,10 @@ private:
   int m_stepLimit;
   ndn::TTLCertificateCache m_certificateCache;
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_localPrefixRegex;
-  ndn::ptr_lib::shared_ptr<ndn::IdentityPolicyRule> m_invitationDataSigningRule;
+  ndn::ptr_lib::shared_ptr<ndn::SecRuleIdentity> m_invitationDataSigningRule;
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_kskRegex;
-  ndn::ptr_lib::shared_ptr<ndn::IdentityPolicyRule> m_dskRule;
-  ndn::ptr_lib::shared_ptr<ndn::IdentityPolicyRule> m_endorseeRule;
+  ndn::ptr_lib::shared_ptr<ndn::SecRuleIdentity> m_dskRule;
+  ndn::ptr_lib::shared_ptr<ndn::SecRuleIdentity> m_endorseeRule;
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_keyNameRegex;
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_signingCertificateRegex;
   std::map<ndn::Name, ndn::PublicKey, ndn::Name::BreadthFirstLess> m_trustAnchors;

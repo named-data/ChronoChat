@@ -9,7 +9,6 @@
  */
 
 #include "contact-storage.h"
-#include "null-ptrs.h"
 
 #include <boost/filesystem.hpp>
 #include "logging.h"
@@ -518,7 +517,7 @@ ContactStorage::getContact(const Name& name)
 
       return contact;      
     } 
-  return CHRONOCHAT_NULL_CONTACTITEM_PTR;
+  return shared_ptr<ContactItem>();
 }
 
 shared_ptr<Profile>

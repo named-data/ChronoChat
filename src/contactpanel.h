@@ -31,7 +31,7 @@
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
 #include "chronos-invitation.h"
-#include "panel-policy-manager.h"
+#include "sec-policy-chrono-chat-panel.h"
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/thread.hpp>
@@ -267,6 +267,7 @@ private slots:
   
 
 private:
+
   Ui::ContactPanel *ui;
   WarningDialog* m_warningDialog;
   ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;
@@ -284,7 +285,7 @@ private:
   std::vector<ndn::ptr_lib::shared_ptr<ContactItem> > m_contactList;
   ndn::ptr_lib::shared_ptr<std::vector<bool> > m_collectStatus;
 
-  ndn::ptr_lib::shared_ptr<PanelPolicyManager> m_policyManager;
+  ndn::ptr_lib::shared_ptr<SecPolicyChronoChatPanel> m_policy;
   ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
   ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
 

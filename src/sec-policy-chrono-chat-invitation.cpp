@@ -8,10 +8,9 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "invitation-policy-manager.h"
-#include "null-ptrs.h"
+#include "sec-policy-chrono-chat-invitation.h"
 #include <ndn-cpp/security/verifier.hpp>
-#include <ndn-cpp/security/signature/signature-sha256-with-rsa.hpp>
+#include <ndn-cpp/security/signature-sha256-with-rsa.hpp>
 
 #include "logging.h"
 
@@ -19,41 +18,41 @@ using namespace std;
 using namespace ndn;
 using namespace ndn::ptr_lib;
 
-INIT_LOGGER("InvitationPolicyManager");
+INIT_LOGGER("SecPolicyChronoChatInvitation");
 
-InvitationPolicyManager::InvitationPolicyManager(const string& chatroomName,
+SecPolicyChronoChatInvitation::SecPolicyChronoChatInvitation(const string& chatroomName,
                                                  const Name& signingIdentity,
                                                  int stepLimit)
   : m_chatroomName(chatroomName)
   , m_signingIdentity(signingIdentity)
   , m_stepLimit(stepLimit)
 {
-  m_invitationPolicyRule = make_shared<IdentityPolicyRule>("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
+  m_invitationPolicyRule = make_shared<SecRuleIdentity>("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
                                                            "^([^<KEY>]*)<KEY>(<>*)[<dsk-.*><ksk-.*>]<ID-CERT>$", 
                                                            "==", "\\1", "\\1\\2", true);
 
   m_kskRegex = make_shared<Regex>("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT><>$", "\\1\\2");
 
-  m_dskRule = make_shared<IdentityPolicyRule>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
+  m_dskRule = make_shared<SecRuleIdentity>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
                                               "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
                                               "==", "\\1", "\\1\\2", true);
 
   m_keyNameRegex = make_shared<Regex>("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>$", "\\1\\2");
 } 
 
-InvitationPolicyManager::~InvitationPolicyManager()
+SecPolicyChronoChatInvitation::~SecPolicyChronoChatInvitation()
 {}
 
 bool 
-InvitationPolicyManager::skipVerifyAndTrust (const Data& data)
+SecPolicyChronoChatInvitation::skipVerifyAndTrust (const Data& data)
 { return false; }
 
 bool
-InvitationPolicyManager::requireVerify (const Data& data)
+SecPolicyChronoChatInvitation::requireVerify (const Data& data)
 { return true; }
 
 shared_ptr<ValidationRequest>
-InvitationPolicyManager::checkVerificationPolicy(const shared_ptr<Data>& data, 
+SecPolicyChronoChatInvitation::checkVerificationPolicy(const shared_ptr<Data>& data, 
                                                  int stepCount, 
                                                  const OnVerified& onVerified,
                                                  const OnVerifyFailed& onVerifyFailed)
@@ -62,7 +61,7 @@ InvitationPolicyManager::checkVerificationPolicy(const shared_ptr<Data>& data,
     {
       _LOG_ERROR("Reach the maximum steps of verification!");
       onVerifyFailed(data);
-      return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+      return shared_ptr<ValidationRequest>();
     }
 
   try{
@@ -81,28 +80,28 @@ InvitationPolicyManager::checkVerificationPolicy(const shared_ptr<Data>& data,
         //     else
         //       onVerifyFailed(data);
 
-        //     return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+        //     return shared_ptr<ValidationRequest>();
         //   }
 
         shared_ptr<const Certificate> trustedCert = m_certificateCache.getCertificate(keyLocatorName);
       
-        if(trustedCert != ndn::TCC_NULL_CERTIFICATE_PTR){
+        if(static_cast<bool>(trustedCert)){
           if(Verifier::verifySignature(*data, sig, trustedCert->getPublicKeyInfo()))
             onVerified(data);
           else
             onVerifyFailed(data);
 
-          return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+          return shared_ptr<ValidationRequest>();
         }
 
-        OnVerified recursiveVerifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateVerified, 
+        OnVerified recursiveVerifiedCallback = boost::bind(&SecPolicyChronoChatInvitation::onDskCertificateVerified, 
                                                            this, 
                                                            _1, 
                                                            data, 
                                                            onVerified, 
                                                            onVerifyFailed);
       
-        OnVerifyFailed recursiveUnverifiedCallback = boost::bind(&InvitationPolicyManager::onDskCertificateVerifyFailed, 
+        OnVerifyFailed recursiveUnverifiedCallback = boost::bind(&SecPolicyChronoChatInvitation::onDskCertificateVerifyFailed, 
                                                                  this, 
                                                                  _1, 
                                                                  data, 
@@ -136,7 +135,7 @@ InvitationPolicyManager::checkVerificationPolicy(const shared_ptr<Data>& data,
         else
           onVerifyFailed(data);
 
-        return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+        return shared_ptr<ValidationRequest>();
       }
 
     if(m_dskRule->satisfy(*data))
@@ -152,42 +151,42 @@ InvitationPolicyManager::checkVerificationPolicy(const shared_ptr<Data>& data,
         else
           onVerifyFailed(data);
 
-        return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;	
+        return shared_ptr<ValidationRequest>();	
       }
   }catch(SignatureSha256WithRsa::Error &e){
     _LOG_DEBUG("checkVerificationPolicy " << e.what());
     onVerifyFailed(data);
-    return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+    return shared_ptr<ValidationRequest>();
   }catch(KeyLocator::Error &e){
     _LOG_DEBUG("checkVerificationPolicy " << e.what());
     onVerifyFailed(data);
-    return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+    return shared_ptr<ValidationRequest>();
   }
 
   onVerifyFailed(data);
-  return CHRONOCHAT_NULL_VALIDATIONREQUEST_PTR;
+  return shared_ptr<ValidationRequest>();
 }
 
 bool 
-InvitationPolicyManager::checkSigningPolicy(const Name& dataName, 
+SecPolicyChronoChatInvitation::checkSigningPolicy(const Name& dataName, 
                                             const Name& certificateName)
 {
   return true;
 }
     
 Name 
-InvitationPolicyManager::inferSigningIdentity(const Name& dataName)
+SecPolicyChronoChatInvitation::inferSigningIdentity(const Name& dataName)
 {
   return m_signingIdentity;
 }
 
 void
-InvitationPolicyManager::addTrustAnchor(const EndorseCertificate& selfEndorseCertificate)
+SecPolicyChronoChatInvitation::addTrustAnchor(const EndorseCertificate& selfEndorseCertificate)
 { m_trustAnchors.insert(pair <Name, PublicKey > (selfEndorseCertificate.getPublicKeyName(), selfEndorseCertificate.getPublicKeyInfo())); }
 
 
 // void
-// InvitationPolicyManager::addChatDataRule(const Name& prefix, 
+// SecPolicyChronoChatInvitation::addChatDataRule(const Name& prefix, 
 //                                        const IdentityCertificate identityCertificate)
 // {
 //   Name dataPrefix = prefix;
@@ -207,7 +206,7 @@ InvitationPolicyManager::addTrustAnchor(const EndorseCertificate& selfEndorseCer
 
 
 void 
-InvitationPolicyManager::onDskCertificateVerified(const shared_ptr<Data>& certData, 
+SecPolicyChronoChatInvitation::onDskCertificateVerified(const shared_ptr<Data>& certData, 
                                                   shared_ptr<Data> originalData,
                                                   const OnVerified& onVerified, 
                                                   const OnVerifyFailed& onVerifyFailed)
@@ -235,17 +234,17 @@ InvitationPolicyManager::onDskCertificateVerified(const shared_ptr<Data>& certDa
 }
 
 void
-InvitationPolicyManager::onDskCertificateVerifyFailed(const shared_ptr<Data>& certData, 
+SecPolicyChronoChatInvitation::onDskCertificateVerifyFailed(const shared_ptr<Data>& certData, 
                                                       shared_ptr<Data> originalData,
                                                       const OnVerifyFailed& onVerifyFailed)
 { onVerifyFailed(originalData); }
 
 shared_ptr<IdentityCertificate> 
-InvitationPolicyManager::getValidatedDskCertificate(const ndn::Name& certName)
+SecPolicyChronoChatInvitation::getValidatedDskCertificate(const ndn::Name& certName)
 {
   map<Name, shared_ptr<IdentityCertificate> >::iterator it = m_dskCertificates.find(certName);
   if(m_dskCertificates.end() != it)
     return it->second;
   else
-    return CHRONOCHAT_NULL_IDENTITYCERTIFICATE_PTR;
+    return shared_ptr<IdentityCertificate>();
 }

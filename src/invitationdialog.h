@@ -15,7 +15,7 @@
 
 #ifndef Q_MOC_RUN
 #include <ndn-cpp/data.hpp>
-#include <ndn-cpp/security/certificate/identity-certificate.hpp>
+#include <ndn-cpp/security/identity-certificate.hpp>
 #include "chronos-invitation.h"
 #endif
 

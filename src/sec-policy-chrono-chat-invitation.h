@@ -8,27 +8,27 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef INVITATION_POLICY_MANAGER_H
-#define INVITATION_POLICY_MANAGER_H
+#ifndef SEC_POLICY_CHRONO_CHAT_INVITATION_H
+#define SEC_POLICY_CHRONO_CHAT_INVITATION_H
 
-#include <ndn-cpp/security/policy/policy-manager.hpp>
-#include <ndn-cpp-et/policy-manager/identity-policy-rule.hpp>
+#include <ndn-cpp/security/sec-policy.hpp>
+#include <ndn-cpp-et/policy/sec-rule-identity.hpp>
 #include <ndn-cpp-et/cache/ttl-certificate-cache.hpp>
 #include <ndn-cpp-et/regex/regex.hpp>
 #include <map>
 
 #include "endorse-certificate.h"
-#include "chat-policy-rule.h"
+#include "sec-rule-chrono-chat.h"
 
-class InvitationPolicyManager : public ndn::PolicyManager
+class SecPolicyChronoChatInvitation : public ndn::SecPolicy
 {
 public:
-  InvitationPolicyManager(const std::string& chatroomName,
-                          const ndn::Name& signingIdentity,
-                          int stepLimit = 10);
+  SecPolicyChronoChatInvitation(const std::string& chatroomName,
+                                const ndn::Name& signingIdentity,
+                                int stepLimit = 10);
   
   virtual
-  ~InvitationPolicyManager();
+  ~SecPolicyChronoChatInvitation();
 
   bool 
   skipVerifyAndTrust (const ndn::Data& data);
@@ -79,9 +79,9 @@ private:
 
   ndn::TTLCertificateCache m_certificateCache;
 
-  ndn::ptr_lib::shared_ptr<ndn::IdentityPolicyRule> m_invitationPolicyRule;
-  ndn::ptr_lib::shared_ptr<ndn::IdentityPolicyRule> m_dskRule;
-  std::map<ndn::Name, ChatPolicyRule, ndn::Name::BreadthFirstLess> m_chatDataRules;
+  ndn::ptr_lib::shared_ptr<ndn::SecRuleIdentity> m_invitationPolicyRule;
+  ndn::ptr_lib::shared_ptr<ndn::SecRuleIdentity> m_dskRule;
+  std::map<ndn::Name, SecRuleChronoChat, ndn::Name::BreadthFirstLess> m_chatDataRules;
 
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_kskRegex;
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_keyNameRegex;

@@ -10,7 +10,7 @@
 
 #include "chronos-invitation.h"
 
-#include <ndn-cpp/security/certificate/identity-certificate.hpp>
+#include <ndn-cpp/security/identity-certificate.hpp>
 #include "logging.h"
 
 using namespace std;

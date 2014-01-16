@@ -15,7 +15,6 @@
 #ifndef Q_MOC_RUN
 #include <ndn-cpp/security/verifier.hpp>
 #include <boost/iostreams/stream.hpp>
-#include "null-ptrs.h"
 #include "endorse-collection.pb.h"
 #include "logging.h"
 #endif
@@ -195,7 +194,7 @@ AddContactPanel::onCollectEndorseFetched(const Data& data)
 void
 AddContactPanel::onCollectEndorseFetchFailed(const Name& identity)
 {
-  m_currentCollectEndorse = CHRONOCHAT_NULL_DATA_PTR;
+  m_currentCollectEndorse = shared_ptr<Data>();
   m_currentCollectEndorseReady = true;
   
   if(m_currentEndorseCertificateReady == true)
@@ -212,7 +211,7 @@ AddContactPanel::displayContactInfo()
 
   map<string, int> endorseCount;
 
-  if(m_currentCollectEndorse != CHRONOCHAT_NULL_DATA_PTR)
+  if(static_cast<bool>(m_currentCollectEndorse))
     {
       Chronos::EndorseCollection endorseCollection;
       
@@ -234,7 +233,7 @@ AddContactPanel::displayContactInfo()
             Name signerName = signerKeyName.getPrefix(-1);
           
             shared_ptr<ContactItem> contact = m_contactManager->getContact(signerName);
-            if(contact == CHRONOCHAT_NULL_CONTACTITEM_PTR)
+            if(static_cast<bool>(contact))
               continue;
 
             if(!contact->isIntroducer() || !contact->canBeTrustedFor(m_currentEndorseCertificate->getProfileData().getIdentityName()))

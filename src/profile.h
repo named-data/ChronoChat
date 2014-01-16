@@ -12,7 +12,7 @@
 #define LINKNDN_PROFILE_H
 
 #include <ndn-cpp/name.hpp>
-#include <ndn-cpp/security/certificate/identity-certificate.hpp>
+#include <ndn-cpp/security/identity-certificate.hpp>
 #include <map>
 #include <string>
 #include "profile.pb.h"

@@ -9,7 +9,6 @@
  */
 
 #include "dns-storage.h"
-#include "null-ptrs.h"
 
 #include <boost/filesystem.hpp>
 #include "logging.h"
@@ -152,5 +151,5 @@ DnsStorage::getData(const Name& dataName)
     }
   sqlite3_finalize(stmt);
 
-  return CHRONOCHAT_NULL_DATA_PTR;
+  return shared_ptr<Data>();
 }
