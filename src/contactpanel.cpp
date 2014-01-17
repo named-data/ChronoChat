@@ -58,6 +58,8 @@ ContactPanel::ContactPanel(QWidget *parent)
   createAction();
 
   m_keyChain = make_shared<KeyChain>();
+  m_verifier = make_shared<Verifier>(m_policy);
+  m_verifier->setFace(m_face);
 
   m_contactManager = make_shared<ContactManager>(m_keyChain, m_face);
 
@@ -340,23 +342,19 @@ ContactPanel::sendInterest(const Interest& interest,
                            const OnVerified& onVerified,
                            const OnVerifyFailed& onVerifyFailed,
                            const TimeoutNotify& timeoutNotify,
-                           int retry /* = 1 */,
-                           int stepCount /* = 0 */)
+                           int retry /* = 1 */)
 {
   m_face->expressInterest(interest, 
                           func_lib::bind(&ContactPanel::onTargetData, 
                                       this,
                                       _1,
                                       _2,
-                                      stepCount,
                                       onVerified, 
-                                      onVerifyFailed,
-                                      timeoutNotify),
+                                      onVerifyFailed),
                           func_lib::bind(&ContactPanel::onTargetTimeout,
                                       this,
                                       _1,
                                       retry,
-                                      stepCount,
                                       onVerified,
                                       onVerifyFailed,
                                       timeoutNotify));
@@ -365,76 +363,26 @@ ContactPanel::sendInterest(const Interest& interest,
 void
 ContactPanel::onTargetData(const shared_ptr<const ndn::Interest>& interest, 
                            const shared_ptr<Data>& data,
-                           int stepCount,
                            const OnVerified& onVerified,
-                           const OnVerifyFailed& onVerifyFailed,
-                           const TimeoutNotify& timeoutNotify)
+                           const OnVerifyFailed& onVerifyFailed)
 {
-  shared_ptr<ValidationRequest> nextStep = m_policy->checkVerificationPolicy(data, stepCount, onVerified, onVerifyFailed);
-
-  if (nextStep)
-    m_face->expressInterest
-      (*nextStep->interest_, 
-       func_lib::bind(&ContactPanel::onCertData, this, _1, _2, nextStep), 
-       func_lib::bind(&ContactPanel::onCertTimeout, this, _1, onVerifyFailed, data, nextStep));
-
+  m_verifier->verifyData(data, onVerified, onVerifyFailed);
 }
 
 void
 ContactPanel::onTargetTimeout(const shared_ptr<const ndn::Interest>& interest, 
                               int retry,
-                              int stepCount,
                               const OnVerified& onVerified,
                               const OnVerifyFailed& onVerifyFailed,
                               const TimeoutNotify& timeoutNotify)
 {
   if(retry > 0)
-    sendInterest(*interest, onVerified, onVerifyFailed, timeoutNotify, retry-1, stepCount);
+    sendInterest(*interest, onVerified, onVerifyFailed, timeoutNotify, retry-1);
   else
     {
       _LOG_DEBUG("Interest: " << interest->getName().toUri() << " eventually times out!");
       timeoutNotify();
     }
-}
-
-void
-ContactPanel::onCertData(const shared_ptr<const ndn::Interest>& interest, 
-                         const shared_ptr<Data>& cert,
-                         shared_ptr<ValidationRequest> previousStep)
-{
-  shared_ptr<ValidationRequest> nextStep = m_policy->checkVerificationPolicy(cert, 
-                                                                                    previousStep->stepCount_, 
-                                                                                    previousStep->onVerified_, 
-                                                                                    previousStep->onVerifyFailed_);
-
-  if (nextStep)
-    m_face->expressInterest
-      (*nextStep->interest_, 
-       func_lib::bind(&ContactPanel::onCertData, this, _1, _2, nextStep), 
-       func_lib::bind(&ContactPanel::onCertTimeout, this, _1, previousStep->onVerifyFailed_, cert, nextStep));
-}
-
-void
-ContactPanel::onCertTimeout(const shared_ptr<const ndn::Interest>& interest,
-                            const OnVerifyFailed& onVerifyFailed,
-                            const shared_ptr<Data>& data,
-                            shared_ptr<ValidationRequest> nextStep)
-{
-  if(nextStep->retry_ > 0)
-    m_face->expressInterest(*interest, 
-                            func_lib::bind(&ContactPanel::onCertData,
-                                 this,
-                                 _1,
-                                 _2,
-                                 nextStep),
-                            func_lib::bind(&ContactPanel::onCertTimeout,
-                                 this,
-                                 _1,
-                                 onVerifyFailed,
-                                 data,
-                                 nextStep));
- else
-   onVerifyFailed(data);
 }
 
 void

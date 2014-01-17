@@ -109,21 +109,17 @@ private:
                const ndn::OnVerified& onVerified,
                const ndn::OnVerifyFailed& onVerifyFailed,
                const TimeoutNotify& timeoutNotify,
-               int retry = 1,
-               int stepCount = 0);
+               int retry = 1);
 
   void
   onTargetData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
                const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
-               int stepCount,
                const ndn::OnVerified& onVerified,
-               const ndn::OnVerifyFailed& onVerifyFailed,
-               const TimeoutNotify& timeoutNotify);
+               const ndn::OnVerifyFailed& onVerifyFailed);
 
   void
   onTargetTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
                   int retry,
-                  int stepCount,
                   const ndn::OnVerified& onVerified,
                   const ndn::OnVerifyFailed& onVerifyFailed,
                   const TimeoutNotify& timeoutNotify);
@@ -286,6 +282,7 @@ private:
   ndn::ptr_lib::shared_ptr<std::vector<bool> > m_collectStatus;
 
   ndn::ptr_lib::shared_ptr<SecPolicyChronoChatPanel> m_policy;
+  ndn::ptr_lib::shared_ptr<ndn::Verifier> m_verifier;
   ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
   ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
 

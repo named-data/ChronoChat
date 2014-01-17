@@ -148,42 +148,22 @@ private:
   void
   onTargetData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
                const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
-               int stepCount,
                const ndn::OnVerified& onVerified,
-               const ndn::OnVerifyFailed& onVerifyFailed,
-               const OnEventualTimeout& timeoutNotify,
-               const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy);
+               const ndn::OnVerifyFailed& onVerifyFailed);
 
   void
   onTargetTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
                   int retry,
-                  int stepCount,
                   const ndn::OnVerified& onVerified,
                   const ndn::OnVerifyFailed& onVerifyFailed,
-                  const OnEventualTimeout& timeoutNotify,
-                  const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy);
-  
-  void
-  onCertData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
-             const ndn::ptr_lib::shared_ptr<ndn::Data>& cert,
-             ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> previousStep,
-             const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy);
-
-  void
-  onCertTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
-                const ndn::OnVerifyFailed& onVerifyFailed,
-                const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
-                ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> nextStep,
-                const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy);
+                  const OnEventualTimeout& timeoutNotify);
 
   void
   sendInterest(const ndn::Interest& interest,
                const ndn::OnVerified& onVerified,
                const ndn::OnVerifyFailed& onVerifyFailed,
                const OnEventualTimeout& timeoutNotify,
-               const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy,
-               int retry = 1,
-               int stepCount = 0);
+               int retry = 1);
   
   void 
   onInviteReplyVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, 
@@ -343,6 +323,7 @@ private:
   ndn::Name m_defaultIdentity;
   ndn::ptr_lib::shared_ptr<SecPolicyChronoChatInvitation> m_invitationPolicy;
   ndn::ptr_lib::shared_ptr<SecPolicySync> m_syncPolicy; 
+  ndn::ptr_lib::shared_ptr<ndn::Verifier> m_verifier;
   ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
   ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
 

@@ -20,8 +20,7 @@
 #include "profile.h"
 #include <ndn-cpp/face.hpp>
 #include <ndn-cpp/security/key-chain.hpp>
-#include <ndn-cpp/security/validation-request.hpp>
-#include <ndn-cpp-et/policy/sec-policy-simple.hpp>
+#include <ndn-cpp/security/verifier.hpp>
 #endif
 
 typedef ndn::func_lib::function<void()> TimeoutNotify;
@@ -111,36 +110,20 @@ private:
                const ndn::OnVerified& onVerified,
                const ndn::OnVerifyFailed& onVerifyFailed,
                const TimeoutNotify& timeoutNotify,
-               int retry = 1,
-               int stepCount = 0);
+               int retry = 1);
 
   void
   onTargetData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
                const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
-               int stepCount,
                const ndn::OnVerified& onVerified,
-               const ndn::OnVerifyFailed& onVerifyFailed,
-               const TimeoutNotify& timeoutNotify);
+               const ndn::OnVerifyFailed& onVerifyFailed);
 
   void
   onTargetTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
                   int retry,
-                  int stepCount,
                   const ndn::OnVerified& onVerified,
                   const ndn::OnVerifyFailed& onVerifyFailed,
                   const TimeoutNotify& timeoutNotify);
-
-
-  void
-  onCertData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
-             const ndn::ptr_lib::shared_ptr<ndn::Data>& cert,
-             ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> previousStep);
-
-  void
-  onCertTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
-                const ndn::OnVerifyFailed& onVerifyFailed,
-                const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
-                ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> nextStep);
 
 
   void
@@ -227,7 +210,7 @@ private:
 
   ndn::ptr_lib::shared_ptr<ContactStorage> m_contactStorage;
   ndn::ptr_lib::shared_ptr<DnsStorage> m_dnsStorage;
-  ndn::ptr_lib::shared_ptr<ndn::SecPolicySimple> m_policy;
+  ndn::ptr_lib::shared_ptr<ndn::Verifier> m_verifier;
   ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
   ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
   ndn::Name m_defaultIdentity;
