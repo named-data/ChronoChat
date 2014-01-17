@@ -87,6 +87,8 @@ ChatDialog::ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
   m_timer = new QTimer(this);
 
   startFace();
+  m_verifier = ndn::ptr_lib::make_shared<ndn::Verifier>(m_invitationPolicy);
+  m_verifier->setFace(m_face);
 
   ndn::Name certificateName = m_keyChain->getDefaultCertificateNameForIdentity(m_defaultIdentity);
   m_syncPolicy = ndn::ptr_lib::make_shared<SecPolicySync>(m_defaultIdentity, certificateName, m_chatroomPrefix, m_face);
@@ -222,109 +224,47 @@ ChatDialog::sendInterest(const ndn::Interest& interest,
                          const ndn::OnVerified& onVerified,
                          const ndn::OnVerifyFailed& onVerifyFailed,
                          const OnEventualTimeout& timeoutNotify,
-                         const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy,
-                         int retry /* = 1 */,
-                         int stepCount /* = 0 */)
+                         int retry /* = 1 */)
 {
   m_face->expressInterest(interest, 
                           boost::bind(&ChatDialog::onTargetData, 
                                       this,
                                       _1,
                                       _2,
-                                      stepCount,
                                       onVerified, 
-                                      onVerifyFailed,
-                                      timeoutNotify,
-                                      policy),
+                                      onVerifyFailed),
                           boost::bind(&ChatDialog::onTargetTimeout,
                                       this,
                                       _1,
                                       retry,
-                                      stepCount,
                                       onVerified,
                                       onVerifyFailed,
-                                      timeoutNotify,
-                                      policy));
+                                      timeoutNotify));
 }
 
 void
 ChatDialog::onTargetData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
                          const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
-                         int stepCount,
                          const ndn::OnVerified& onVerified,
-                         const ndn::OnVerifyFailed& onVerifyFailed,
-                         const OnEventualTimeout& timeoutNotify,
-                         const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy)
+                         const ndn::OnVerifyFailed& onVerifyFailed)
 {
-  ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> nextStep = policy->checkVerificationPolicy(data, stepCount, onVerified, onVerifyFailed);
-
-  if (nextStep)
-    m_face->expressInterest
-      (*nextStep->interest_, 
-       boost::bind(&ChatDialog::onCertData, this, _1, _2, nextStep, policy), 
-       boost::bind(&ChatDialog::onCertTimeout, this, _1, onVerifyFailed, data, nextStep, policy));
+  m_verifier->verifyData(data, onVerified, onVerifyFailed);
 }
 
 void
 ChatDialog::onTargetTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
                             int retry,
-                            int stepCount,
                             const ndn::OnVerified& onVerified,
                             const ndn::OnVerifyFailed& onVerifyFailed,
-                            const OnEventualTimeout& timeoutNotify,
-                            const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy)
+                            const OnEventualTimeout& timeoutNotify)
 {
   if(retry > 0)
-    sendInterest(*interest, onVerified, onVerifyFailed, timeoutNotify, policy, retry-1, stepCount);
+    sendInterest(*interest, onVerified, onVerifyFailed, timeoutNotify, retry-1);
   else
     {
       _LOG_DEBUG("Interest: " << interest->getName().toUri() << " eventually times out!");
       timeoutNotify();
     }
-}
-
-void
-ChatDialog::onCertData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
-                       const ndn::ptr_lib::shared_ptr<ndn::Data>& cert,
-                       ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> previousStep,
-                       const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy)
-{
-  ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> nextStep = policy->checkVerificationPolicy(cert, 
-                                                                                                     previousStep->stepCount_, 
-                                                                                                     previousStep->onVerified_, 
-                                                                                                     previousStep->onVerifyFailed_);
-
-  if (nextStep)
-    m_face->expressInterest
-      (*nextStep->interest_, 
-       boost::bind(&ChatDialog::onCertData, this, _1, _2, nextStep, policy), 
-       boost::bind(&ChatDialog::onCertTimeout, this, _1, previousStep->onVerifyFailed_, cert, nextStep, policy));
-}
-
-void
-ChatDialog::onCertTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
-                          const ndn::OnVerifyFailed& onVerifyFailed,
-                          const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
-                          ndn::ptr_lib::shared_ptr<ndn::ValidationRequest> nextStep,
-                          const ndn::ptr_lib::shared_ptr<ndn::SecPolicy>& policy)
-{
-  if(nextStep->retry_ > 0)
-    m_face->expressInterest(*interest, 
-                            boost::bind(&ChatDialog::onCertData,
-                                        this,
-                                        _1,
-                                        _2,
-                                        nextStep,
-                                        policy),
-                            boost::bind(&ChatDialog::onCertTimeout,
-                                        this,
-                                        _1,
-                                        onVerifyFailed,
-                                        data,
-                                        nextStep,
-                                        policy));
- else
-   onVerifyFailed(data);
 }
 
 void
@@ -370,7 +310,7 @@ ChatDialog::sendInvitation(ndn::ptr_lib::shared_ptr<ContactItem> contact, bool i
                                                      contact->getNameSpace());
                                                  
 
-  sendInterest(interest, onVerified, onVerifyFailed, timeoutNotify, m_invitationPolicy);
+  sendInterest(interest, onVerified, onVerifyFailed, timeoutNotify);
 }
 
 void 

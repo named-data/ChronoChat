@@ -29,6 +29,7 @@
 #include <ndn-cpp/security/verifier.hpp>
 #include <cryptopp/base64.h>
 #include <ndn-cpp-et/policy/sec-rule-identity.hpp>
+#include <ndn-cpp-et/policy/sec-policy-simple.hpp>
 #include <fstream>
 #include "endorse-collection.pb.h"
 #include "logging.h"
@@ -59,31 +60,33 @@ ContactManager::~ContactManager()
 void
 ContactManager::initializeSecurity()
 {
-  m_policy = make_shared<SecPolicySimple>();
+  shared_ptr<SecPolicySimple> policy = make_shared<SecPolicySimple>();
+  m_verifier = make_shared<Verifier>(policy);
+  m_verifier->setFace(m_face);
 
-  m_policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><ENDORSED>",
-                                                                             "^([^<KEY>]*)<KEY>(<>*)[<ksk-.*><dsk-.*>]<ID-CERT>$",
-                                                                             "==", "\\1", "\\1\\2", true));
-  m_policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><PROFILE>",
-                                                                             "^([^<KEY>]*)<KEY>(<>*)[<ksk-.*><dsk-.*>]<ID-CERT>$",
-                                                                             "==", "\\1", "\\1\\2", true));
-  m_policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<PROFILE-CERT>]*)<PROFILE-CERT>",
-                                                                             "^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>$", 
-                                                                             "==", "\\1", "\\1\\2", true));
-  m_policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>",
-                                                                             "^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>$",
-                                                                             ">", "\\1\\2", "\\1", true));
-  m_policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>",
-                                                                             "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$",
-                                                                             "==", "\\1", "\\1\\2", true));
-  m_policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^(<>*)$", 
-                                                                             "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
-                                                                             ">", "\\1", "\\1\\2", true));
+  policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><ENDORSED>",
+                                                                 "^([^<KEY>]*)<KEY>(<>*)[<ksk-.*><dsk-.*>]<ID-CERT>$",
+                                                                 "==", "\\1", "\\1\\2", true));
+  policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><PROFILE>",
+                                                                 "^([^<KEY>]*)<KEY>(<>*)[<ksk-.*><dsk-.*>]<ID-CERT>$",
+                                                                 "==", "\\1", "\\1\\2", true));
+  policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<PROFILE-CERT>]*)<PROFILE-CERT>",
+                                                                 "^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>$", 
+                                                                 "==", "\\1", "\\1\\2", true));
+  policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>",
+                                                                 "^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>$",
+                                                                 ">", "\\1\\2", "\\1", true));
+  policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>",
+                                                                 "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$",
+                                                                 "==", "\\1", "\\1\\2", true));
+  policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^(<>*)$", 
+                                                                 "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
+                                                                 ">", "\\1", "\\1\\2", true));
   
 
-  m_policy->addSigningPolicyRule(make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><PROFILE>",
-                                                                        "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT>",
-                                                                        "==", "\\1", "\\1\\2", true));
+  policy->addSigningPolicyRule(make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><PROFILE>",
+                                                            "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT>",
+                                                            "==", "\\1", "\\1\\2", true));
 
 
   const string TrustAnchor("BIICqgOyEIWlKzDI2xX2hdq5Azheu9IVyewcV4uM7ylfh67Y8MIxF3tDCTx5JgEn\
@@ -112,7 +115,7 @@ iVUF1QIBEQAA");
   Data data;
   data.wireDecode(Block(reinterpret_cast<const uint8_t*>(decoded.c_str()), decoded.size()));
   shared_ptr<IdentityCertificate> anchor = make_shared<IdentityCertificate>(data);
-  m_policy->addTrustAnchor(anchor);  
+  policy->addTrustAnchor(anchor);  
 
 #ifdef _DEBUG
 
@@ -142,7 +145,7 @@ F7Wh5ayeo8NBKDsCAwEAAQAA");
   Data data2;
   data2.wireDecode(Block(reinterpret_cast<const uint8_t*>(decoded.c_str()), decoded.size()));
   shared_ptr<IdentityCertificate>anchor2 = make_shared<IdentityCertificate>(data2);
-  m_policy->addTrustAnchor(anchor2);  
+  policy->addTrustAnchor(anchor2);  
 
 #endif
 }
@@ -310,31 +313,21 @@ ContactManager::onIdCertificateVerifyFailed(const shared_ptr<Data>& data, const 
 void
 ContactManager::onTargetData(const shared_ptr<const ndn::Interest>& interest, 
                              const shared_ptr<Data>& data,
-                             int stepCount,
                              const OnVerified& onVerified,
-                             const OnVerifyFailed& onVerifyFailed,
-                             const TimeoutNotify& timeoutNotify)
+                             const OnVerifyFailed& onVerifyFailed)
 {
-  shared_ptr<ValidationRequest> nextStep = m_policy->checkVerificationPolicy(data, stepCount, onVerified, onVerifyFailed);
-
-  if (nextStep)
-    m_face->expressInterest
-      (*nextStep->interest_, 
-       bind(&ContactManager::onCertData, this, _1, _2, nextStep), 
-       bind(&ContactManager::onCertTimeout, this, _1, onVerifyFailed, data, nextStep));
-
+  m_verifier->verifyData(data, onVerified, onVerifyFailed);
 }
 
 void
 ContactManager::onTargetTimeout(const shared_ptr<const ndn::Interest>& interest, 
                                 int retry,
-                                int stepCount,
                                 const OnVerified& onVerified,
                                 const OnVerifyFailed& onVerifyFailed,
                                 const TimeoutNotify& timeoutNotify)
 {
   if(retry > 0)
-    sendInterest(*interest, onVerified, onVerifyFailed, timeoutNotify, retry-1, stepCount);
+    sendInterest(*interest, onVerified, onVerifyFailed, timeoutNotify, retry-1);
   else
     {
       _LOG_DEBUG("Interest: " << interest->getName().toUri() << " eventually times out!");
@@ -343,67 +336,23 @@ ContactManager::onTargetTimeout(const shared_ptr<const ndn::Interest>& interest,
 }
 
 void
-ContactManager::onCertData(const shared_ptr<const ndn::Interest>& interest, 
-                           const shared_ptr<Data>& cert,
-                           shared_ptr<ValidationRequest> previousStep)
-{
-  shared_ptr<ValidationRequest> nextStep = m_policy->checkVerificationPolicy(cert, 
-                                                                                    previousStep->stepCount_, 
-                                                                                    previousStep->onVerified_, 
-                                                                                    previousStep->onVerifyFailed_);
-
-  if (nextStep)
-    m_face->expressInterest
-      (*nextStep->interest_, 
-       bind(&ContactManager::onCertData, this, _1, _2, nextStep), 
-       bind(&ContactManager::onCertTimeout, this, _1, previousStep->onVerifyFailed_, cert, nextStep));
-}
-
-void
-ContactManager::onCertTimeout(const shared_ptr<const ndn::Interest>& interest,
-                              const OnVerifyFailed& onVerifyFailed,
-                              const shared_ptr<Data>& data,
-                              shared_ptr<ValidationRequest> nextStep)
-{
-  if(nextStep->retry_ > 0)
-    m_face->expressInterest(*interest, 
-                            bind(&ContactManager::onCertData,
-                                 this,
-                                 _1,
-                                 _2,
-                                 nextStep),
-                            bind(&ContactManager::onCertTimeout,
-                                 this,
-                                 _1,
-                                 onVerifyFailed,
-                                 data,
-                                 nextStep));
- else
-   onVerifyFailed(data);
-}
-
-void
 ContactManager::sendInterest(const Interest& interest,
                              const OnVerified& onVerified,
                              const OnVerifyFailed& onVerifyFailed,
                              const TimeoutNotify& timeoutNotify,
-                             int retry /* = 1 */,
-                             int stepCount /* = 0 */)
+                             int retry /* = 1 */)
 {
   uint64_t id = m_face->expressInterest(interest, 
                           boost::bind(&ContactManager::onTargetData, 
                                       this,
                                       _1,
                                       _2,
-                                      stepCount,
                                       onVerified, 
-                                      onVerifyFailed,
-                                      timeoutNotify),
+                                      onVerifyFailed),
                           boost::bind(&ContactManager::onTargetTimeout,
                                       this,
                                       _1,
                                       retry,
-                                      stepCount,
                                       onVerified,
                                       onVerifyFailed,
                                       timeoutNotify));
