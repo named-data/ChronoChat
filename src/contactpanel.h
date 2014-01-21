@@ -275,7 +275,7 @@ private:
   StartChatDialog* m_startChatDialog;
   InvitationDialog* m_invitationDialog;
   SettingDialog* m_settingDialog;
-  std::map<ndn::Name, ChatDialog*, ndn::Name::BreadthFirstLess> m_chatDialogs;
+  std::map<ndn::Name, ChatDialog*> m_chatDialogs;
   QAction* m_menuInvite;
   QAction* m_menuAlias;
   std::vector<ndn::ptr_lib::shared_ptr<ContactItem> > m_contactList;

@@ -11,7 +11,7 @@
 #ifndef LINKNDN_CONTACT_ITEM_H
 #define LINKNDN_CONTACT_ITEM_H
 
-#include <ndn-cpp/data.hpp>
+#include <ndn-cpp-dev/data.hpp>
 #include <ndn-cpp-et/regex/regex.hpp>
 #include <vector>
 #include "endorse-certificate.h"

@@ -9,8 +9,8 @@
  */
 
 #include "sec-policy-chrono-chat-invitation.h"
-#include <ndn-cpp/security/verifier.hpp>
-#include <ndn-cpp/security/signature-sha256-with-rsa.hpp>
+#include <ndn-cpp-dev/security/verifier.hpp>
+#include <ndn-cpp-dev/security/signature-sha256-with-rsa.hpp>
 
 #include "logging.h"
 
@@ -27,13 +27,13 @@ SecPolicyChronoChatInvitation::SecPolicyChronoChatInvitation(const string& chatr
   , m_signingIdentity(signingIdentity)
   , m_stepLimit(stepLimit)
 {
-  m_invitationPolicyRule = make_shared<SecRuleIdentity>("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
+  m_invitationPolicyRule = make_shared<SecRuleRelative>("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
                                                            "^([^<KEY>]*)<KEY>(<>*)[<dsk-.*><ksk-.*>]<ID-CERT>$", 
                                                            "==", "\\1", "\\1\\2", true);
 
   m_kskRegex = make_shared<Regex>("^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT><>$", "\\1\\2");
 
-  m_dskRule = make_shared<SecRuleIdentity>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
+  m_dskRule = make_shared<SecRuleRelative>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
                                               "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
                                               "==", "\\1", "\\1\\2", true);
 

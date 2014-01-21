@@ -144,7 +144,7 @@ BrowseContactDialog::updateCertificateMap(bool filter)
   
   if(filter)
     {
-      map<Name, Name, Name::BreadthFirstLess> certificateMap;
+      map<Name, Name> certificateMap;
 
       vector<string>::iterator it = certNameList.begin();
   

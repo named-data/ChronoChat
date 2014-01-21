@@ -13,7 +13,7 @@
 #include <QMessageBox>
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp/security/verifier.hpp>
+#include <ndn-cpp-dev/security/verifier.hpp>
 #include <boost/iostreams/stream.hpp>
 #include "endorse-collection.pb.h"
 #include "logging.h"

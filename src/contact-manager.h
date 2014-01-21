@@ -18,9 +18,9 @@
 #include "dns-storage.h"
 #include "endorse-certificate.h"
 #include "profile.h"
-#include <ndn-cpp/face.hpp>
-#include <ndn-cpp/security/key-chain.hpp>
-#include <ndn-cpp/security/verifier.hpp>
+#include <ndn-cpp-dev/face.hpp>
+#include <ndn-cpp-dev/security/key-chain.hpp>
+#include <ndn-cpp-dev/security/verifier.hpp>
 #endif
 
 typedef ndn::func_lib::function<void()> TimeoutNotify;

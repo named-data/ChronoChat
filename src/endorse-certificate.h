@@ -12,9 +12,9 @@
 #define LINKNDN_ENDORSE_CERTIFICATE_H
 
 #include <vector>
-#include <ndn-cpp/data.hpp>
-#include <ndn-cpp/security/identity-certificate.hpp>
-#include <ndn-cpp/security/certificate-extension.hpp>
+#include <ndn-cpp-dev/data.hpp>
+#include <ndn-cpp-dev/security/identity-certificate.hpp>
+#include <ndn-cpp-dev/security/certificate-extension.hpp>
 
 #include "profile-data.h"
 

@@ -14,8 +14,8 @@
 #include <QDialog>
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp/data.hpp>
-#include <ndn-cpp/security/identity-certificate.hpp>
+#include <ndn-cpp-dev/data.hpp>
+#include <ndn-cpp-dev/security/identity-certificate.hpp>
 #include "chronos-invitation.h"
 #endif
 

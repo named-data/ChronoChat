@@ -12,7 +12,7 @@
 #define LINKNDN_DNS_STORAGE_H
 
 #include <sqlite3.h>
-#include <ndn-cpp/data.hpp>
+#include <ndn-cpp-dev/data.hpp>
 
 class DnsStorage
 {

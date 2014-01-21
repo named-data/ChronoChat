@@ -12,16 +12,33 @@
 #define CHRONOS_INVITATION_H
 
 
-#include <ndn-cpp/name.hpp>
+#include <ndn-cpp-dev/name.hpp>
+#include <ndn-cpp-dev/signature.hpp>
 
 class ChronosInvitation
 {
+/*
+ * /ndn/broadcast/chronos/invitation/[invitee_namespace]/<chatroom_name>/<inviter_routing_prefix>/<keylocator>/<signature>
+ */
+  static const size_t NAME_SIZE_MIN;
+  static const size_t INVITEE_START;
+  static const ssize_t SIGNATURE;
+  static const ssize_t KEY_LOCATOR;
+  static const ssize_t INVITER_PREFIX;
+  static const ssize_t CHATROOM;
+  static const ndn::Name INVITATION_PREFIX;
+
 public:
   struct Error : public std::runtime_error { Error(const std::string &what) : std::runtime_error(what) {} };
 
   ChronosInvitation() {}
 
   ChronosInvitation(const ndn::Name& interestName);
+
+  ChronosInvitation(const ndn::Name &inviteeNameSpace,
+                    const ndn::Name &chatroom,
+                    const ndn::Name &inviterRoutingPrefix,
+                    const ndn::Name &inviterCertificateName);
 
   ChronosInvitation(const ChronosInvitation& invitation);
 
@@ -37,16 +54,16 @@ public:
   { return m_chatroom; }
 
   const ndn::Name&
-  getInviterPrefix() const
-  { return m_inviterPrefix; }
+  getInviterRoutingPrefix() const
+  { return m_inviterRoutingPrefix; }
 
   const ndn::Name&
   getInviterCertificateName() const
   { return m_inviterCertificateName; }
 
-  const ndn::Buffer&
-  getSignatureBits() const
-  { return m_signatureBits; }
+  const ndn::Signature&
+  getSignature() const
+  { return m_signature; }
 
   const ndn::Name&
   getInviterNameSpace() const
@@ -58,19 +75,29 @@ public:
   
   const ndn::Name&
   getInterestName() const
-  { return m_interestName; }
+  {
+    if(m_isSigned)
+      return m_interestName; 
+    else
+      throw Error("Invitation is not signed!");
+  }
+
+  void
+  setSignatureValue(const ndn::Block &signatureValue);
 
 private:
   ndn::Name m_interestName;
+  ndn::Buffer m_signedBlob;
 
   ndn::Name m_inviteeNameSpace;
   ndn::Name m_chatroom;
-  ndn::Name m_inviterPrefix;
+  ndn::Name m_inviterRoutingPrefix;
   ndn::Name m_inviterCertificateName;
-  ndn::Buffer m_signatureBits;
+  ndn::Signature m_signature;
+
   ndn::Name m_inviterNameSpace;
 
-  ndn::Buffer m_signedBlob;
+  bool m_isSigned;
 };
 
 #endif

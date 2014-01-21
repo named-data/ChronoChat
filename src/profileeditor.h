@@ -16,7 +16,7 @@
 
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
-#include <ndn-cpp/security/key-chain.hpp>
+#include <ndn-cpp-dev/security/key-chain.hpp>
 #endif
 
 namespace Ui {
