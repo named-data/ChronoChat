@@ -10,14 +10,12 @@
 
 #include "endorse-certificate.h"
 #include "endorse-extension.pb.h"
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/iostreams/stream.hpp>
 #include "logging.h"
 
 using namespace std;
 using namespace ndn;
 using namespace ndn::ptr_lib;
-using namespace boost::posix_time;
 
 INIT_LOGGER("EndorseCertificate");
 
@@ -101,11 +99,8 @@ EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate
   , m_profileData(profileData)
   , m_endorseList(endorseList)
 {
-  time_duration now = microsec_clock::universal_time () - ptime(boost::gregorian::date (1970, boost::gregorian::Jan, 1));
-  uint64_t version = (now.total_seconds () << 12) | (0xFFF & (now.fractional_seconds () / 244));
-
   Name dataName = m_keyName;
-  dataName.append("PROFILE-CERT").append(m_signer).appendVersion(version);
+  dataName.append("PROFILE-CERT").append(m_signer.wireEncode()).appendVersion();
   setName(dataName);
 
   setNotBefore(kskCertificate.getNotBefore());
@@ -126,12 +121,9 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
   , m_signer(signer)
   , m_profileData(endorseCertificate.m_profileData)
   , m_endorseList(endorseList)
-{
-  time_duration now = microsec_clock::universal_time () - ptime(boost::gregorian::date (1970, boost::gregorian::Jan, 1));
-  uint64_t version = (now.total_seconds () << 12) | (0xFFF & (now.fractional_seconds () / 244));
-  
+{  
   Name dataName = m_keyName;
-  dataName.append("PROFILE-CERT").append(m_signer).appendVersion(version);
+  dataName.append("PROFILE-CERT").append(m_signer.wireEncode()).appendVersion();
   setName(dataName);
   
   setNotBefore(endorseCertificate.getNotBefore());
@@ -156,21 +148,13 @@ EndorseCertificate::EndorseCertificate(const Data& data)
   : Certificate(data)
 {
   const Name& dataName = data.getName();
-  Name::Component certFlag(Name::fromEscapedString("PROFILE-CERT"));  
-  int profileIndex = -1;
-  for(int i = 0; i < dataName.size(); i++)
-    {
-      if(0 == dataName.get(i).compare(certFlag))
-	{
-	  profileIndex = i;
-	  break;
-	}
-    }
-  if(profileIndex < 0)
-    throw Error("No PROFILE-CERT component in data name!");
 
-  m_keyName = dataName.getSubName(0, profileIndex);
-  m_signer = dataName.getSubName(profileIndex + 1, dataName.size() - profileIndex - 2);
+  if(dataName.size() < 3 || !dataName.get(-3).equals("PROFILE-CERT"))
+    throw Error("No PROFILE-CERT component in data name!");    
+
+  m_keyName = dataName.getPrefix(-3);
+  m_signer.wireDecode(Block(dataName.get(-2).getValue().buf(),
+                            dataName.get(-2).getValue().size()));
 
   OID profileExtensionOID("1.3.6.1.5.32.2.1");
   OID endorseExtensionOID("1.3.6.1.5.32.2.2");

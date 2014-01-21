@@ -19,7 +19,7 @@
 
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp/security/identity-certificate.hpp>
+#include <ndn-cpp-dev/security/identity-certificate.hpp>
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include "profile.h"
@@ -103,8 +103,8 @@ private:
   QStringList m_contactList;  
   std::vector<ndn::Name> m_contactNameList;
   std::vector<ndn::Name> m_certificateNameList;
-  std::map<ndn::Name, ndn::IdentityCertificate, ndn::Name::BreadthFirstLess> m_certificateMap;
-  std::map<ndn::Name, Profile, ndn::Name::BreadthFirstLess> m_profileMap;
+  std::map<ndn::Name, ndn::IdentityCertificate> m_certificateMap;
+  std::map<ndn::Name, Profile> m_profileMap;
 
   RecLock m_mutex;
 

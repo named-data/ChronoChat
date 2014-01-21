@@ -9,8 +9,8 @@
  */
 
 #include "sec-policy-chrono-chat-panel.h"
-#include <ndn-cpp/security/verifier.hpp>
-#include <ndn-cpp/security/signature-sha256-with-rsa.hpp>
+#include <ndn-cpp-dev/security/verifier.hpp>
+#include <ndn-cpp-dev/security/signature-sha256-with-rsa.hpp>
 // #include <boost/bind.hpp>
 
 #include "logging.h"
@@ -27,15 +27,15 @@ SecPolicyChronoChatPanel::SecPolicyChronoChatPanel(const int & stepLimit)
 {
   m_localPrefixRegex = make_shared<Regex>("^<local><ndn><prefix><><>$");
 
-  m_invitationDataSigningRule = make_shared<SecRuleIdentity>("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
+  m_invitationDataSigningRule = make_shared<SecRuleRelative>("^<ndn><broadcast><chronos><invitation>([^<chatroom>]*)<chatroom>", 
                                                                 "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT><>$", 
                                                                 "==", "\\1", "\\1\\2", true);
   
-  m_dskRule = make_shared<SecRuleIdentity>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
+  m_dskRule = make_shared<SecRuleRelative>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT><>$", 
                                               "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
                                               "==", "\\1", "\\1\\2", true);
   
-  m_endorseeRule = make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><>*<ENDORSEE><>$", 
+  m_endorseeRule = make_shared<SecRuleRelative>("^([^<DNS>]*)<DNS><>*<ENDORSEE><>$", 
                                                    "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
                                                    "==", "\\1", "\\1\\2", true);
   

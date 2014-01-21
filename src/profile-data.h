@@ -11,7 +11,7 @@
 #ifndef LINKNDN_PROFILE_DATA_H
 #define LINKNDN_PROFILE_DATA_H
 
-#include <ndn-cpp/data.hpp>
+#include <ndn-cpp-dev/data.hpp>
 #include "profile.h"
 
 class ProfileData : public ndn::Data

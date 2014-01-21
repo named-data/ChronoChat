@@ -11,8 +11,8 @@
 #ifndef LINKNDN_PROFILE_H
 #define LINKNDN_PROFILE_H
 
-#include <ndn-cpp/name.hpp>
-#include <ndn-cpp/security/identity-certificate.hpp>
+#include <ndn-cpp-dev/name.hpp>
+#include <ndn-cpp-dev/security/identity-certificate.hpp>
 #include <map>
 #include <string>
 #include "profile.pb.h"

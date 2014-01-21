@@ -21,8 +21,8 @@
 #include <QtSql/QSqlError>
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp/security/verifier.hpp>
-#include <ndn-cpp/security/signature-sha256-with-rsa.hpp>
+#include <ndn-cpp-dev/security/verifier.hpp>
+#include <ndn-cpp-dev/security/signature-sha256-with-rsa.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
@@ -417,15 +417,13 @@ ContactPanel::onInvitation(const shared_ptr<const Name>& prefix,
       return;
     }
 
+  const SignatureSha256WithRsa& invitationSig = invitation->getSignature();
   shared_ptr<PublicKey> keyPtr = m_policy->getTrustedKey(invitation->getInviterCertificateName());
 
-  SignatureSha256WithRsa invitationSig;
-  Block sigBlock(invitation->getSignatureBits().buf(), invitation->getSignatureBits().size());
-  invitationSig.setValue(sigBlock);
   if(static_cast<bool>(keyPtr) && Verifier::verifySignature(invitation->getSignedBlob(), invitationSig, *keyPtr))
     {
       shared_ptr<IdentityCertificate> certificate = make_shared<IdentityCertificate>();
-      // hack: incomplete certificate, we don't send it to the wire nor store it anywhere, we only use it to carry information
+      // hack: incomplete certificate, we don't send it to the wire nor store it anywhere, we only use it to pass information
       certificate->setName(invitation->getInviterCertificateName());
       bool findCert = false;
       vector<shared_ptr<ContactItem> >::const_iterator it = m_contactList.begin();
@@ -465,9 +463,7 @@ ContactPanel::onInvitationCertVerified(const shared_ptr<Data>& data,
 {
   shared_ptr<IdentityCertificate> certificate = make_shared<IdentityCertificate>(*data);
 
-  SignatureSha256WithRsa invitationSig;
-  Block sigBlock(invitation->getSignatureBits().buf(), invitation->getSignatureBits().size());
-  invitationSig.setValue(sigBlock);
+  SignatureSha256WithRsa invitationSig(invitation->getSignature());
   
   if(Verifier::verifySignature(invitation->getSignedBlob(), invitationSig, certificate->getPublicKeyInfo()))
     {
@@ -842,7 +838,7 @@ ContactPanel::startChatroom2(const ChronosInvitation& invitation,
   connect(chatDialog, SIGNAL(inivationRejection(const QString&)),
           this, SLOT(showWarning(const QString&)));
 
-  chatDialog->addChatDataRule(invitation.getInviterPrefix(), identityCertificate, true);
+  chatDialog->addChatDataRule(invitation.getInviterRoutingPrefix(), identityCertificate, true);
   chatDialog->publishIntroCert(identityCertificate, true);
 
   chatDialog->addTrustAnchor(inviterItem->getSelfEndorseCertificate());

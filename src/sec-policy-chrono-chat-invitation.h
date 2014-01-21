@@ -11,14 +11,14 @@
 #ifndef SEC_POLICY_CHRONO_CHAT_INVITATION_H
 #define SEC_POLICY_CHRONO_CHAT_INVITATION_H
 
-#include <ndn-cpp/security/sec-policy.hpp>
-#include <ndn-cpp-et/policy/sec-rule-identity.hpp>
+#include <ndn-cpp-dev/security/sec-policy.hpp>
+#include <ndn-cpp-et/policy/sec-rule-relative.hpp>
+#include <ndn-cpp-et/policy/sec-rule-specific.hpp>
 #include <ndn-cpp-et/cache/ttl-certificate-cache.hpp>
 #include <ndn-cpp-et/regex/regex.hpp>
 #include <map>
 
 #include "endorse-certificate.h"
-#include "sec-rule-chrono-chat.h"
 
 class SecPolicyChronoChatInvitation : public ndn::SecPolicy
 {
@@ -79,16 +79,16 @@ private:
 
   ndn::TTLCertificateCache m_certificateCache;
 
-  ndn::ptr_lib::shared_ptr<ndn::SecRuleIdentity> m_invitationPolicyRule;
-  ndn::ptr_lib::shared_ptr<ndn::SecRuleIdentity> m_dskRule;
-  std::map<ndn::Name, SecRuleChronoChat, ndn::Name::BreadthFirstLess> m_chatDataRules;
+  ndn::ptr_lib::shared_ptr<ndn::SecRuleRelative> m_invitationPolicyRule;
+  ndn::ptr_lib::shared_ptr<ndn::SecRuleRelative> m_dskRule;
+  std::map<ndn::Name, ndn::SecRuleSpecific> m_chatDataRules;
 
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_kskRegex;
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_keyNameRegex;
 
-  std::map<ndn::Name, ndn::PublicKey, ndn::Name::BreadthFirstLess> m_trustAnchors;
+  std::map<ndn::Name, ndn::PublicKey> m_trustAnchors;
 
-  std::map<ndn::Name, ndn::ptr_lib::shared_ptr<ndn::IdentityCertificate>, ndn::Name::BreadthFirstLess> m_dskCertificates;
+  std::map<ndn::Name, ndn::ptr_lib::shared_ptr<ndn::IdentityCertificate> > m_dskCertificates;
 
 };
 

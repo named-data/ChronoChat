@@ -23,9 +23,9 @@
 #include "invitelistdialog.h"
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp/data.hpp>
-#include <ndn-cpp/face.hpp>
-#include <ndn-cpp/security/key-chain.hpp>
+#include <ndn-cpp-dev/data.hpp>
+#include <ndn-cpp-dev/face.hpp>
+#include <ndn-cpp-dev/security/key-chain.hpp>
 #include "sec-policy-chrono-chat-invitation.h"
 #include "contact-item.h"
 

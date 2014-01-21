@@ -19,9 +19,10 @@
 
 #ifndef Q_MOC_RUN
 #include <sync-intro-certificate.h>
+#include "chronos-invitation.h"
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
-#include <ndn-cpp/security/signature-sha256-with-rsa.hpp>
+#include <ndn-cpp-dev/security/signature-sha256-with-rsa.hpp>
 #include "logging.h"
 #endif
 
@@ -274,26 +275,16 @@ ChatDialog::sendInvitation(ndn::ptr_lib::shared_ptr<ContactItem> contact, bool i
 
   ndn::Name certificateName = m_keyChain->getDefaultCertificateNameForIdentity(m_defaultIdentity);
 
-  ndn::Name interestName("/ndn/broadcast/chronos/invitation");
-  interestName.append(contact->getNameSpace());
-  interestName.append("chatroom");
-  interestName.append(m_chatroomPrefix.get(-1));
-  interestName.append("inviter-prefix");
-  interestName.append(m_localPrefix);
-  interestName.append("inviter");
-  interestName.append(certificateName);
+  ChronosInvitation invitation(contact->getNameSpace(),
+                               m_chatroomPrefix.getSubName(m_chatroomPrefix.size()-1, 1), //!!Should be changed!
+                               m_localPrefix,
+                               certificateName);
 
-  string signedUri = interestName.toUri();
+  const ndn::Buffer &signedBlob = invitation.getSignedBlob();
+  ndn::Signature sig = m_keyChain->sign(signedBlob.buf(), signedBlob.size(), certificateName);
+  invitation.setSignatureValue(sig.getValue());
 
-  ndn::Signature sig = m_keyChain->sign(reinterpret_cast<const uint8_t*>(signedUri.c_str()), signedUri.size(), certificateName);
-  const ndn::Block& sigValue = sig.getValue();
-
-  interestName.append(sigValue);
-
-  //TODO... remove version from invitation interest
-  //  interestName.appendVersion();
-
-  ndn::Interest interest(interestName);
+  ndn::Interest interest(invitation.getInterestName());
   ndn::OnVerified onVerified = boost::bind(&ChatDialog::onInviteReplyVerified,
                                            this,
                                            _1,
@@ -358,7 +349,7 @@ ChatDialog::invitationAccepted(const ndn::Name& identity, ndn::ptr_lib::shared_p
   ndn::SignatureSha256WithRsa sig(data->getSignature());
   const ndn::Name & keyLocatorName = sig.getKeyLocator().getName();
   ndn::ptr_lib::shared_ptr<ndn::IdentityCertificate> dskCertificate = m_invitationPolicy->getValidatedDskCertificate(keyLocatorName);
-  m_syncPolicy->addChatDataRule(inviteePrefix, *dskCertificate, isIntroducer);
+  m_syncPolicy->addSyncDataRule(inviteePrefix, *dskCertificate, isIntroducer);
   publishIntroCert(*dskCertificate, isIntroducer);
 }
 
@@ -386,7 +377,7 @@ void
 ChatDialog::addChatDataRule(const ndn::Name& prefix, 
                             const ndn::IdentityCertificate& identityCertificate,
                             bool isIntroducer)
-{ m_syncPolicy->addChatDataRule(prefix, identityCertificate, isIntroducer); }
+{ m_syncPolicy->addSyncDataRule(prefix, identityCertificate, isIntroducer); }
 
  
 

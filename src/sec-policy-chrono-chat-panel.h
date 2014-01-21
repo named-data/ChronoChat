@@ -11,8 +11,8 @@
 #ifndef SEC_POLICY_CHRONO_CHAT_PANEL_H
 #define SEC_POLICY_CHRONO_CHAT_PANEL_H
 
-#include <ndn-cpp/security/sec-policy.hpp>
-#include <ndn-cpp-et/policy/sec-rule-identity.hpp>
+#include <ndn-cpp-dev/security/sec-policy.hpp>
+#include <ndn-cpp-et/policy/sec-rule-relative.hpp>
 #include <ndn-cpp-et/cache/ttl-certificate-cache.hpp>
 #include <map>
 
@@ -88,13 +88,13 @@ private:
   int m_stepLimit;
   ndn::TTLCertificateCache m_certificateCache;
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_localPrefixRegex;
-  ndn::ptr_lib::shared_ptr<ndn::SecRuleIdentity> m_invitationDataSigningRule;
+  ndn::ptr_lib::shared_ptr<ndn::SecRuleRelative> m_invitationDataSigningRule;
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_kskRegex;
-  ndn::ptr_lib::shared_ptr<ndn::SecRuleIdentity> m_dskRule;
-  ndn::ptr_lib::shared_ptr<ndn::SecRuleIdentity> m_endorseeRule;
+  ndn::ptr_lib::shared_ptr<ndn::SecRuleRelative> m_dskRule;
+  ndn::ptr_lib::shared_ptr<ndn::SecRuleRelative> m_endorseeRule;
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_keyNameRegex;
   ndn::ptr_lib::shared_ptr<ndn::Regex> m_signingCertificateRegex;
-  std::map<ndn::Name, ndn::PublicKey, ndn::Name::BreadthFirstLess> m_trustAnchors;
+  std::map<ndn::Name, ndn::PublicKey> m_trustAnchors;
   
 };
 

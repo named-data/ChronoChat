@@ -24,11 +24,11 @@
 #include "contact-manager.h"
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp/face.hpp>
-#include <ndn-cpp/security/signature-sha256-with-rsa.hpp>
-#include <ndn-cpp/security/verifier.hpp>
+#include <ndn-cpp-dev/face.hpp>
+#include <ndn-cpp-dev/security/signature-sha256-with-rsa.hpp>
+#include <ndn-cpp-dev/security/verifier.hpp>
 #include <cryptopp/base64.h>
-#include <ndn-cpp-et/policy/sec-rule-identity.hpp>
+#include <ndn-cpp-et/policy/sec-rule-relative.hpp>
 #include <ndn-cpp-et/policy/sec-policy-simple.hpp>
 #include <fstream>
 #include "endorse-collection.pb.h"
@@ -64,27 +64,27 @@ ContactManager::initializeSecurity()
   m_verifier = make_shared<Verifier>(policy);
   m_verifier->setFace(m_face);
 
-  policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><ENDORSED>",
+  policy->addVerificationPolicyRule(make_shared<SecRuleRelative>("^([^<DNS>]*)<DNS><ENDORSED>",
                                                                  "^([^<KEY>]*)<KEY>(<>*)[<ksk-.*><dsk-.*>]<ID-CERT>$",
                                                                  "==", "\\1", "\\1\\2", true));
-  policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><PROFILE>",
+  policy->addVerificationPolicyRule(make_shared<SecRuleRelative>("^([^<DNS>]*)<DNS><PROFILE>",
                                                                  "^([^<KEY>]*)<KEY>(<>*)[<ksk-.*><dsk-.*>]<ID-CERT>$",
                                                                  "==", "\\1", "\\1\\2", true));
-  policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<PROFILE-CERT>]*)<PROFILE-CERT>",
+  policy->addVerificationPolicyRule(make_shared<SecRuleRelative>("^([^<PROFILE-CERT>]*)<PROFILE-CERT>",
                                                                  "^([^<KEY>]*)<KEY>(<>*<ksk-.*>)<ID-CERT>$", 
                                                                  "==", "\\1", "\\1\\2", true));
-  policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>",
+  policy->addVerificationPolicyRule(make_shared<SecRuleRelative>("^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>",
                                                                  "^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>$",
                                                                  ">", "\\1\\2", "\\1", true));
-  policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>",
+  policy->addVerificationPolicyRule(make_shared<SecRuleRelative>("^([^<KEY>]*)<KEY><dsk-.*><ID-CERT>",
                                                                  "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$",
                                                                  "==", "\\1", "\\1\\2", true));
-  policy->addVerificationPolicyRule(make_shared<SecRuleIdentity>("^(<>*)$", 
+  policy->addVerificationPolicyRule(make_shared<SecRuleRelative>("^(<>*)$", 
                                                                  "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
                                                                  ">", "\\1", "\\1\\2", true));
   
 
-  policy->addSigningPolicyRule(make_shared<SecRuleIdentity>("^([^<DNS>]*)<DNS><PROFILE>",
+  policy->addSigningPolicyRule(make_shared<SecRuleRelative>("^([^<DNS>]*)<DNS><PROFILE>",
                                                             "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT>",
                                                             "==", "\\1", "\\1\\2", true));
 
