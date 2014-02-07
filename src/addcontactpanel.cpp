@@ -13,14 +13,14 @@
 #include <QMessageBox>
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp-dev/security/verifier.hpp>
+#include <ndn-cpp-dev/security/validator.hpp>
 #include <boost/iostreams/stream.hpp>
 #include "endorse-collection.pb.h"
 #include "logging.h"
 #endif
 
 using namespace ndn;
-using namespace ndn::ptr_lib;
+using namespace chronos;
 using namespace std;
 
 INIT_LOGGER("AddContactPanel");
@@ -35,7 +35,7 @@ AddContactPanel::AddContactPanel(shared_ptr<ContactManager> contactManager,
   ui->setupUi(this);
   
   qRegisterMetaType<ndn::Name>("NdnName");
-  qRegisterMetaType<EndorseCertificate>("EndorseCertificate");
+  qRegisterMetaType<chronos::EndorseCertificate>("EndorseCertificate");
   qRegisterMetaType<ndn::Data>("NdnData");
 
   connect(ui->cancelButton, SIGNAL(clicked()),
@@ -44,16 +44,16 @@ AddContactPanel::AddContactPanel(shared_ptr<ContactManager> contactManager,
           this, SLOT(onSearchClicked()));
   connect(ui->addButton, SIGNAL(clicked()),
           this, SLOT(onAddClicked()));
-  connect(&*m_contactManager, SIGNAL(contactFetched(const EndorseCertificate&)),
-          this, SLOT(selfEndorseCertificateFetched(const EndorseCertificate&)));
+  connect(&*m_contactManager, SIGNAL(contactFetched(const chronos::EndorseCertificate&)),
+          this, SLOT(selfEndorseCertificateFetched(const chronos::EndorseCertificate&)));
   connect(&*m_contactManager, SIGNAL(contactFetchFailed(const ndn::Name&)),
           this, SLOT(selfEndorseCertificateFetchFailed(const ndn::Name&)));
   connect(&*m_contactManager, SIGNAL(collectEndorseFetched(const ndn::Data&)),
           this, SLOT(onCollectEndorseFetched(const ndn::Data&)));
   connect(&*m_contactManager, SIGNAL(collectEndorseFetchFailed(const ndn::Name&)),
           this, SLOT(onCollectEndorseFetchFailed(const ndn::Name&)));
-  connect(&*m_contactManager, SIGNAL(contactKeyFetched(const EndorseCertificate&)),
-          this, SLOT(onContactKeyFetched(const EndorseCertificate&)));
+  connect(&*m_contactManager, SIGNAL(contactKeyFetched(const chronos::EndorseCertificate&)),
+          this, SLOT(onContactKeyFetched(const chronos::EndorseCertificate&)));
   connect(&*m_contactManager, SIGNAL(contactKeyFetchFailed(const ndn::Name&)),
           this, SLOT(onContactKeyFetchFailed(const ndn::Name&)));
 
@@ -100,16 +100,13 @@ AddContactPanel::onSearchClicked()
 bool
 AddContactPanel::isCorrectName(const Name& name)
 {
-  string key("KEY");
-  string idCert("ID-CERT");
-
-  if(name.get(-1).toEscapedString() != idCert)
+  if(name.get(-1).toEscapedString() != "ID-CERT")
     return false;
   
   int keyIndex = -1;
   for(int i = 0; i < name.size(); i++)
     {
-      if(name.get(i).toEscapedString() == key)
+      if(name.get(i).toEscapedString() == "KEY")
         {
           keyIndex = i;
           break;
@@ -128,7 +125,7 @@ AddContactPanel::onAddClicked()
   ContactItem contactItem(*m_currentEndorseCertificate);
   try{
     m_contactManager->getContactStorage()->addContact(contactItem);
-  }catch(std::exception& e){
+  }catch(ContactStorage::Error& e){
     QMessageBox::information(this, tr("Chronos"), QString::fromStdString(e.what()));
     _LOG_ERROR("Exception: " << e.what());
     return;
@@ -140,13 +137,9 @@ AddContactPanel::onAddClicked()
 void 
 AddContactPanel::selfEndorseCertificateFetched(const EndorseCertificate& endorseCertificate)
 {
-  try{
-    m_currentEndorseCertificate = make_shared<EndorseCertificate>(endorseCertificate);
-  }catch(std::exception& e){
-    QMessageBox::information(this, tr("Chronos"), QString::fromStdString(e.what()));
-    _LOG_ERROR("Exception: " << e.what());
-    return;
-  }
+
+  m_currentEndorseCertificate = make_shared<EndorseCertificate>(endorseCertificate);
+
   m_currentEndorseCertificateReady = true;
 
   if(m_currentCollectEndorseReady == true)
@@ -162,13 +155,7 @@ AddContactPanel::selfEndorseCertificateFetchFailed(const Name& identity)
 void
 AddContactPanel::onContactKeyFetched(const EndorseCertificate& endorseCertificate)
 {
-  try{
-    m_currentEndorseCertificate = make_shared<EndorseCertificate>(endorseCertificate);
-  }catch(std::exception& e){
-    QMessageBox::information(this, tr("Chronos"), QString::fromStdString(e.what()));
-    _LOG_ERROR("Exception: " << e.what());
-    return;
-  }
+  m_currentEndorseCertificate = make_shared<EndorseCertificate>(endorseCertificate);
 
   m_currentCollectEndorseReady = false;
 
@@ -185,6 +172,7 @@ void
 AddContactPanel::onCollectEndorseFetched(const Data& data)
 {
   m_currentCollectEndorse = make_shared<Data>(data);
+
   m_currentCollectEndorseReady = true;
 
   if(m_currentEndorseCertificateReady == true)
@@ -195,6 +183,7 @@ void
 AddContactPanel::onCollectEndorseFetchFailed(const Name& identity)
 {
   m_currentCollectEndorse = shared_ptr<Data>();
+
   m_currentCollectEndorseReady = true;
   
   if(m_currentEndorseCertificateReady == true)
@@ -205,13 +194,11 @@ void
 AddContactPanel::displayContactInfo()
 {
   // _LOG_TRACE("displayContactInfo");
-  const Profile& profile = m_currentEndorseCertificate->getProfileData().getProfile();
-  const Block& profileContent = m_currentEndorseCertificate->getProfileData().getContent();
-  Buffer profileBlock(profileContent.value(), profileContent.value_size());
+  const Profile& profile = m_currentEndorseCertificate->getProfile();
 
   map<string, int> endorseCount;
 
-  if(static_cast<bool>(m_currentCollectEndorse))
+  if(!static_cast<bool>(m_currentCollectEndorse))
     {
       Chronos::EndorseCollection endorseCollection;
       
@@ -229,29 +216,27 @@ AddContactPanel::displayContactInfo()
                                   endorseCollection.endorsement(i).blob().size()));
             EndorseCertificate endorseCert(data);
             
-            Name signerKeyName = endorseCert.getSigner();
-            Name signerName = signerKeyName.getPrefix(-1);
+            Name signerName = endorseCert.getSigner().getPrefix(-1);
           
             shared_ptr<ContactItem> contact = m_contactManager->getContact(signerName);
-            if(static_cast<bool>(contact))
+            if(!static_cast<bool>(contact))
               continue;
 
-            if(!contact->isIntroducer() || !contact->canBeTrustedFor(m_currentEndorseCertificate->getProfileData().getIdentityName()))
+            if(!contact->isIntroducer() || !contact->canBeTrustedFor(m_currentEndorseCertificate->getProfile().getIdentityName()))
               continue;
           
-            if(!Verifier::verifySignature(data, data.getSignature(), contact->getSelfEndorseCertificate().getPublicKeyInfo()))
+            if(!Validator::verifySignature(data, data.getSignature(), contact->getSelfEndorseCertificate().getPublicKeyInfo()))
               continue;
 
-            const Block& tmpProfileContent = endorseCert.getProfileData().getContent();
-            Buffer tmpProfileBlock(tmpProfileContent.value(), tmpProfileContent.value_size());
-            if(profileBlock != tmpProfileBlock)
+            const Profile& tmpProfile = endorseCert.getProfile();
+            if(!(profile == tmpProfile))
               continue;
 
           const vector<string>& endorseList = endorseCert.getEndorseList();
           vector<string>::const_iterator it = endorseList.begin();
           for(; it != endorseList.end(); it++)
             endorseCount[*it] += 1;
-          }catch(std::exception& e){
+          }catch(std::runtime_error& e){
             continue;
           }
         }  
@@ -288,27 +273,6 @@ AddContactPanel::displayContactInfo()
     rowCount++;
   }
 }
-
-// bool
-// AddContactPanel::isSameBlob(const ndn::Blob& blobA, const ndn::Blob& blobB)
-// {
-//   size_t size = blobA.size();
-
-//   if(size != blobB.size())
-//     return false;
-
-//   const uint8_t* ap = blobA.buf();
-//   const uint8_t* bp = blobB.buf();
-  
-//   for(int i = 0; i < size; i++)
-//     {
-//       if(ap[i] != bp[i])
-//         return false;
-//     }
-
-//   return true;
-
-// }
 
 
 #if WAF

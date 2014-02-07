@@ -21,6 +21,8 @@ namespace fs = boost::filesystem;
 
 INIT_LOGGER("DnsStorage");
 
+namespace chronos{
+
 const string INIT_DD_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
   DnsData(                                                           \n \
@@ -64,75 +66,18 @@ DnsStorage::DnsStorage()
     }
 }
 
-DnsStorage::~DnsStorage()
-{
-  sqlite3_close(m_db);
-}
-
 void
 DnsStorage::updateDnsData(const ndn::Block& data, const std::string& identity, const std::string& name, const std::string& type, const string& dataName)
 {  
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT data_name FROM DnsData where dns_identity=? and dns_name=? and dns_type=?", -1, &stmt, 0);
+  sqlite3_prepare_v2 (m_db, "INSERT OR REPLACE INTO DnsData (dns_identity, dns_name, dns_type, dns_value, data_name) VALUES (?, ?, ?, ?, ?)", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.c_str(), identity.size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 2, name.c_str(), name.size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 3, type.c_str(), type.size(), SQLITE_TRANSIENT);
-
-  if(sqlite3_step (stmt) != SQLITE_ROW)
-    {
-      sqlite3_finalize(stmt);
-      sqlite3_prepare_v2 (m_db, "INSERT INTO DnsData (dns_identity, dns_name, dns_type, dns_value, data_name) VALUES (?, ?, ?, ?, ?)", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, identity.c_str(), identity.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, name.c_str(), name.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 3, type.c_str(), type.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 4, (const char*)data.wire(), data.size(), SQLITE_TRANSIENT); 
-      sqlite3_bind_text(stmt, 5, dataName.c_str(), dataName.size(), SQLITE_TRANSIENT);
-      sqlite3_step(stmt);
-      sqlite3_finalize(stmt);
-    }
-  else
-    {
-      sqlite3_finalize(stmt);
-      sqlite3_prepare_v2 (m_db, "UPDATE DnsData SET dns_value=?, data_name=? WHERE dns_identity=? and dns_name=?, dns_type=?", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, (const char*)data.wire(), data.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, dataName.c_str(), dataName.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 3, identity.c_str(), identity.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 4, name.c_str(), name.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 5, type.c_str(), type.size(), SQLITE_TRANSIENT);
-      sqlite3_step(stmt);
-      sqlite3_finalize(stmt);
-    }
-}
-
-void
-DnsStorage::updateDnsSelfProfileData(const Data& data, const Name& identity)
-{
-  string dnsIdentity = identity.toUri();
-  string dnsName("N/A");
-  string dnsType("PROFILE");
-  
-
-  updateDnsData(data.wireEncode(), dnsIdentity, dnsName, dnsType, data.getName().toUri());
-}
-
-void
-DnsStorage::updateDnsEndorseOthers(const Data& data, const Name& identity, const Name& endorsee)
-{
-  string dnsIdentity = identity.toUri();
-  string dnsName = endorsee.toUri();
-  string dnsType("ENDORSEE");
-
-  updateDnsData(data.wireEncode(), dnsIdentity, dnsName, dnsType, data.getName().toUri());
-}
-  
-void
-DnsStorage::updateDnsOthersEndorse(const Data& data, const Name& identity)
-{
-  string dnsIdentity = identity.toUri();
-  string dnsName("N/A");
-  string dnsType("ENDORSED");
-
-  updateDnsData(data.wireEncode(), dnsIdentity, dnsName, dnsType, data.getName().toUri());
+  sqlite3_bind_text(stmt, 4, (const char*)data.wire(), data.size(), SQLITE_TRANSIENT); 
+  sqlite3_bind_text(stmt, 5, dataName.c_str(), dataName.size(), SQLITE_TRANSIENT);
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
 }
 
 shared_ptr<Data>
@@ -153,3 +98,5 @@ DnsStorage::getData(const Name& dataName)
 
   return shared_ptr<Data>();
 }
+
+}//chronos

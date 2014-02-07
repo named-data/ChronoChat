@@ -13,26 +13,23 @@
 
 using namespace std;
 using namespace ndn;
-using namespace ndn::ptr_lib;
 
 INIT_LOGGER("Profile");
 
-static string nameOid("2.5.4.41");
-static string orgOid("2.5.4.11");
-static string groupOid("2.5.4.1");
-static string homepageOid("2.5.4.3");
-static string advisor("2.5.4.80");
-static string emailOid("1.2.840.113549.1.9.1");
+namespace chronos{
 
-Profile::Profile(const IdentityCertificate& oldIdentityCertificate)
+const string Profile::OID_NAME("2.5.4.41");
+const string Profile::OID_ORG("2.5.4.11");
+const string Profile::OID_GROUP("2.5.4.1");
+const string Profile::OID_HOMEPAGE("2.5.4.3");
+const string Profile::OID_ADVISOR("2.5.4.80");
+const string Profile::OID_EMAIL("1.2.840.113549.1.9.1");
+
+Profile::Profile(const IdentityCertificate& identityCertificate)
 {
-  IdentityCertificate identityCertificate(oldIdentityCertificate);
+  Name keyName = IdentityCertificate::certificateNameToPublicKeyName(identityCertificate.getName());
 
-  Name keyName = identityCertificate.getPublicKeyName();
-  m_identityName = keyName.getPrefix(-1);
-
-  const string& identityString = m_identityName.toUri();
-  m_entries[string("IDENTITY")] = identityString;
+  m_entries[string("IDENTITY")] = keyName.getPrefix(-1).toUri();
   
   const vector<CertificateSubjectDescription>& subList = identityCertificate.getSubjectDescriptionList();
   vector<CertificateSubjectDescription>::const_iterator it = subList.begin();
@@ -40,94 +37,80 @@ Profile::Profile(const IdentityCertificate& oldIdentityCertificate)
     {
       const string oidStr = it->getOidString();
       string valueStr = it->getValue();
-      if(oidStr == nameOid)
-        m_entries[string("name")] = valueStr;
-      else if(oidStr == orgOid)
-        m_entries[string("institution")] = valueStr;
-      else if(oidStr == groupOid)
-        m_entries[string("group")] = valueStr;
-      else if(oidStr == homepageOid)
-        m_entries[string("homepage")] = valueStr;
-      else if(oidStr == advisor)
-        m_entries[string("advisor")] = valueStr;
-      else if(oidStr == emailOid)
-        m_entries[string("email")] = valueStr;
+      if(oidStr == OID_NAME)
+        m_entries["name"] = valueStr;
+      else if(oidStr == OID_ORG)
+        m_entries["institution"] = valueStr;
+      else if(oidStr == OID_GROUP)
+        m_entries["group"] = valueStr;
+      else if(oidStr == OID_HOMEPAGE)
+        m_entries["homepage"] = valueStr;
+      else if(oidStr == OID_ADVISOR)
+        m_entries["advisor"] = valueStr;
+      else if(oidStr == OID_EMAIL)
+        m_entries["email"] = valueStr;
       else
         m_entries[oidStr] = valueStr;
     }
 }
 
 Profile::Profile(const Name& identityName)
-  : m_identityName(identityName)
 {
-  const string& identityString = identityName.toUri();
-  m_entries[string("IDENTITY")] = identityString;
+  m_entries["IDENTITY"] = identityName.toUri();
 }
 
 Profile::Profile(const Name& identityName,
 		 const string& name,
 		 const string& institution)
-  : m_identityName(identityName)
 {
-  const string& identityString = identityName.toUri();
-  m_entries[string("IDENTITY")] = identityString;
-
-  m_entries[string("name")] = name;
-  m_entries[string("institution")] = institution;
+  m_entries["IDENTITY"] = identityName.toUri();
+  m_entries["name"] = name;
+  m_entries["institution"] = institution;
 }
 
 Profile::Profile(const Profile& profile)
-  : m_identityName(profile.m_identityName)
-  , m_entries(profile.m_entries)
+  : m_entries(profile.m_entries)
 {}
 
 void
-Profile::setProfileEntry(const string& profileType,
-			 const string& profileValue)
-{ m_entries[profileType] = profileValue; }
-
-string
-Profile::getProfileEntry(const string& profileType) const
+Profile::encode(ostream& os) const
 {
-  if(m_entries.find(profileType) != m_entries.end())
-    return m_entries.at(profileType);
-
-  return string();
+  Chronos::ProfileMsg profileMsg;
+  profileMsg << (*this);
+  profileMsg.SerializeToOstream(&os);
 }
 
 void
-Profile::encode(string* output) const
+Profile::decode(istream& is)
 {
+  Chronos::ProfileMsg profileMsg;    
+  profileMsg.ParseFromIstream(&is);
+  profileMsg >> (*this);
+}
 
-  Chronos::ProfileMsg profileMsg;
-
-  profileMsg.set_identityname(m_identityName.toUri());
-  
-  map<string, string>::const_iterator it = m_entries.begin();
-  for(; it != m_entries.end(); it++)
+Chronos::ProfileMsg&
+operator << (Chronos::ProfileMsg& profileMsg, const Profile& profile)
+{
+  map<string, string>::const_iterator it = profile.begin();
+  for(; it != profile.end(); it++)
     {
       Chronos::ProfileMsg::ProfileEntry* profileEntry = profileMsg.add_entry();
       profileEntry->set_oid(it->first);
       profileEntry->set_data(it->second);
     }
-
-  profileMsg.SerializeToString(output);
+  return profileMsg;
 }
 
-shared_ptr<Profile>
-Profile::decode(const string& input)
+Chronos::ProfileMsg&
+operator >> (Chronos::ProfileMsg& profileMsg, Profile& profile)
 {
-  Chronos::ProfileMsg profileMsg;
-    
-  profileMsg.ParseFromString(input);
-
-  shared_ptr<Profile> profile = make_shared<Profile>(profileMsg.identityname());
-
   for(int i = 0; i < profileMsg.entry_size(); i++)
     {
       const Chronos::ProfileMsg::ProfileEntry& profileEntry = profileMsg.entry(i);
-      profile->setProfileEntry(profileEntry.oid(), profileEntry.data());
+      profile[profileEntry.oid()] = profileEntry.data();
     }
-
-  return profile;
+  
+  return profileMsg;
 }
+
+}//chronos

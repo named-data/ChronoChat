@@ -9,15 +9,15 @@
  */
 
 #include "profile-data.h"
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include "logging.h"
 
+#include "logging.h"
 
 using namespace ndn;
 using namespace std;
-using namespace boost::posix_time;
 
 INIT_LOGGER("ProfileData");
+
+namespace chronos{
 
 ProfileData::ProfileData()
   : Data()
@@ -29,45 +29,26 @@ ProfileData::ProfileData(const Profile& profile)
   , m_profile(profile)
 {
   Name dataName = m_identity;
-  
-  time_duration now = microsec_clock::universal_time () - ptime(boost::gregorian::date (1970, boost::gregorian::Jan, 1));
-  uint64_t version = (now.total_seconds () << 12) | (0xFFF & (now.fractional_seconds () / 244));
-  dataName.append("PROFILE").appendVersion(version);
+  dataName.append("PROFILE").appendVersion();
   setName(dataName);
 
-  string content;
-  profile.encode(&content);
-  setContent((const uint8_t *)&content[0], content.size());
-
+  OBufferStream os;
+  profile.encode(os);
+  setContent(os.buf());
 }
-
-// ProfileData::ProfileData(const ProfileData& profileData)
-//   : Data(profileData)
-//   , m_identity(profileData.m_identity)
-//   , m_profile(profileData.m_profile)
-// {}
 
 ProfileData::ProfileData(const Data& data)
   : Data(data)
 {
-  const Name& dataName = data.getName();
-  Name::Component appFlag(Name::fromEscapedString("PROFILE"));  
-
-  int profileIndex = -1;
-  for(int i = 0; i < dataName.size(); i++)
-    {
-      if(0 == dataName.get(i).compare(appFlag))
-	{
-	  profileIndex = i;
-	  break;
-	}
-    }
-
-  if(profileIndex < 0)
+  if(data.getName().get(-2).toEscapedString() == "PROFILE")
     throw Error("No PROFILE component in data name!");
 
-  m_identity = dataName.getPrefix(profileIndex);
+  m_identity = data.getName().getPrefix(-2);
 
-  string encoded(reinterpret_cast<const char*>(data.getContent().value()), data.getContent().value_size());
-  m_profile = *Profile::decode(encoded);
+  boost::iostreams::stream <boost::iostreams::array_source> is 
+    (reinterpret_cast<const char*>(data.getContent().value()), data.getContent().value_size());
+
+  m_profile.decode(is);
 }
+
+}//chronos

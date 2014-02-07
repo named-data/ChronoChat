@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef LINKNDN_CONTACT_MANAGER_H
-#define LINKNDN_CONTACT_MANAGER_H
+#ifndef CHRONOS_CONTACT_MANAGER_H
+#define CHRONOS_CONTACT_MANAGER_H
 
 #include <QObject>
 
@@ -20,18 +20,19 @@
 #include "profile.h"
 #include <ndn-cpp-dev/face.hpp>
 #include <ndn-cpp-dev/security/key-chain.hpp>
-#include <ndn-cpp-dev/security/verifier.hpp>
+#include <ndn-cpp-dev/security/validator.hpp>
 #endif
 
-typedef ndn::func_lib::function<void()> TimeoutNotify;
+namespace chronos{
+
+typedef ndn::function<void()> TimeoutNotify;
 
 class ContactManager : public QObject
 {
   Q_OBJECT
 
 public:
-  ContactManager(ndn::ptr_lib::shared_ptr<ndn::KeyChain> keyChain,
-                 ndn::ptr_lib::shared_ptr<ndn::Face> m_face,
+  ContactManager(ndn::shared_ptr<ndn::Face> m_face,
                  QObject* parent = 0);
 
   ~ContactManager();
@@ -54,17 +55,17 @@ public:
   void
   updateEndorseCertificate(const ndn::Name& identity, const ndn::Name& signerIdentity);
 
-  void
-  getContactItemList(std::vector<ndn::ptr_lib::shared_ptr<ContactItem> >& contacts);
+  inline void
+  getContactItemList(std::vector<ndn::shared_ptr<ContactItem> >& contacts);
 
-  ndn::ptr_lib::shared_ptr<ContactStorage>
+  ndn::shared_ptr<ContactStorage>
   getContactStorage()
   { return m_contactStorage; }
 
-  ndn::ptr_lib::shared_ptr<ContactItem>
+  inline ndn::shared_ptr<ContactItem>
   getContact(const ndn::Name& contactNamespace);
 
-  ndn::ptr_lib::shared_ptr<DnsStorage>
+  ndn::shared_ptr<DnsStorage>
   getDnsStorage()
   { return m_dnsStorage; }
 
@@ -73,7 +74,7 @@ public:
   { return m_keyChain->getDefaultIdentity(); }
 
   void
-  publishEndorsedDataInDns(const ndn::Name& identity);
+  publishCollectEndorsedDataInDNS(const ndn::Name& identity);
 
   void
   setDefaultIdentity(const ndn::Name& identity)
@@ -85,18 +86,14 @@ public:
   void
   removeContact(const ndn::Name& contactNameSpace);
   
-  // ndn::ptr_lib::shared_ptr<ndn::KeyChain>
-  // getKeyChain()
-  // { return m_keyChain; }
-
 private:  
   void
   initializeSecurity();
 
-  ndn::ptr_lib::shared_ptr<EndorseCertificate>
+  ndn::shared_ptr<EndorseCertificate>
   getSignedSelfEndorseCertificate(const ndn::Name& identity, const Profile& profile);
 
-  ndn::ptr_lib::shared_ptr<EndorseCertificate> 
+  ndn::shared_ptr<EndorseCertificate> 
   generateEndorseCertificate(const ndn::Name& identity, const ndn::Name& signerIdentity);
 
   void
@@ -105,65 +102,64 @@ private:
   void
   publishEndorseCertificateInDNS(const EndorseCertificate& endorseCertificate, const ndn::Name& signerIdentity);
 
-  void
+  inline void
   sendInterest(const ndn::Interest& interest,
-               const ndn::OnVerified& onVerified,
-               const ndn::OnVerifyFailed& onVerifyFailed,
+               const ndn::OnDataValidated& onValidated,
+               const ndn::OnDataValidationFailed& onValidationFailed,
                const TimeoutNotify& timeoutNotify,
                int retry = 1);
 
-  void
-  onTargetData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
-               const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
-               const ndn::OnVerified& onVerified,
-               const ndn::OnVerifyFailed& onVerifyFailed);
+  inline void
+  onTargetData(const ndn::Interest& interest, 
+               const ndn::Data& data,
+               const ndn::OnDataValidated& onValidated,
+               const ndn::OnDataValidationFailed& onValidationFailed);
 
-  void
-  onTargetTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
+  inline void
+  onTargetTimeout(const ndn::Interest& interest, 
                   int retry,
-                  const ndn::OnVerified& onVerified,
-                  const ndn::OnVerifyFailed& onVerifyFailed,
+                  const ndn::OnDataValidated& onValidated,
+                  const ndn::OnDataValidationFailed& onValidationFailed,
                   const TimeoutNotify& timeoutNotify);
 
-
-  void
-  onDnsSelfEndorseCertificateTimeoutNotify(const ndn::Name& identity);
-
   void 
-  onDnsSelfEndorseCertificateVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& selfEndorseCertificate, const ndn::Name& identity);
+  onDnsSelfEndorseCertValidated(const ndn::shared_ptr<const ndn::Data>& selfEndorseCertificate, const ndn::Name& identity);
 
-  void
-  onDnsSelfEndorseCertificateVerifyFailed(const ndn::ptr_lib::shared_ptr<ndn::Data>& selfEndorseCertificate, const ndn::Name& identity);
+  inline void
+  onDnsSelfEndorseCertValidationFailed(const ndn::shared_ptr<const ndn::Data>& selfEndorseCertificate, const ndn::Name& identity);
+
+  inline void
+  onDnsSelfEndorseCertTimeoutNotify(const ndn::Name& identity);
  
 
-  void
-  onDnsCollectEndorseVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, const ndn::Name& identity);
+  inline void
+  onDnsCollectEndorseValidated(const ndn::shared_ptr<const ndn::Data>& data, const ndn::Name& identity);
 
-  void
-  onDnsCollectEndorseVerifyFailed(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, const ndn::Name& identity);
+  inline void
+  onDnsCollectEndorseValidationFailed(const ndn::shared_ptr<const ndn::Data>& data, const ndn::Name& identity);
 
-  void
+  inline void
   onDnsCollectEndorseTimeoutNotify(const ndn::Name& identity);
 
 
   void
-  onKeyVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, const ndn::Name& identity);
+  onKeyValidated(const ndn::shared_ptr<const ndn::Data>& data, const ndn::Name& identity);
 
-  void
-  onKeyVerifyFailed(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, const ndn::Name& identity);
+  inline void
+  onKeyValidationFailed(const ndn::shared_ptr<const ndn::Data>& data, const ndn::Name& identity);
 
-  void
+  inline void
   onKeyTimeoutNotify(const ndn::Name& identity);
 
 
-  void
-  onIdCertificateVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, const ndn::Name& identity);
+  inline void
+  onIdCertValidated(const ndn::shared_ptr<const ndn::Data>& data, const ndn::Name& identity);
 
-  void
-  onIdCertificateVerifyFailed(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, const ndn::Name& identity);
+  inline void
+  onIdCertValidationFailed(const ndn::shared_ptr<const ndn::Data>& data, const ndn::Name& identity);
 
-  void
-  onIdCertificateTimeoutNotify(const ndn::Name& identity);
+  inline void
+  onIdCertTimeoutNotify(const ndn::Name& identity);
   
 
 signals:
@@ -171,13 +167,13 @@ signals:
   noNdnConnection(const QString& msg);
   
   void 
-  contactFetched(const EndorseCertificate& endorseCertificate);
+  contactFetched(const chronos::EndorseCertificate& endorseCertificate);
   
   void
   contactFetchFailed(const ndn::Name& identity);
 
   void
-  contactKeyFetched(const EndorseCertificate& endorseCertificate);
+  contactKeyFetched(const chronos::EndorseCertificate& endorseCertificate);
 
   void
   contactKeyFetchFailed(const ndn::Name& identity);
@@ -208,12 +204,106 @@ private slots:
   
 private:
 
-  ndn::ptr_lib::shared_ptr<ContactStorage> m_contactStorage;
-  ndn::ptr_lib::shared_ptr<DnsStorage> m_dnsStorage;
-  ndn::ptr_lib::shared_ptr<ndn::Verifier> m_verifier;
-  ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
-  ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
+  ndn::shared_ptr<ContactStorage> m_contactStorage;
+  ndn::shared_ptr<DnsStorage> m_dnsStorage;
+  ndn::shared_ptr<ndn::Validator> m_validator;
+  ndn::shared_ptr<ndn::Face> m_face;
+  ndn::shared_ptr<ndn::KeyChain> m_keyChain;
   ndn::Name m_defaultIdentity;
 };
+
+void
+ContactManager::sendInterest(const ndn::Interest& interest,
+                             const ndn::OnDataValidated& onValidated,
+                             const ndn::OnDataValidationFailed& onValidationFailed,
+                             const TimeoutNotify& timeoutNotify,
+                             int retry /* = 1 */)
+{
+  m_face->expressInterest(interest, 
+                          bind(&ContactManager::onTargetData, 
+                               this, _1, _2, onValidated, onValidationFailed),
+                          bind(&ContactManager::onTargetTimeout,
+                               this, _1, retry, onValidated, onValidationFailed, timeoutNotify));
+}
+
+void
+ContactManager::onTargetData(const ndn::Interest& interest, 
+                             const ndn::Data& data,
+                             const ndn::OnDataValidated& onValidated,
+                             const ndn::OnDataValidationFailed& onValidationFailed)
+{ m_validator->validate(data, onValidated, onValidationFailed); }
+
+void
+ContactManager::onTargetTimeout(const ndn::Interest& interest, 
+                                int retry,
+                                const ndn::OnDataValidated& onValidated,
+                                const ndn::OnDataValidationFailed& onValidationFailed,
+                                const TimeoutNotify& timeoutNotify)
+{
+  if(retry > 0)
+    sendInterest(interest, onValidated, onValidationFailed, timeoutNotify, retry-1);
+  else
+    timeoutNotify();
+}
+
+
+void
+ContactManager::onDnsSelfEndorseCertValidationFailed(const ndn::shared_ptr<const ndn::Data>& data, 
+                                                     const ndn::Name& identity)
+{ emit contactFetchFailed (identity); }
+
+void
+ContactManager::onDnsSelfEndorseCertTimeoutNotify(const ndn::Name& identity)
+{ emit contactFetchFailed(identity); }
+
+void
+ContactManager::onDnsCollectEndorseValidated(const ndn::shared_ptr<const ndn::Data>& data, 
+                                            const ndn::Name& identity)
+{ emit collectEndorseFetched (*data); }
+
+void
+ContactManager::onDnsCollectEndorseValidationFailed(const ndn::shared_ptr<const ndn::Data>& data, 
+                                                const ndn::Name& identity)
+{ emit collectEndorseFetchFailed (identity); }
+
+void
+ContactManager::onDnsCollectEndorseTimeoutNotify(const ndn::Name& identity)
+{ emit collectEndorseFetchFailed (identity); }
+
+void
+ContactManager::onKeyValidationFailed(const ndn::shared_ptr<const ndn::Data>& data, 
+                                  const ndn::Name& identity)
+{ emit contactKeyFetchFailed (identity); }
+
+void
+ContactManager::onKeyTimeoutNotify(const ndn::Name& identity)
+{ emit contactKeyFetchFailed(identity); }
+
+void
+ContactManager::onIdCertValidated(const ndn::shared_ptr<const ndn::Data>& data, 
+                                        const ndn::Name& identity)
+{
+  ndn::IdentityCertificate identityCertificate(*data);
+  emit contactCertificateFetched(identityCertificate);
+}
+
+void
+ContactManager::onIdCertValidationFailed(const ndn::shared_ptr<const ndn::Data>& data, 
+                                            const ndn::Name& identity)
+{ emit contactCertificateFetchFailed (identity); }
+
+void
+ContactManager::onIdCertTimeoutNotify(const ndn::Name& identity)
+{ emit contactCertificateFetchFailed (identity); }
+
+ndn::shared_ptr<ContactItem>
+ContactManager::getContact(const ndn::Name& contactNamespace)
+{ return m_contactStorage->getContact(contactNamespace); }
+
+void
+ContactManager::getContactItemList(std::vector<ndn::shared_ptr<ContactItem> >& contacts)
+{ return m_contactStorage->getAllContacts(contacts); }
+
+}//chronos
 
 #endif

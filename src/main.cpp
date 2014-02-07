@@ -16,6 +16,8 @@
 #include "dns-storage.h"
 #include "contact-manager.h"
 #include "logging.h"
+#include <ndn-cpp-dev/face.hpp>
+#include <boost/thread/thread.hpp>
 
 INIT_LOGGER("MAIN");
 
@@ -41,15 +43,27 @@ public:
   }
 };
 
+void runIO(shared_ptr<boost::asio::io_service> ioService)
+{
+  try{
+    ioService->run();
+  }catch(std::runtime_error& e){
+    std::cerr << e.what() << std::endl;
+  }
+}
+
 int main(int argc, char *argv[])
 {
   NewApp app(argc, argv);
-
-  ContactPanel contactPanel;
+  
+  shared_ptr<Face> face = make_shared<Face>();
+  ContactPanel contactPanel(face);
 
   contactPanel.show ();
   contactPanel.activateWindow ();
   contactPanel.raise ();
+
+  boost::thread (runIO, face->ioService());
   
   return app.exec();
 }

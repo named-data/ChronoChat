@@ -35,7 +35,7 @@ class BrowseContactDialog : public QDialog
   Q_OBJECT
   
 public:
-  explicit BrowseContactDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
+  explicit BrowseContactDialog(ndn::shared_ptr<chronos::ContactManager> contactManager,
                                QWidget *parent = 0);
 
   ~BrowseContactDialog();
@@ -46,7 +46,7 @@ protected:
 
 private:
   void
-  getCertNames(std::vector<std::string> &names);
+  getCertNames(std::vector<std::string>& names);
 
   void
   updateCertificateMap(bool filter = false);
@@ -95,7 +95,7 @@ signals:
 private:
   Ui::BrowseContactDialog *ui;
   
-  ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;
+  ndn::shared_ptr<chronos::ContactManager> m_contactManager;
 
   WarningDialog* m_warningDialog;
   QStringListModel* m_contactListModel;
@@ -104,11 +104,9 @@ private:
   std::vector<ndn::Name> m_contactNameList;
   std::vector<ndn::Name> m_certificateNameList;
   std::map<ndn::Name, ndn::IdentityCertificate> m_certificateMap;
-  std::map<ndn::Name, Profile> m_profileMap;
+  std::map<ndn::Name, chronos::Profile> m_profileMap;
 
   RecLock m_mutex;
-
-
 };
 
 #endif // BROWSECONTACTDIALOG_H

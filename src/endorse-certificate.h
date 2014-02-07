@@ -8,53 +8,16 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef LINKNDN_ENDORSE_CERTIFICATE_H
-#define LINKNDN_ENDORSE_CERTIFICATE_H
+#ifndef CHRONOS_ENDORSE_CERTIFICATE_H
+#define CHRONOS_ENDORSE_CERTIFICATE_H
 
+#include "profile.h"
 #include <vector>
-#include <ndn-cpp-dev/data.hpp>
 #include <ndn-cpp-dev/security/identity-certificate.hpp>
-#include <ndn-cpp-dev/security/certificate-extension.hpp>
 
-#include "profile-data.h"
 
-class ProfileExtension : public ndn::CertificateExtension
-{
-public:
-  struct Error : public ndn::CertificateExtension::Error { Error(const std::string &what) : ndn::CertificateExtension::Error(what) {} };
 
-  ProfileExtension(const ProfileData& profileData);
-  
-  ProfileExtension(const ProfileExtension& profileExtension);
-
-  ProfileExtension(const CertificateExtension& extension);
-
-  ~ProfileExtension() {}
-
-  ndn::ptr_lib::shared_ptr<ProfileData>
-  getProfileData();
-};
-
-class EndorseExtension : public ndn::CertificateExtension
-{
-public:
-  struct Error : public ndn::CertificateExtension::Error { Error(const std::string &what) : ndn::CertificateExtension::Error(what) {} };
-
-  EndorseExtension(const std::vector<std::string>& endorseList);
-
-  EndorseExtension(const EndorseExtension& endorseExtension);
-
-  EndorseExtension(const CertificateExtension& extension);
-
-  ~EndorseExtension() {}
-
-  std::vector<std::string>
-  getEndorseList();
-
-private:
-  static ndn::Buffer
-  encodeEndorseList(const std::vector<std::string>& endorsedList);
-};
+namespace chronos{
 
 class EndorseCertificate : public ndn::Certificate
 {
@@ -64,7 +27,7 @@ public:
   EndorseCertificate() {}
 
   EndorseCertificate(const ndn::IdentityCertificate& kskCertificate,
-                     const ProfileData& profileData,
+                     const Profile& profile,
                      const std::vector<std::string>& endorseList = std::vector<std::string>());
 
   EndorseCertificate(const EndorseCertificate& endorseCertificate,
@@ -83,23 +46,28 @@ public:
   getSigner() const
   { return m_signer; }
 
-  const ProfileData&
-  getProfileData() const
-  { return m_profileData; }
+  const Profile&
+  getProfile() const
+  { return m_profile; }
 
   const std::vector<std::string>&
   getEndorseList() const
   { return m_endorseList; }
 
-  virtual ndn::Name
+  const ndn::Name&
   getPublicKeyName () const
   { return m_keyName; }
 
-protected:
+private:
+  static const ndn::OID PROFILE_EXT_OID;
+  static const ndn::OID ENDORSE_EXT_OID;
+
   ndn::Name m_keyName;
   ndn::Name m_signer;
-  ProfileData m_profileData;
+  Profile m_profile;
   std::vector<std::string> m_endorseList;
 };
+
+}//chronos
 
 #endif

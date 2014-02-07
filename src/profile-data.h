@@ -8,11 +8,14 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef LINKNDN_PROFILE_DATA_H
-#define LINKNDN_PROFILE_DATA_H
+#ifndef CHRONOS_PROFILE_DATA_H
+#define CHRONOS_PROFILE_DATA_H
 
-#include <ndn-cpp-dev/data.hpp>
 #include "profile.h"
+#include <ndn-cpp-dev/data.hpp>
+
+
+namespace chronos{
 
 class ProfileData : public ndn::Data
 {
@@ -22,8 +25,6 @@ public:
   ProfileData();
 
   ProfileData(const Profile& profile);
-
-  // ProfileData(const ProfileData& profileData);
 
   ProfileData(const ndn::Data& data);
 
@@ -41,5 +42,7 @@ private:
   ndn::Name m_identity;
   Profile m_profile;
 };
+
+}//chronos
 
 #endif

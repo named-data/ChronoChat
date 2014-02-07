@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef LINKNDN_ENDORSE_COMBOBOX_DELEGATE_H
-#define LINKNDN_ENDORSE_COMBOBOX_DELEGATE_H
+#ifndef ENDORSE_COMBOBOX_DELEGATE_H
+#define ENDORSE_COMBOBOX_DELEGATE_H
 
 #include <QItemDelegate>
 #include <string>

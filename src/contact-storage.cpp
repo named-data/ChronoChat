@@ -15,10 +15,11 @@
 
 using namespace std;
 using namespace ndn;
-using namespace ndn::ptr_lib;
 namespace fs = boost::filesystem;
 
 INIT_LOGGER ("ContactStorage");
+
+namespace chronos{
 
 const string INIT_SP_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
@@ -118,187 +119,52 @@ ContactStorage::ContactStorage()
   if (res != SQLITE_OK)
     throw Error("Chronos DB cannot be open/created");
 
-  // Check if SelfProfile table exists
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='SelfProfile'", -1, &stmt, 0);
-  res = sqlite3_step (stmt);
+  initializeTable("SelfProfile", INIT_SP_TABLE);
+  initializeTable("SelfEndorse", INIT_SE_TABLE);
+  initializeTable("Contact", INIT_CONTACT_TABLE);
+  initializeTable("TrustScope", INIT_TS_TABLE);
+  initializeTable("ContactProfile", INIT_CP_TABLE);
+  initializeTable("ProfileEndorse", INIT_PE_TABLE);
+  initializeTable("CollectEndorse", INIT_CE_TABLE);
 
-  bool spTableExist = false;
-  if (res == SQLITE_ROW)
-      spTableExist = true;
-  sqlite3_finalize (stmt);
-
-  if(!spTableExist)
-    {
-      char *errmsg = 0;
-      res = sqlite3_exec (m_db, INIT_SP_TABLE.c_str (), NULL, NULL, &errmsg);
-      if (res != SQLITE_OK && errmsg != 0)
-        throw Error("Init \"error\" in SelfProfile");
-    }
-
-  // Check if SelfEndorse table exists
-  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='SelfEndorse'", -1, &stmt, 0);
-  res = sqlite3_step (stmt);
-
-  bool seTableExist = false;
-  if (res == SQLITE_ROW)
-      seTableExist = true;
-  sqlite3_finalize (stmt);
-
-  if(!seTableExist)
-    {
-      char *errmsg = 0;
-      res = sqlite3_exec (m_db, INIT_SE_TABLE.c_str (), NULL, NULL, &errmsg);
-      if (res != SQLITE_OK && errmsg != 0)
-        throw Error("Init \"error\" in SelfEndorse");
-    }
-
-
-  // Check if Contact table exists
-  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='Contact'", -1, &stmt, 0);
-  res = sqlite3_step (stmt);
-
-  bool contactTableExist = false;
-  if (res == SQLITE_ROW)
-      contactTableExist = true;
-  sqlite3_finalize (stmt);
-
-  if(!contactTableExist)
-    {
-      char *errmsg = 0;
-      res = sqlite3_exec (m_db, INIT_CONTACT_TABLE.c_str (), NULL, NULL, &errmsg);
-      if (res != SQLITE_OK && errmsg != 0)
-        throw Error("Init \"error\" in Contact");
-    }
-
-  // Check if TrustScope table exists
-  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='TrustScope'", -1, &stmt, 0);
-  res = sqlite3_step (stmt);
-
-  bool tsTableExist = false;
-  if (res == SQLITE_ROW)
-      tsTableExist = true;
-  sqlite3_finalize (stmt);
-
-  if(!tsTableExist)
-    {
-      char *errmsg = 0;
-      res = sqlite3_exec (m_db, INIT_TS_TABLE.c_str (), NULL, NULL, &errmsg);
-      if (res != SQLITE_OK && errmsg != 0)
-        throw Error("Init \"error\" in TrustScope");
-    }
-
-  // Check if ContactProfile table exists
-  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='ContactProfile'", -1, &stmt, 0);
-  res = sqlite3_step (stmt);
-
-  bool cpTableExist = false;
-  if (res == SQLITE_ROW)
-      cpTableExist = true;
-  sqlite3_finalize (stmt);
-
-  if(!cpTableExist)
-    {
-      char *errmsg = 0;
-      res = sqlite3_exec (m_db, INIT_CP_TABLE.c_str (), NULL, NULL, &errmsg);
-      if (res != SQLITE_OK && errmsg != 0)
-        throw Error("Init \"error\" in ContactProfile");
-    }
-
-  // Check if ProfileEndorse table exists
-  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='ProfileEndorse'", -1, &stmt, 0);
-  res = sqlite3_step (stmt);
-
-  bool peTableExist = false;
-  if (res == SQLITE_ROW)
-      peTableExist = true;
-  sqlite3_finalize (stmt);
-
-  if(!peTableExist)
-    {
-      char *errmsg = 0;
-      res = sqlite3_exec (m_db, INIT_PE_TABLE.c_str (), NULL, NULL, &errmsg);
-      if (res != SQLITE_OK && errmsg != 0)
-        throw Error("Init \"error\" in ProfileEndorse");
-    }
-
-  // Check if CollectEndorse table exists
-  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name='CollectEndorse'", -1, &stmt, 0);
-  res = sqlite3_step (stmt);
-
-  bool ceTableExist = false;
-  if (res == SQLITE_ROW)
-      ceTableExist = true;
-  sqlite3_finalize (stmt);
-
-  if(!ceTableExist)
-    {
-      char *errmsg = 0;
-      res = sqlite3_exec (m_db, INIT_CE_TABLE.c_str (), NULL, NULL, &errmsg);
-      if (res != SQLITE_OK && errmsg != 0)
-        throw Error("Init \"error\" in CollectEndorse");
-    }
-}
-
-bool
-ContactStorage::doesSelfEntryExist(const Name& identity, const string& profileType)
-{
-  bool result = false;
-  
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT count(*) FROM SelfProfile WHERE profile_type=? and profile_identity=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-
-  int res = sqlite3_step (stmt);
-    
-  if (res == SQLITE_ROW)
-    {
-      int countAll = sqlite3_column_int (stmt, 0);
-      if (countAll > 0)
-        result = true;
-    } 
-  sqlite3_finalize (stmt); 
-  return result;
 }
 
 void
-ContactStorage::setSelfProfileEntry(const Name& identity, const string& profileType, const Buffer &profileValue)
+ContactStorage::initializeTable(const string& tableName, const string& sqlCreateStmt)
 {
-  sqlite3_stmt *stmt;  
-  if(doesSelfEntryExist(identity, profileType))
-    {
-      sqlite3_prepare_v2 (m_db, "UPDATE SelfProfile SET profile_value=? WHERE profile_type=? and profile_identity=?", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, reinterpret_cast<const char*>(profileValue.buf()), profileValue.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 3, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-    }
-  else
-    {
-      sqlite3_prepare_v2 (m_db, "INSERT INTO SelfProfile (profile_identity, profile_type, profile_value) values (?, ?, ?)", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, profileType.c_str(), profileType.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 3, reinterpret_cast<const char*>(profileValue.buf()), profileValue.size(), SQLITE_TRANSIENT);
-    }
-  sqlite3_step (stmt);
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, tableName.c_str(), tableName.size(), SQLITE_TRANSIENT);
+  int res = sqlite3_step (stmt);
+
+  bool tableExist = false;
+  if (res == SQLITE_ROW)
+      tableExist = true;
   sqlite3_finalize (stmt);
+
+  if(!tableExist)
+    {
+      char *errmsg = 0;
+      res = sqlite3_exec (m_db, sqlCreateStmt.c_str (), NULL, NULL, &errmsg);
+      if (res != SQLITE_OK && errmsg != 0)
+        throw Error("Init \"error\" in " + tableName);
+    }
 }
 
 shared_ptr<Profile>
-ContactStorage::getSelfProfile(const Name& identity)
-{
+ContactStorage::getSelfProfile(const Name& identity) const
+{  
+  shared_ptr<Profile> profile;
   sqlite3_stmt *stmt;
-  shared_ptr<Profile> profile = make_shared<Profile>(identity);
-  
-  sqlite3_prepare_v2(m_db, "SELECT profile_type, profile_value FROM SelfProfile WHERE profile_identity=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+  sqlite3_prepare_v2 (m_db, "SELECT profile_type, profile_value FROM SelfProfile WHERE profile_identity=?", -1, &stmt, 0);
+  sqlite3_bind_text (stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
 
-  while(sqlite3_step (stmt) == SQLITE_ROW)
+  while( sqlite3_step (stmt) == SQLITE_ROW)
     {
+      profile = make_shared<Profile>(identity);
       string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
       string profileValue(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
-
-      profile->setProfileEntry(profileType, profileValue );
+      (*profile)[profileType] = profileValue;
     }
 
   sqlite3_finalize(stmt);
@@ -306,15 +172,132 @@ ContactStorage::getSelfProfile(const Name& identity)
   return profile;
 }
 
+// Block
+// ContactStorage::getSelfEndorseCertificate(const Name& identity)
+// {
+//   sqlite3_stmt *stmt;
+//   sqlite3_prepare_v2 (m_db, "SELECT endorse_data FROM SelfEndorse where identity=?", -1, &stmt, 0);
+//   sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+
+//   if(sqlite3_step (stmt) == SQLITE_ROW)
+//     {
+//       Block result(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+//       sqlite3_finalize (stmt);
+//       return result;
+//     }
+
+//   sqlite3_finalize (stmt);
+
+//   throw Error("ContactStorage: No self-endorse certificate found!");
+// }
+
+void
+ContactStorage::addSelfEndorseCertificate(const EndorseCertificate& newEndorseCertificate, const Name& identity)
+{
+  const Block& newEndorseCertificateBlock = newEndorseCertificate.wireEncode();
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "INSERT OR REPLACE INTO SelfEndorse (identity, endorse_data) values (?, ?)", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, reinterpret_cast<const char*>(newEndorseCertificateBlock.wire()), newEndorseCertificateBlock.size(), SQLITE_TRANSIENT);
+  sqlite3_step(stmt);
+
+  sqlite3_finalize (stmt);
+}
+
+// Block
+// ContactStorage::getEndorseCertificate(const Name& identity)
+// {
+//   sqlite3_stmt *stmt;
+//   sqlite3_prepare_v2 (m_db, "SELECT endorse_data FROM ProfileEndorse where identity=?", -1, &stmt, 0);
+//   sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+
+  
+//   if(sqlite3_step (stmt) == SQLITE_ROW)
+//     {
+//       Block result(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+//       sqlite3_finalize (stmt);
+//       return result;
+//     }
+
+//   sqlite3_finalize (stmt);
+
+//   throw Error("ContactStorage: No endorse certificate found!");
+  
+//   return Block();
+// }
+
+void
+ContactStorage::addEndorseCertificate(const EndorseCertificate& endorseCertificate, const Name& identity)
+{
+  const Block& newEndorseCertificateBlock = endorseCertificate.wireEncode();
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "INSERT OR REPLACE INTO ProfileEndorse (identity, endorse_data) values (?, ?)", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, reinterpret_cast<const char*>(newEndorseCertificateBlock.value()), newEndorseCertificateBlock.size(), SQLITE_TRANSIENT);
+  sqlite3_step(stmt);
+
+  sqlite3_finalize (stmt);
+}
+
+void
+ContactStorage::updateCollectEndorse(const EndorseCertificate& endorseCertificate)
+{
+  Name endorserName = endorseCertificate.getSigner();
+  Name keyName = endorseCertificate.getPublicKeyName();
+  Name endorseeName = keyName.getPrefix(keyName.size()-1);
+  Name getCertName = endorseCertificate.getName();
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "INSERT OR REPLACE INTO CollectEndorse (endorser, endorsee, endorse_name, endorse_data) VALUES (?, ?, ?, ?)", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, endorserName.toUri().c_str(), endorserName.toUri().size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, endorseeName.toUri().c_str(), endorseeName.toUri().size(), SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 3, getCertName.toUri().c_str(), getCertName.toUri().size(), SQLITE_TRANSIENT);
+  const Block &block = endorseCertificate.wireEncode();
+  sqlite3_bind_text(stmt, 4, reinterpret_cast<const char*>(block.wire()), block.size(), SQLITE_TRANSIENT);
+  int res = sqlite3_step (stmt);
+  sqlite3_finalize (stmt); 
+  return;
+}
+
+void
+ContactStorage::getCollectEndorseList(const Name& name, vector<Buffer>& endorseList)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT endorse_data FROM CollectEndorse WHERE endorsee=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
+
+  while(sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      Buffer blob(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      endorseList.push_back(blob);
+    }
+
+  sqlite3_finalize (stmt);
+}
+
+void
+ContactStorage::getEndorseList(const Name& identity, vector<string>& endorseList)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT profile_type FROM ContactProfile WHERE profile_identity=? AND endorse=1 ORDER BY profile_type", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
+
+  while( sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      endorseList.push_back(profileType);      
+    }
+  sqlite3_finalize (stmt);  
+}
+
+
 void 
 ContactStorage::removeContact(const Name& contactNameSpace)
 {
-  shared_ptr<ContactItem> contact = getContact(contactNameSpace);
   string identity = contactNameSpace.toUri();
   
-  if(contact == NULL)
-    return;
-
   sqlite3_stmt *stmt;  
   sqlite3_prepare_v2 (m_db, "DELETE FROM Contact WHERE contact_namespace=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.c_str(), identity.size (), SQLITE_TRANSIENT);
@@ -326,13 +309,10 @@ ContactStorage::removeContact(const Name& contactNameSpace)
   res = sqlite3_step (stmt);
   sqlite3_finalize (stmt);
   
-  if(contact->isIntroducer())
-    {
-      sqlite3_prepare_v2 (m_db, "DELETE FROM TrustScope WHERE contact_namespace=?", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, identity.c_str(),  identity.size (), SQLITE_TRANSIENT);
-      res = sqlite3_step (stmt);
-      sqlite3_finalize (stmt);         
-    }
+  sqlite3_prepare_v2 (m_db, "DELETE FROM TrustScope WHERE contact_namespace=?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, identity.c_str(),  identity.size (), SQLITE_TRANSIENT);
+  res = sqlite3_step (stmt);
+  sqlite3_finalize (stmt);         
 }
   
 void
@@ -359,7 +339,7 @@ ContactStorage::addContact(const ContactItem& contact)
   int res = sqlite3_step (stmt);
   sqlite3_finalize (stmt);
 
-  const Profile&  profile = contact.getSelfEndorseCertificate().getProfileData().getProfile();
+  const Profile&  profile = contact.getSelfEndorseCertificate().getProfile();
   Profile::const_iterator it = profile.begin();
   string identity = contact.getNameSpace().toUri();
   for(; it != profile.end(); it++)
@@ -378,11 +358,10 @@ ContactStorage::addContact(const ContactItem& contact)
 
   if(isIntroducer)
     {
-      const vector<Name>& scopeList = contact.getTrustScopeList();
-      vector<Name>::const_iterator it = scopeList.begin();
+      ContactItem::const_iterator it = contact.trustScopeBegin();
       string nameSpace = contact.getNameSpace().toUri();
       
-      while(it != scopeList.end())
+      while(it != contact.trustScopeEnd())
         {
           sqlite3_prepare_v2 (m_db, 
                               "INSERT INTO TrustScope (contact_namespace, trust_scope) values (?, ?)", 
@@ -390,7 +369,7 @@ ContactStorage::addContact(const ContactItem& contact)
                               &stmt, 
                               0);
           sqlite3_bind_text(stmt, 1, nameSpace.c_str(),  nameSpace.size (), SQLITE_TRANSIENT);
-          sqlite3_bind_text(stmt, 2, it->toUri().c_str(), it->toUri().size(), SQLITE_TRANSIENT);
+          sqlite3_bind_text(stmt, 2, it->first.toUri().c_str(), it->first.toUri().size(), SQLITE_TRANSIENT);
           res = sqlite3_step (stmt);
           sqlite3_finalize (stmt);          
           it++;
@@ -398,8 +377,49 @@ ContactStorage::addContact(const ContactItem& contact)
     }
 }
 
+
+shared_ptr<ContactItem>
+ContactStorage::getContact(const Name& name)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT contact_alias, self_certificate, is_introducer FROM Contact where contact_namespace=?", -1, &stmt, 0);
+  sqlite3_bind_text (stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
+  
+  if( sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      string alias(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+
+      Data certData;
+      certData.wireDecode(Block(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1)));
+      EndorseCertificate endorseCertificate(certData);
+
+      int isIntroducer = sqlite3_column_int (stmt, 2);
+
+      sqlite3_finalize (stmt);
+      
+      shared_ptr<ContactItem> contact = make_shared<ContactItem>(endorseCertificate, isIntroducer, alias);
+
+      if(contact->isIntroducer())
+        {
+          sqlite3_prepare_v2 (m_db, "SELECT trust_scope FROM TrustScope WHERE contact_namespace=?", -1, &stmt, 0);
+          sqlite3_bind_text(stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
+
+          while( sqlite3_step (stmt) == SQLITE_ROW)
+            {
+              Name scope(string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
+              contact->addTrustScope(scope);
+            }
+          sqlite3_finalize (stmt);  
+        }
+
+      return contact;      
+    } 
+  return shared_ptr<ContactItem>();
+}
+
+
 void
-ContactStorage::updateIsIntroducer(const ndn::Name& identity, bool isIntroducer)
+ContactStorage::updateIsIntroducer(const Name& identity, bool isIntroducer)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "UPDATE Contact SET is_introducer=? WHERE contact_namespace=?", -1, &stmt, 0);
@@ -411,7 +431,7 @@ ContactStorage::updateIsIntroducer(const ndn::Name& identity, bool isIntroducer)
 }
 
 void 
-ContactStorage::updateAlias(const ndn::Name& identity, std::string alias)
+ContactStorage::updateAlias(const Name& identity, string alias)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "UPDATE Contact SET contact_alias=? WHERE contact_namespace=?", -1, &stmt, 0);
@@ -481,242 +501,4 @@ ContactStorage::getAllContacts(vector<shared_ptr<ContactItem> >& contacts) const
     }
 }
 
-shared_ptr<ContactItem>
-ContactStorage::getContact(const Name& name)
-{
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT contact_alias, self_certificate, is_introducer FROM Contact where contact_namespace=?", -1, &stmt, 0);
-  sqlite3_bind_text (stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
-  
-  if( sqlite3_step (stmt) == SQLITE_ROW)
-    {
-      string alias(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-
-      Data certData;
-      certData.wireDecode(Block(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1)));
-      EndorseCertificate endorseCertificate(certData);
-
-      int isIntroducer = sqlite3_column_int (stmt, 2);
-
-      sqlite3_finalize (stmt);
-      
-      shared_ptr<ContactItem> contact = make_shared<ContactItem>(endorseCertificate, isIntroducer, alias);
-
-      if(contact->isIntroducer())
-        {
-          sqlite3_prepare_v2 (m_db, "SELECT trust_scope FROM TrustScope WHERE contact_namespace=?", -1, &stmt, 0);
-          sqlite3_bind_text(stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
-
-          while( sqlite3_step (stmt) == SQLITE_ROW)
-            {
-              Name scope(string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
-              contact->addTrustScope(scope);
-            }
-          sqlite3_finalize (stmt);  
-        }
-
-      return contact;      
-    } 
-  return shared_ptr<ContactItem>();
-}
-
-shared_ptr<Profile>
-ContactStorage::getSelfProfile(const Name& identity) const
-{  
-  shared_ptr<Profile> profile = make_shared<Profile>(identity);
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT profile_type, profile_value FROM SelfProfile WHERE profile_identity=?", -1, &stmt, 0);
-  sqlite3_bind_text (stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-
-  while( sqlite3_step (stmt) == SQLITE_ROW)
-    {
-      string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      string profileValue(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
-      profile->setProfileEntry(profileType, profileValue);
-    }
-
-  sqlite3_finalize(stmt);
-
-  return profile;
-}
-
-Block
-ContactStorage::getSelfEndorseCertificate(const Name& identity)
-{
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT endorse_data FROM SelfEndorse where identity=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-
-  if(sqlite3_step (stmt) == SQLITE_ROW)
-    {
-      Block result(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      sqlite3_finalize (stmt);
-      return result;
-    }
-
-  sqlite3_finalize (stmt);
-
-  throw Error("ContactStorage: No self-endorse certificate found!");
-
-  return Block();
-}
-
-void
-ContactStorage::updateSelfEndorseCertificate(const EndorseCertificate& newEndorseCertificate, const Name& identity)
-{
-  const Block& newEndorseCertificateBlock = newEndorseCertificate.wireEncode();
-
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "UPDATE SelfEndorse SET endorse_data=? WHERE identity=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, reinterpret_cast<const char*>(newEndorseCertificateBlock.wire()), newEndorseCertificateBlock.size(), SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-  sqlite3_step(stmt);
-  
-  sqlite3_finalize (stmt);
-}
-
-void
-ContactStorage::addSelfEndorseCertificate(const EndorseCertificate& newEndorseCertificate, const Name& identity)
-{
-  const Block& newEndorseCertificateBlock = newEndorseCertificate.wireEncode();
-
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "INSERT INTO SelfEndorse (identity, endorse_data) values (?, ?)", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt, 2, reinterpret_cast<const char*>(newEndorseCertificateBlock.wire()), newEndorseCertificateBlock.size(), SQLITE_TRANSIENT);
-  sqlite3_step(stmt);
-
-  sqlite3_finalize (stmt);
-}
-
-Block
-ContactStorage::getEndorseCertificate(const Name& identity)
-{
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT endorse_data FROM ProfileEndorse where identity=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-
-  
-  if(sqlite3_step (stmt) == SQLITE_ROW)
-    {
-      Block result(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      sqlite3_finalize (stmt);
-      return result;
-    }
-
-  sqlite3_finalize (stmt);
-
-  throw Error("ContactStorage: No endorse certificate found!");
-  
-  return Block();
-}
-
-void
-ContactStorage::updateEndorseCertificate(const EndorseCertificate& endorseCertificate, const Name& identity)
-{
-  const Block& newEndorseCertificateBlock = endorseCertificate.wireEncode();
-
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "UPDATE ProfileEndorse SET endorse_data=? WHERE identity=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, reinterpret_cast<const char*>(newEndorseCertificateBlock.wire()), newEndorseCertificateBlock.size(), SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt, 2, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-  sqlite3_step(stmt);
-
-  sqlite3_finalize (stmt);
-}
-
-void
-ContactStorage::addEndorseCertificate(const EndorseCertificate& endorseCertificate, const Name& identity)
-{
-  const Block& newEndorseCertificateBlock = endorseCertificate.wireEncode();
-
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "INSERT INTO ProfileEndorse (identity, endorse_data) values (?, ?)", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt, 2, reinterpret_cast<const char*>(newEndorseCertificateBlock.value()), newEndorseCertificateBlock.size(), SQLITE_TRANSIENT);
-  sqlite3_step(stmt);
-
-  sqlite3_finalize (stmt);
-}
-
-void
-ContactStorage::getEndorseList(const Name& identity, vector<string>& endorseList)
-{
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT profile_type FROM ContactProfile WHERE profile_identity=? AND endorse=1 ORDER BY profile_type", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-
-  while( sqlite3_step (stmt) == SQLITE_ROW)
-    {
-      string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      endorseList.push_back(profileType);      
-    }
-  sqlite3_finalize (stmt);  
-}
-
-void
-ContactStorage::updateCollectEndorse(const EndorseCertificate& endorseCertificate)
-{
-  Name endorserName = endorseCertificate.getSigner();
-  Name keyName = endorseCertificate.getPublicKeyName();
-  Name endorseeName = keyName.getPrefix(keyName.size()-1);
-  Name getCertName = endorseCertificate.getName();
-  Name oldCertName;
-  bool insert = true;
-  bool update = true;
-
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT endorse_name FROM CollectEndorse WHERE endorser=? AND endorsee=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, endorserName.toUri().c_str(), endorserName.toUri().size(), SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt, 2, endorseeName.toUri().c_str(), endorseeName.toUri().size(), SQLITE_TRANSIENT);
-
-  if(sqlite3_step (stmt) == SQLITE_ROW)
-    {
-      insert = false;
-      oldCertName = Name(string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
-      if(getCertName == oldCertName)
-        update = false;
-    }
-  sqlite3_finalize (stmt);  
-  
-  if(insert)
-    {
-      sqlite3_prepare_v2 (m_db, "INSERT INTO CollectEndorse (endorser, endorsee, endorse_name, endorse_data) VALUES (?, ?, ?, ?)", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, endorserName.toUri().c_str(), endorserName.toUri().size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 2, endorseeName.toUri().c_str(), endorseeName.toUri().size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 3, getCertName.toUri().c_str(), getCertName.toUri().size(), SQLITE_TRANSIENT);
-      const Block &block = endorseCertificate.wireEncode();
-      sqlite3_bind_text(stmt, 4, reinterpret_cast<const char*>(block.wire()), block.size(), SQLITE_TRANSIENT);
-      int res = sqlite3_step (stmt);
-      sqlite3_finalize (stmt); 
-      return;
-    }
-  if(update)
-    {
-      sqlite3_prepare_v2 (m_db, "UPDATE CollectEndorse SET endorse_name=?, endorse_data=? WHERE endorser=? AND endorsee=?", -1, &stmt, 0);
-      sqlite3_bind_text(stmt, 1, getCertName.toUri().c_str(), getCertName.toUri().size(), SQLITE_TRANSIENT);
-      const Block &block = endorseCertificate.wireEncode();
-      sqlite3_bind_text(stmt, 2, reinterpret_cast<const char*>(block.value()), block.size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 3, endorserName.toUri().c_str(), endorserName.toUri().size(), SQLITE_TRANSIENT);
-      sqlite3_bind_text(stmt, 4, endorseeName.toUri().c_str(), endorseeName.toUri().size(), SQLITE_TRANSIENT);
-      int res = sqlite3_step (stmt);
-      sqlite3_finalize (stmt); 
-      return;
-    }
-}
-
-void
-ContactStorage::getCollectEndorseList(const Name& name, vector<Buffer>& endorseList)
-{
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT endorse_data FROM CollectEndorse WHERE endorsee=?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
-
-  while(sqlite3_step (stmt) == SQLITE_ROW)
-    {
-      Buffer blob(reinterpret_cast<const uint8_t*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      endorseList.push_back(blob);
-    }
-
-  sqlite3_finalize (stmt);
-}
+}//chronos
