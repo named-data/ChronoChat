@@ -152,7 +152,7 @@ DigestTreeScene::removeNode(const QString prefix)
 void
 DigestTreeScene::plot(QString digest)
 {
-#ifdef __DEBUG
+#ifdef _DEBUG
   std::cout << "Plotting at time: " << time(NULL) << std::endl;
 #endif
   clear();
@@ -175,7 +175,7 @@ DigestTreeScene::plot(QString digest)
       time_t now = time(NULL);
       if (now - p->getReceived() >= FRESHNESS)
       {
-#ifdef __DEBUG
+#ifdef _DEBUG
         std::cout << "Removing user: " << p->getNick().toStdString() << std::endl;
         std::cout << "now - last = " << now - p->getReceived() << std::endl;
 #endif
@@ -187,7 +187,7 @@ DigestTreeScene::plot(QString digest)
       {
         if (!m_currentPrefix.startsWith("/private/local") && p->getPrefix().startsWith("/private/local"))
         {
-#ifdef __DEBUG
+#ifdef _DEBUG
           std::cout << "erasing: " << p->getPrefix().toStdString() << std::endl;
 #endif
           staleUserList << p->getNick();

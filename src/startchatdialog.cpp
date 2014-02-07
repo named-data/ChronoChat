@@ -25,32 +25,23 @@ StartChatDialog::StartChatDialog(QWidget *parent) :
 }
 
 StartChatDialog::~StartChatDialog()
-{
-    delete ui;
-}
+{ delete ui; }
 
 void
-StartChatDialog::setInvitee(const string& invitee, const string& chatroom)
-{ 
-  m_invitee = invitee;
-  ui->chatroomInput->setText(QString::fromStdString(chatroom));
-}
+StartChatDialog::setChatroom(const string& chatroom)
+{ ui->chatroomInput->setText(QString::fromStdString(chatroom)); }
 
-void 
+void
 StartChatDialog::onOkClicked()
 {
   QString chatroom = ui->chatroomInput->text();
-  QString invitee = QString::fromStdString(m_invitee);
-  // bool isIntroducer = ui->introCheckBox->isChecked();
-  bool isIntroducer = true;
-  emit chatroomConfirmed(chatroom, invitee, isIntroducer);
+  emit chatroomConfirmed(chatroom);
   this->close();
 }
 
 void
 StartChatDialog::onCancelClicked()
 { this->close(); }
-
 
 #if WAF
 #include "startchatdialog.moc"

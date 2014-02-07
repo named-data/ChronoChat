@@ -8,22 +8,25 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef LINKNDN_CONTACT_ITEM_H
-#define LINKNDN_CONTACT_ITEM_H
+#ifndef CHRONOS_CONTACT_ITEM_H
+#define CHRONOS_CONTACT_ITEM_H
 
-#include <ndn-cpp-dev/data.hpp>
-#include <ndn-cpp-et/regex/regex.hpp>
-#include <vector>
 #include "endorse-certificate.h"
+#include <ndn-cpp-dev/util/regex.hpp>
+#include <vector>
+
+
+namespace chronos{
 
 class ContactItem
 {
-  typedef std::vector<ndn::ptr_lib::shared_ptr<EndorseCertificate> > EndorseCertificateList;
-
 public:
+  typedef std::map<ndn::Name, ndn::shared_ptr<ndn::Regex> >::const_iterator const_iterator;
+  typedef std::map<ndn::Name, ndn::shared_ptr<ndn::Regex> >::iterator iterator;
+
   ContactItem(const EndorseCertificate& selfEndorseCertificate,
               bool isIntroducer = false,
-              const std::string& alias = std::string());
+              const std::string& alias = "");
 
   ContactItem(const ContactItem& contactItem);
   
@@ -50,7 +53,7 @@ public:
   getInstitution() const
   { return m_institution; }
 
-  const ndn::Name
+  const ndn::Name&
   getPublicKeyName() const
   { return m_selfEndorseCertificate.getPublicKeyName(); }
 
@@ -64,17 +67,43 @@ public:
 
   void
   addTrustScope(const ndn::Name& nameSpace)
+  { m_trustScope[nameSpace] = ndn::Regex::fromName(nameSpace); }
+
+  void
+  deleteTrustScope(const ndn::Name& nameSpace)
   {
-    m_trustScopeName.push_back(nameSpace);
-    m_trustScope.push_back(ndn::Regex::fromName(nameSpace)); 
+    std::map<ndn::Name, ndn::shared_ptr<ndn::Regex> >::iterator it = m_trustScope.find(nameSpace);
+    if(it != m_trustScope.end())
+      m_trustScope.erase(it);
   }
 
   bool
-  canBeTrustedFor(const ndn::Name& name);
+  canBeTrustedFor(const ndn::Name& name)
+  {
+    std::map<ndn::Name, ndn::shared_ptr<ndn::Regex> >::iterator it = m_trustScope.begin();
 
-  const std::vector<ndn::Name>&
-  getTrustScopeList() const
-  { return m_trustScopeName; }
+    for(; it != m_trustScope.end(); it++)
+      if(it->second->match(name))
+        return true;
+    return false;
+  }
+
+  const_iterator
+  trustScopeBegin() const
+  { return m_trustScope.begin(); }
+
+  const_iterator
+  trustScopeEnd() const
+  { return m_trustScope.end(); }
+
+  iterator
+  trustScopeBegin()
+  { return m_trustScope.begin(); }
+
+  iterator
+  trustScopeEnd()
+  { return m_trustScope.end(); }
+
 
 protected:
   EndorseCertificate m_selfEndorseCertificate;
@@ -87,8 +116,9 @@ protected:
 
   bool m_isIntroducer;
 
-  std::vector<ndn::ptr_lib::shared_ptr<ndn::Regex> > m_trustScope;
-  std::vector<ndn::Name> m_trustScopeName;
+  std::map<ndn::Name, ndn::shared_ptr<ndn::Regex> > m_trustScope;
 };
+
+}//chronos
 
 #endif

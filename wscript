@@ -6,8 +6,9 @@ from waflib import Configure, Utils
 
 def options(opt):
     opt.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
-    opt.add_option('--log4cxx',action='store_true',default=False,dest='log4cxx',help='''Enable log4cxx''')
-    opt.add_option('--with-test', action='store_true',default=False,dest='with_tests',help='''build unit tests''')
+    opt.add_option('--with-log4cxx',action='store_true',default=False,dest='log4cxx',help='''Enable log4cxx''')
+    opt.add_option('--with-tests', action='store_true',default=False,dest='with_tests',help='''build unit tests''')
+    opt.add_option('--without-security', action='store_false',default=True,dest='with_security',help='''Enable security''')
     
     opt.load('compiler_c compiler_cxx qt4')
 
@@ -32,6 +33,7 @@ def configure(conf):
                  '-fcolor-diagnostics',       # only clang supports
                  '-Qunused-arguments',        # only clang supports
                  '-Wno-deprecated-declarations',
+                 '-Wno-unneeded-internal-declaration',
                  ]
 
         conf.add_supported_cxxflags (cxxflags = flags)
@@ -50,20 +52,24 @@ def configure(conf):
 
     conf.check_boost(lib='system random thread filesystem unit_test_framework')
 
-    conf.write_config_header('config.h')
-
     if conf.options.with_tests:
-      conf.define('WITH_TESTS', 1)
+        conf.define('WITH_TESTS', 1)
+
+
+    if conf.options.with_security:
+        conf.define('WITH_SECURITY', 1)
+
+    conf.write_config_header('src/config.h')
 		
 def build (bld):
     qt = bld (
         target = "ChronoChat",
         features = "qt4 cxx cxxprogram",
-        #        features= "qt4 cxx cxxshlib",
+        # features= "qt4 cxx cxxshlib",
         defines = "WAF",
         source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', '*.qrc', 'logging.cc', 'src/*.proto']),
         includes = "src .",
-        use = "QTCORE QTGUI QTWIDGETS QTSQL SQLITE3 NDN_CPP BOOST LOG4CXX SYNC",
+        use = "QTCORE QTGUI QTWIDGETS QTSQL NDN_CPP BOOST LOG4CXX SYNC",
         )
 
     # Unit tests
@@ -73,8 +79,10 @@ def build (bld):
     #       source = bld.path.ant_glob(['test/**/*.cc']),
     #       features=['cxx', 'cxxprogram'],
     #       use = 'BOOST ChronoChat',
+    #       includes = "src",
     #       install_path = None,
     #       )
+      
       # Tmp disable
     if Utils.unversioned_sys_platform () == "darwin":
         app_plist = '''<?xml version="1.0" encoding="UTF-8"?>

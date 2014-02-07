@@ -27,14 +27,15 @@ class StartChatDialog : public QDialog
 
 public:
   explicit StartChatDialog(QWidget *parent = 0);
+
   ~StartChatDialog();
 
   void
-  setInvitee(const std::string& invitee, const std::string& chatroom);
+  setChatroom(const std::string& chatroom);
 
 signals:
   void
-  chatroomConfirmed(const QString& chatroomName, const QString& invitee, bool isIntroducer);
+  chatroomConfirmed(const QString& chatroomName);
     
 private slots:
   void
@@ -45,7 +46,6 @@ private slots:
 
 private:
   Ui::StartChatDialog *ui;
-  std::string m_invitee;
 };
 
 #endif // STARTCHATDIALOG_H

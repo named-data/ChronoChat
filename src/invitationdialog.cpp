@@ -14,7 +14,7 @@
 
 using namespace std;
 using namespace ndn;
-using namespace ndn::ptr_lib;
+using namespace chronos;
 
 InvitationDialog::InvitationDialog(QWidget *parent) :
     QDialog(parent),
@@ -35,24 +35,22 @@ InvitationDialog::~InvitationDialog()
 
 void
 InvitationDialog::setInvitation(const string& alias,
-                                shared_ptr<ChronosInvitation> invitation, 
-                                shared_ptr<IdentityCertificate> identityCertificate)
+                                const Name& interestName)
 {
   m_inviterAlias = alias;
   string msg = alias;
   msg.append("\ninvites you to join the chat room: ");
   ui->msgLabel->setText(QString::fromStdString(msg));
 
-  m_invitation = invitation;
-  ui->chatroomLine->setText(QString::fromStdString(invitation->getChatroom().get(0).toEscapedString()));
-
-  m_identityCertificate = identityCertificate;
+  m_invitationInterest = interestName;
+  Invitation invitation(interestName);
+  ui->chatroomLine->setText(QString::fromStdString(invitation.getChatroom().get(0).toEscapedString()));
 }
 
 void
 InvitationDialog::onOkClicked()
 { 
-  emit invitationAccepted(*m_invitation, *m_identityCertificate); 
+  emit invitationAccepted(m_invitationInterest); 
   this->close();
 }
   
@@ -62,10 +60,9 @@ InvitationDialog::onCancelClicked()
   ui->msgLabel->clear();
   ui->chatroomLine->clear();
 
-  emit invitationRejected(*m_invitation); 
+  emit invitationRejected(m_invitationInterest); 
 
-  m_invitation = make_shared<ChronosInvitation>();
-  m_identityCertificate = make_shared<IdentityCertificate>();
+  m_invitationInterest.clear();
   m_inviterAlias.clear();
 
   this->close();

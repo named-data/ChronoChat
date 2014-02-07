@@ -26,7 +26,7 @@ class SetAliasDialog : public QDialog
   Q_OBJECT
 
 public:
-  explicit SetAliasDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
+  explicit SetAliasDialog(ndn::shared_ptr<chronos::ContactManager> contactManager,
 			  QWidget *parent = 0);
   ~SetAliasDialog();
 
@@ -46,7 +46,7 @@ private slots:
 
 private:
   Ui::SetAliasDialog *ui;
-  ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;
+  ndn::shared_ptr<chronos::ContactManager> m_contactManager;
   std::string m_target;
 };
 

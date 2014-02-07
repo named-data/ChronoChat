@@ -20,7 +20,7 @@
 
 using namespace ndn;
 using namespace std;
-using namespace ndn::ptr_lib;
+using namespace chronos;
 
 INIT_LOGGER("ProfileEditor");
 
@@ -84,13 +84,6 @@ ProfileEditor::onDeleteClicked()
 void
 ProfileEditor::onOkClicked()
 {
-  Name defaultCertName = m_keyChain->getDefaultCertificateNameForIdentity(m_currentIdentity);
-  if(defaultCertName.size() == 0)
-    {
-      emit noKeyOrCert(QString::fromStdString("Corresponding certificate is missing!\nHave you installed the certificate?"));
-      return;
-    }
-
   m_tableModel->submitAll();
   m_contactManager->updateProfileData(m_currentIdentity);
   this->hide();

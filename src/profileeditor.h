@@ -28,7 +28,7 @@ class ProfileEditor : public QDialog
     Q_OBJECT
 
 public:
-  explicit ProfileEditor(ndn::ptr_lib::shared_ptr<ContactManager> contactManager, 
+  explicit ProfileEditor(ndn::shared_ptr<chronos::ContactManager> contactManager, 
                          QWidget *parent = 0);
   
   ~ProfileEditor();
@@ -57,8 +57,8 @@ signals:
 private:
   Ui::ProfileEditor *ui;
   QSqlTableModel* m_tableModel;
-  ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;
-  ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
+  ndn::shared_ptr<chronos::ContactManager> m_contactManager;
+  ndn::shared_ptr<ndn::KeyChain> m_keyChain;
   ndn::Name m_currentIdentity;
 };
 

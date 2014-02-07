@@ -17,12 +17,11 @@
 #include <boost/asio.hpp>
 #include <boost/tokenizer.hpp>
 #include "logging.h"
-// #include "ndn.cxx/error.h"
 #endif
 
 using namespace std;
 using namespace ndn;
-using namespace ndn::ptr_lib;
+using namespace chronos;
 
 INIT_LOGGER("BrowseContactDialog");
 
@@ -65,7 +64,7 @@ BrowseContactDialog::~BrowseContactDialog()
 
 
 void
-BrowseContactDialog::getCertNames(std::vector<std::string> &names)
+BrowseContactDialog::getCertNames(vector<string> &names)
 {
   try{
     using namespace boost::asio::ip;
@@ -215,7 +214,7 @@ BrowseContactDialog::onCertificateFetched(const IdentityCertificate& identityCer
   _LOG_DEBUG("Fetch: " << certNameNoVersion.toUri());
   m_certificateMap.insert(pair<Name, IdentityCertificate>(certNameNoVersion, identityCertificate));
   m_profileMap.insert(pair<Name, Profile>(certNameNoVersion, Profile(identityCertificate)));
-  string name = m_profileMap[certNameNoVersion].getProfileEntry("name");
+  string name = m_profileMap[certNameNoVersion].get("name");
   // Name contactName = m_profileMap[certNameNoVersion].getIdentityName();
   {
       UniqueRecLock lock(m_mutex);
@@ -249,8 +248,8 @@ BrowseContactDialog::refreshList()
 }
 
 void
-BrowseContactDialog::updateSelection(const QItemSelection &selected,
-				     const QItemSelection &deselected)
+BrowseContactDialog::updateSelection(const QItemSelection& selected,
+				     const QItemSelection& deselected)
 {
   QModelIndexList items = selected.indexes();
   Name certName = m_contactNameList[items.first().row()];

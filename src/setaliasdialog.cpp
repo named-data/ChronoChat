@@ -13,10 +13,9 @@
 
 
 using namespace ndn;
-using namespace ndn::ptr_lib;
 using namespace std;
 
-SetAliasDialog::SetAliasDialog(shared_ptr<ContactManager> contactManager,
+SetAliasDialog::SetAliasDialog(shared_ptr<chronos::ContactManager> contactManager,
 			       QWidget *parent) 
   : QDialog(parent)
   , ui(new Ui::SetAliasDialog)

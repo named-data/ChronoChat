@@ -22,7 +22,7 @@
   <property name="windowTitle">
    <string>ChronoChat Contacts</string>
   </property>
-  <widget class="QWidget" name="">
+  <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
      <x>12</x>
@@ -279,7 +279,7 @@
      </layout>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="1,1,1">
+     <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="4,3,3,3">
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="1,1">
         <property name="spacing">
@@ -306,6 +306,13 @@
          </widget>
         </item>
        </layout>
+      </item>
+      <item>
+       <widget class="QPushButton" name="chatButton">
+        <property name="text">
+         <string>Chat!</string>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QPushButton" name="settingButton">

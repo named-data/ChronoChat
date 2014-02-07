@@ -27,7 +27,7 @@ class AddContactPanel;
 
 Q_DECLARE_METATYPE(ndn::Name)
 
-Q_DECLARE_METATYPE(EndorseCertificate)
+Q_DECLARE_METATYPE(chronos::EndorseCertificate)
 
 Q_DECLARE_METATYPE(ndn::Data)
 
@@ -36,7 +36,7 @@ class AddContactPanel : public QDialog
   Q_OBJECT
 
 public:
-  explicit AddContactPanel(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
+  explicit AddContactPanel(ndn::shared_ptr<chronos::ContactManager> contactManager,
                            QWidget *parent = 0);
 
   ~AddContactPanel();
@@ -62,13 +62,13 @@ private slots:
   onAddClicked();
 
   void
-  selfEndorseCertificateFetched(const EndorseCertificate& endorseCertificate);
+  selfEndorseCertificateFetched(const chronos::EndorseCertificate& endorseCertificate);
 
   void
   selfEndorseCertificateFetchFailed(const ndn::Name& identity);
 
   void
-  onContactKeyFetched(const EndorseCertificate& endorseCertificate);
+  onContactKeyFetched(const chronos::EndorseCertificate& endorseCertificate);
 
   void
   onContactKeyFetchFailed(const ndn::Name& identity);
@@ -87,10 +87,10 @@ private:
 
   Ui::AddContactPanel *ui;
   ndn::Name m_searchIdentity;
-  ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;
+  ndn::shared_ptr<chronos::ContactManager> m_contactManager;
   WarningDialog* m_warningDialog;
-  ndn::ptr_lib::shared_ptr<EndorseCertificate> m_currentEndorseCertificate;
-  ndn::ptr_lib::shared_ptr<ndn::Data> m_currentCollectEndorse;
+  ndn::shared_ptr<chronos::EndorseCertificate> m_currentEndorseCertificate;
+  ndn::shared_ptr<ndn::Data> m_currentCollectEndorse;
   bool m_currentEndorseCertificateReady;
   bool m_currentCollectEndorseReady;
 };

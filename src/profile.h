@@ -8,21 +8,24 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef LINKNDN_PROFILE_H
-#define LINKNDN_PROFILE_H
+#ifndef CHRONOS_PROFILE_H
+#define CHRONOS_PROFILE_H
 
+#include "config.h"
 #include <ndn-cpp-dev/name.hpp>
 #include <ndn-cpp-dev/security/identity-certificate.hpp>
 #include <map>
 #include <string>
 #include "profile.pb.h"
 
+namespace chronos{
+
 class Profile
 {
 public:
   typedef std::map<std::string, std::string>::iterator iterator;
   typedef std::map<std::string, std::string>::const_iterator const_iterator;
-public:
+
   Profile() {}
 
   Profile(const ndn::IdentityCertificate& identityCertificate);
@@ -35,15 +38,21 @@ public:
   
   Profile(const Profile& profile);
   
-  virtual
   ~Profile() {}
 
-  void
-  setProfileEntry(const std::string& profileType,
-                  const std::string& profileValue);
-  
-  std::string
-  getProfileEntry(const std::string& profileType) const;
+  std::string&
+  operator [] (const std::string& profileKey)
+  { return m_entries[profileKey]; }
+
+  std::string 
+  get (const std::string& profileKey) const
+  {
+    std::map<std::string, std::string>::const_iterator it = m_entries.find(profileKey);
+    if(it != m_entries.end())
+      return it->second;
+    else
+      return std::string();
+  }
 
   inline Profile::iterator
   begin()
@@ -62,22 +71,54 @@ public:
   { return m_entries.end(); }
 
   void
-  encode(std::string* output) const;
+  encode(std::ostream& os) const;
 
-  static ndn::ptr_lib::shared_ptr<Profile>
-  decode(const std::string& input);
+  void
+  decode(std::istream& is);
 
-  const std::map<std::string, std::string>&
-  getEntries() const
-  { return m_entries; }
-
-  const ndn::Name&
+  ndn::Name
   getIdentityName() const
-  { return m_identityName; }
+  { return ndn::Name(m_entries.at("IDENTITY")); }
 
-protected:
-  ndn::Name m_identityName;
+  inline bool
+  operator == (const Profile& profile) const;
+
+private:
+  static const std::string OID_NAME;
+  static const std::string OID_ORG;
+  static const std::string OID_GROUP;
+  static const std::string OID_HOMEPAGE;
+  static const std::string OID_ADVISOR;
+  static const std::string OID_EMAIL;
+
   std::map<std::string, std::string> m_entries;
 };
+
+Chronos::ProfileMsg&
+operator << (Chronos::ProfileMsg& msg, const Profile& profile);
+
+Chronos::ProfileMsg&
+operator >> (Chronos::ProfileMsg& msg, Profile& profile);
+
+bool
+Profile::operator == (const Profile& profile) const
+{
+  if(m_entries.size() != profile.m_entries.size())
+    return false;
+
+  std::map<std::string, std::string>::const_iterator it = m_entries.begin();
+  for(; it != m_entries.end(); it++)
+    {
+      std::map<std::string, std::string>::const_iterator found = profile.m_entries.find(it->first);
+      if(found == profile.m_entries.end())
+        return false;
+      if(found->second != it->second)
+        return false;
+    }
+
+  return true;
+}
+
+}//chronos
 
 #endif

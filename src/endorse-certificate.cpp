@@ -15,90 +15,44 @@
 
 using namespace std;
 using namespace ndn;
-using namespace ndn::ptr_lib;
+
 
 INIT_LOGGER("EndorseCertificate");
 
-ProfileExtension::ProfileExtension(const ProfileData & profileData)
-  : CertificateExtension("1.3.6.1.5.32.2.1", true, Buffer(profileData.wireEncode().wire(), profileData.wireEncode().size()))
-{}
+namespace chronos{
 
-ProfileExtension::ProfileExtension(const ProfileExtension& profileExtension)
-  : CertificateExtension("1.3.6.1.5.32.2.1", true, profileExtension.extensionValue_)
-{}
+const OID EndorseCertificate::PROFILE_EXT_OID("1.3.6.1.5.32.2.1");
+const OID EndorseCertificate::ENDORSE_EXT_OID("1.3.6.1.5.32.2.2");
 
-ProfileExtension::ProfileExtension(const CertificateExtension& extension)
-  : CertificateExtension(extension.getOid(), extension.getIsCritical(), extension.getValue())
-{
-  if(extensionId_ != OID("1.3.6.1.5.32.2.1"))
-    throw Error("Wrong ProfileExtension Number!");
-}
-
-shared_ptr<ProfileData>
-ProfileExtension::getProfileData()
-{
-  Data data;
-  data.wireDecode(Block(extensionValue_.buf(), extensionValue_.size()));
-  return make_shared<ProfileData>(data);
-}
-
-EndorseExtension::EndorseExtension(const vector<string>& endorseList)
-  : CertificateExtension("1.3.6.1.5.32.2.2", true, EndorseExtension::encodeEndorseList(endorseList))
-{}
-
-EndorseExtension::EndorseExtension(const EndorseExtension& endorseExtension)
-  : CertificateExtension("1.3.6.1.5.32.2.2", true, endorseExtension.extensionValue_)
-{}
-
-EndorseExtension::EndorseExtension(const CertificateExtension& extension)
-  : CertificateExtension(extension.getOid(), extension.getIsCritical(), extension.getValue())
-{
-  if(extensionId_ != OID("1.3.6.1.5.32.2.2"))
-    throw Error("Wrong EndorseExtension Number!");
-}
-
-vector<string>
-EndorseExtension::getEndorseList()
-{
-  Chronos::EndorseExtensionMsg endorseExtension;
-
-  boost::iostreams::stream
-    <boost::iostreams::array_source> is ((const char*)extensionValue_.buf(), extensionValue_.size());
-
-  endorseExtension.ParseFromIstream(&is);
-
-  vector<string> endorseList;
-
-  for(int i = 0; i < endorseExtension.endorseentry_size(); i ++)
-    endorseList.push_back(endorseExtension.endorseentry(i).name());
-  
-  return endorseList;
-}
-
-Buffer
-EndorseExtension::encodeEndorseList(const vector<string>& endorseList)
-{
-  Chronos::EndorseExtensionMsg endorseExtension;
-  
+Chronos::EndorseExtensionMsg&
+operator << (Chronos::EndorseExtensionMsg& endorseExtension, const vector<string>& endorseList)
+{ 
   vector<string>::const_iterator it = endorseList.begin();
   for(; it != endorseList.end(); it++)
     endorseExtension.add_endorseentry()->set_name(*it);
 
-  string encoded;
-  endorseExtension.SerializeToString(&encoded);
-  
-  return Buffer(encoded.c_str(), encoded.size());
+  return endorseExtension;
+}
+
+Chronos::EndorseExtensionMsg&
+operator >> (Chronos::EndorseExtensionMsg& endorseExtension, vector<string>& endorseList)
+{
+  for(int i = 0; i < endorseExtension.endorseentry_size(); i ++)
+    endorseList.push_back(endorseExtension.endorseentry(i).name());
+
+  return endorseExtension;
 }
 
 EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate,
-                                       const ProfileData& profileData,
+                                       const Profile& profile,
                                        const vector<string>& endorseList)
   : Certificate()
-  , m_keyName(kskCertificate.getPublicKeyName())
-  , m_signer(kskCertificate.getPublicKeyName())
-  , m_profileData(profileData)
+  , m_profile(profile)
   , m_endorseList(endorseList)
 {
+  m_keyName = IdentityCertificate::certificateNameToPublicKeyName(kskCertificate.getName());
+  m_signer = m_keyName;
+
   Name dataName = m_keyName;
   dataName.append("PROFILE-CERT").append(m_signer.wireEncode()).appendVersion();
   setName(dataName);
@@ -107,8 +61,16 @@ EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate
   setNotAfter(kskCertificate.getNotAfter());
   addSubjectDescription(CertificateSubjectDescription("2.5.4.41", m_keyName.toUri()));
   setPublicKeyInfo(kskCertificate.getPublicKeyInfo());  
-  addExtension(ProfileExtension(m_profileData));
-  addExtension(EndorseExtension(m_endorseList));
+
+  OBufferStream profileStream;
+  m_profile.encode(profileStream);
+  addExtension(CertificateExtension(PROFILE_EXT_OID, true, *profileStream.buf()));
+
+  OBufferStream endorseStream;
+  Chronos::EndorseExtensionMsg endorseExtension;
+  endorseExtension << m_endorseList;
+  endorseExtension.SerializeToOstream(&endorseStream);
+  addExtension(CertificateExtension(ENDORSE_EXT_OID, true, *endorseStream.buf()));
   
   encode();
 }
@@ -119,9 +81,9 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
   : Certificate()
   , m_keyName(endorseCertificate.m_keyName)
   , m_signer(signer)
-  , m_profileData(endorseCertificate.m_profileData)
+  , m_profile(endorseCertificate.m_profile)
   , m_endorseList(endorseList)
-{  
+{
   Name dataName = m_keyName;
   dataName.append("PROFILE-CERT").append(m_signer.wireEncode()).appendVersion();
   setName(dataName);
@@ -130,8 +92,16 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
   setNotAfter(endorseCertificate.getNotAfter());
   addSubjectDescription(CertificateSubjectDescription("2.5.4.41", m_keyName.toUri()));
   setPublicKeyInfo(endorseCertificate.getPublicKeyInfo());
-  addExtension(ProfileExtension(m_profileData));
-  addExtension(EndorseExtension(m_endorseList));
+
+  OBufferStream profileStream;
+  m_profile.encode(profileStream);
+  addExtension(CertificateExtension(PROFILE_EXT_OID, true, *profileStream.buf()));
+
+  OBufferStream endorseStream;
+  Chronos::EndorseExtensionMsg endorseExtension;
+  endorseExtension << m_endorseList;
+  endorseExtension.SerializeToOstream(&endorseStream);
+  addExtension(CertificateExtension(ENDORSE_EXT_OID, true, *endorseStream.buf()));
 
   encode();
 }
@@ -140,7 +110,7 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
   : Certificate(endorseCertificate)
   , m_keyName(endorseCertificate.m_keyName)
   , m_signer(endorseCertificate.m_signer)
-  , m_profileData(endorseCertificate.m_profileData)
+  , m_profile(endorseCertificate.m_profile)
   , m_endorseList(endorseCertificate.m_endorseList)
 {}
 
@@ -149,28 +119,32 @@ EndorseCertificate::EndorseCertificate(const Data& data)
 {
   const Name& dataName = data.getName();
 
-  if(dataName.size() < 3 || !dataName.get(-3).equals("PROFILE-CERT"))
+  if(dataName.size() < 3 || dataName.get(-3).toEscapedString() != "PROFILE-CERT")
     throw Error("No PROFILE-CERT component in data name!");    
 
   m_keyName = dataName.getPrefix(-3);
-  m_signer.wireDecode(Block(dataName.get(-2).getValue().buf(),
-                            dataName.get(-2).getValue().size()));
-
-  OID profileExtensionOID("1.3.6.1.5.32.2.1");
-  OID endorseExtensionOID("1.3.6.1.5.32.2.2");
+  m_signer.wireDecode(dataName.get(-2).blockFromValue());
 
   ExtensionList::iterator it = extensionList_.begin();
   for(; it != extensionList_.end(); it++)
     {
-      if(profileExtensionOID == it->getOid())
+      if(PROFILE_EXT_OID == it->getOid())
 	{
-          ProfileExtension profileExtension(*it);
-	  m_profileData = *profileExtension.getProfileData();
+          boost::iostreams::stream<boost::iostreams::array_source> is 
+            (reinterpret_cast<const char*>(it->getValue().buf()), it->getValue().size());
+	  m_profile.decode(is);
 	}
-      if(endorseExtensionOID == it->getOid())
+      if(ENDORSE_EXT_OID == it->getOid())
         {
-          EndorseExtension endorseExtension(*it);
-          m_endorseList = endorseExtension.getEndorseList();
+          Chronos::EndorseExtensionMsg endorseExtension;
+
+          boost::iostreams::stream<boost::iostreams::array_source> is 
+            (reinterpret_cast<const char*>(it->getValue().buf()), it->getValue().size());          
+          endorseExtension.ParseFromIstream(&is);
+
+          endorseExtension >> m_endorseList;
         }
     }
 }
+
+}//chronos

@@ -23,23 +23,25 @@
 #include "invitelistdialog.h"
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp-dev/data.hpp>
-#include <ndn-cpp-dev/face.hpp>
-#include <ndn-cpp-dev/security/key-chain.hpp>
-#include "sec-policy-chrono-chat-invitation.h"
 #include "contact-item.h"
-
-#include <sync-socket.h>
-#include <sync-seq-no.h>
 #include "chatbuf.pb.h"
 #include "digesttreescene.h"
+#include <sync-socket.h>
+#include <sync-seq-no.h>
+#include <ndn-cpp-dev/security/key-chain.hpp>
+#ifdef WITH_SECURITY
+#include "validator-invitation.h"
+#include <validator-sync.h>
+#else
+#include <ndn-cpp-dev/security/validator-null.hpp>
+#endif
 
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/thread.hpp>
 #endif
 
-typedef ndn::func_lib::function<void()> OnEventualTimeout;
+typedef ndn::function<void()> OnEventualTimeout;
 
 #define MAX_HISTORY_ENTRY   20
 
@@ -52,19 +54,13 @@ class ChatDialog : public QDialog
   Q_OBJECT
 
 public:
-  explicit ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
+  explicit ChatDialog(ndn::shared_ptr<chronos::ContactManager> contactManager,
+                      ndn::shared_ptr<ndn::Face> face,
                       const ndn::Name& chatroomPrefix,
                       const ndn::Name& localPrefix,
                       const ndn::Name& defaultIdentity,
                       const std::string& nick,
-                      bool trial = false,
                       QWidget *parent = 0);
-
-  // explicit ChatDialog(const ndn::Name& chatroomPrefix,
-  //                     const ndn::Name& localPrefix,
-  //                     const ndn::Name& defaultIdentity,
-  //                     const ndn::security::IdentityCertificate& identityCertificate,
-  //                     QWidget *parent = 0);
 
   ~ChatDialog();
 
@@ -77,27 +73,27 @@ public:
   { return m_localPrefix; }
 
   void
-  sendInvitation(ndn::ptr_lib::shared_ptr<ContactItem> contact, bool isIntroducer);
-
-  void
-  addTrustAnchor(const EndorseCertificate& selfEndorseCertificate);
+  sendInvitation(ndn::shared_ptr<chronos::ContactItem> contact, bool isIntroducer);
 
   void
   addChatDataRule(const ndn::Name& prefix, 
                   const ndn::IdentityCertificate& identityCertificate,
                   bool isIntroducer);
 
+  void
+  addTrustAnchor(const chronos::EndorseCertificate& selfEndorseCertificate);
+
   void 
   appendMessage(const SyncDemo::ChatMessage msg, bool isHistory = false);
 
   void 
-  processTreeUpdateWrapper(const std::vector<Sync::MissingDataInfo>, Sync::SyncSocket *);
+  processTreeUpdateWrapper(const std::vector<Sync::MissingDataInfo>&, Sync::SyncSocket *);
 
   void 
-  processDataWrapper(const ndn::ptr_lib::shared_ptr<ndn::Data>& data);
+  processDataWrapper(const ndn::shared_ptr<const ndn::Data>& data);
 
   void 
-  processDataNoShowWrapper(const ndn::ptr_lib::shared_ptr<ndn::Data>& data);
+  processDataNoShowWrapper(const ndn::shared_ptr<const ndn::Data>& data);
 
   void 
   processRemoveWrapper(std::string);
@@ -114,25 +110,6 @@ protected:
 
 private:
 
-  void 
-  startFace();
-
-  void
-  shutdownFace();
-
-  void
-  eventLoop();
-
-  void
-  connectToDaemon();
-
-  void
-  onConnectionData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
-                   const ndn::ptr_lib::shared_ptr<ndn::Data>& data);
- 
-  void
-  onConnectionDataTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest);
-
   void
   initializeSetting();
 
@@ -146,32 +123,39 @@ private:
   initializeSync();
 
   void
-  onTargetData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
-               const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
-               const ndn::OnVerified& onVerified,
-               const ndn::OnVerifyFailed& onVerifyFailed);
+  onTargetData(const ndn::Interest& interest, 
+               const ndn::Data& data,
+               const ndn::OnDataValidated& onValidated,
+               const ndn::OnDataValidationFailed& onValidationFailed)
+  { m_invitationValidator->validate(data, onValidated, onValidationFailed); }
 
   void
-  onTargetTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
+  onTargetTimeout(const ndn::Interest& interest, 
                   int retry,
-                  const ndn::OnVerified& onVerified,
-                  const ndn::OnVerifyFailed& onVerifyFailed,
-                  const OnEventualTimeout& timeoutNotify);
+                  const ndn::OnDataValidated& onValidated,
+                  const ndn::OnDataValidationFailed& onValidationFailed,
+                  const OnEventualTimeout& timeoutNotify)
+  {
+    if(retry > 0)
+      sendInterest(interest, onValidated, onValidationFailed, timeoutNotify, retry-1);
+    else
+      timeoutNotify();
+  }
 
   void
   sendInterest(const ndn::Interest& interest,
-               const ndn::OnVerified& onVerified,
-               const ndn::OnVerifyFailed& onVerifyFailed,
+               const ndn::OnDataValidated& onValidated,
+               const ndn::OnDataValidationFailed& onValidationFailed,
                const OnEventualTimeout& timeoutNotify,
                int retry = 1);
   
   void 
-  onInviteReplyVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, 
-                        const ndn::Name& identity, 
-                        bool isIntroduce);
+  onInviteReplyValidated(const ndn::shared_ptr<const ndn::Data>& data, 
+                         const ndn::Name& identity, 
+                         bool isIntroduce);
 
   void
-  onInviteReplyVerifyFailed(const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
+  onInviteReplyValidationFailed(const ndn::shared_ptr<const ndn::Data>& data,
                             const ndn::Name& identity);
 
   void 
@@ -183,16 +167,16 @@ private:
   
   void 
   invitationAccepted(const ndn::Name& identity, 
-                     ndn::ptr_lib::shared_ptr<ndn::Data> data, 
+                     ndn::shared_ptr<const ndn::Data> data, 
                      const std::string& inviteePrefix, 
                      bool isIntroducer);
 
   void
-  onLocalPrefix(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
-                const ndn::ptr_lib::shared_ptr<ndn::Data>& data);
+  onLocalPrefix(const ndn::Interest& interest, 
+                ndn::Data& data);
 
   void
-  onLocalPrefixTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest);
+  onLocalPrefixTimeout(const ndn::Interest& interest);
 
   // void 
   // fetchHistory(std::string name);
@@ -230,10 +214,10 @@ private:
   void 
   disableTreeDisplay();
 
-signals:
-  void 
-  dataReceived(QString name, const char *buf, size_t len, bool show, bool isHistory);
-  
+signals:  
+  void
+  dataReceived(ndn::shared_ptr<const ndn::Data> data, bool show, bool isHistory);
+
   void 
   treeUpdated(const std::vector<Sync::MissingDataInfo>);
   
@@ -251,10 +235,10 @@ signals:
 
 public slots:
   void 
-  processTreeUpdate(const std::vector<Sync::MissingDataInfo>);
+  processTreeUpdate(const std::vector<Sync::MissingDataInfo>&);
 
   void 
-  processData(QString name, const char *buf, size_t len, bool show, bool isHistory);
+  processData(ndn::shared_ptr<const ndn::Data> data, bool show, bool isHistory);
 
   void 
   processRemove(QString prefix);
@@ -316,34 +300,42 @@ private slots:
     
 private:
   Ui::ChatDialog *ui;
-  ndn::ptr_lib::shared_ptr<ContactManager> m_contactManager;
+  ndn::shared_ptr<chronos::ContactManager> m_contactManager;
+  ndn::shared_ptr<ndn::Face> m_face;
+  ndn::shared_ptr<boost::asio::io_service> m_ioService;
+
   ndn::Name m_chatroomPrefix;
   ndn::Name m_localPrefix;
   ndn::Name m_localChatPrefix;
   ndn::Name m_defaultIdentity;
-  ndn::ptr_lib::shared_ptr<SecPolicyChronoChatInvitation> m_invitationPolicy;
-  ndn::ptr_lib::shared_ptr<SecPolicySync> m_syncPolicy; 
-  ndn::ptr_lib::shared_ptr<ndn::Verifier> m_verifier;
-  ndn::ptr_lib::shared_ptr<ndn::KeyChain> m_keyChain;
-  ndn::ptr_lib::shared_ptr<ndn::Face> m_face;
+  User m_user; 
+  std::string m_nick;
 
-  boost::recursive_mutex m_mutex;
-  boost::thread m_thread;
-  bool m_running;
+  ndn::Scheduler m_scheduler;
+  ndn::EventId m_replotEventId;
+
+#ifndef WITH_SECURITY
+  ndn::shared_ptr<ndn::Validator> m_invitationValidator;
+  ndn::shared_ptr<ndn::Validator> m_syncValidator; 
+#else
+  ndn::shared_ptr<chronos::ValidatorInvitation> m_invitationValidator;
+  ndn::shared_ptr<Sync::ValidatorSync> m_syncValidator;
+#endif
+  ndn::shared_ptr<ndn::KeyChain> m_keyChain;
 
   ndn::Name m_newLocalPrefix;
   bool m_newLocalPrefixReady;
 
-  User m_user; 
-  std::string m_nick;
+
   Sync::SyncSocket *m_sock;
-  uint32_t m_session;
+  uint64_t m_session;
   DigestTreeScene *m_scene;
   boost::recursive_mutex m_msgMutex;
   boost::recursive_mutex m_sceneMutex;
-  time_t m_lastMsgTime;
+  int64_t m_lastMsgTime;
   int m_randomizedInterval;
-  QTimer *m_timer;
+
+
   QStringListModel *m_rosterModel;
   QSystemTrayIcon *trayIcon;
 
@@ -354,8 +346,6 @@ private:
   QAction *quitAction;
   QMenu *trayIconMenu;
 
-  // QQueue<SyncDemo::ChatMessage> m_history;
-  // bool m_historyInitialized;
   bool m_joined;
 
   QList<QString> m_zombieList;

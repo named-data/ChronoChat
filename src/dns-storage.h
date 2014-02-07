@@ -8,11 +8,14 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef LINKNDN_DNS_STORAGE_H
-#define LINKNDN_DNS_STORAGE_H
+#ifndef CHRONOS_DNS_STORAGE_H
+#define CHRONOS_DNS_STORAGE_H
 
+#include "config.h"
 #include <sqlite3.h>
 #include <ndn-cpp-dev/data.hpp>
+
+namespace chronos{
 
 class DnsStorage
 {
@@ -21,16 +24,20 @@ public:
 
   DnsStorage();
 
-  ~DnsStorage();
+  ~DnsStorage()
+  { sqlite3_close(m_db); }
 
   void
-  updateDnsSelfProfileData(const ndn::Data& data, const ndn::Name& identity);
+  updateDnsSelfProfileData(const ndn::Data& data, const ndn::Name& identity)
+  { updateDnsData(data.wireEncode(), identity.toUri(), "N/A", "PROFILE", data.getName().toUri()); }
 
   void
-  updateDnsEndorseOthers(const ndn::Data& data, const ndn::Name& identity, const ndn::Name& endorsee);
+  updateDnsEndorseOthers(const ndn::Data& data, const ndn::Name& identity, const ndn::Name& endorsee)
+  { updateDnsData(data.wireEncode(), identity.toUri(), endorsee.toUri(), "ENDORSEE", data.getName().toUri()); }
   
   void
-  updateDnsOthersEndorse(const ndn::Data& data, const ndn::Name& identity);
+  updateDnsOthersEndorse(const ndn::Data& data, const ndn::Name& identity)
+  { updateDnsData(data.wireEncode(), identity.toUri(), "N/A", "ENDORSED", data.getName().toUri()); }
 
   ndn::ptr_lib::shared_ptr<ndn::Data>
   getData(const ndn::Name& name);
@@ -42,5 +49,7 @@ private:
 private:
   sqlite3 *m_db;
 };
+
+}//chronos
 
 #endif

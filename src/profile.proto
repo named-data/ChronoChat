@@ -2,7 +2,6 @@ package Chronos;
 
 message ProfileMsg
 {
-  required string identityName = 1;
   message ProfileEntry
   {
     required string oid = 1;

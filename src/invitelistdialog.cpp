@@ -12,8 +12,9 @@
 #include "ui_invitelistdialog.h"
 
 using namespace std;
+using namespace chronos;
 
-InviteListDialog::InviteListDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
+InviteListDialog::InviteListDialog(ndn::shared_ptr<ContactManager> contactManager,
 				   QWidget *parent) 
   :QDialog(parent)
   , ui(new Ui::InviteListDialog)

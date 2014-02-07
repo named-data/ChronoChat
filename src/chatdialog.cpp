@@ -18,8 +18,12 @@
 #include <QCloseEvent>
 
 #ifndef Q_MOC_RUN
+#include "invitation.h"
+
+#ifdef WITH_SECURITY
 #include <sync-intro-certificate.h>
-#include "chronos-invitation.h"
+#endif
+
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 #include <ndn-cpp-dev/security/signature-sha256-with-rsa.hpp>
@@ -27,37 +31,42 @@
 #endif
 
 using namespace std;
+using namespace ndn;
+using namespace chronos;
 
 INIT_LOGGER("ChatDialog");
 
 static const int HELLO_INTERVAL = FRESHNESS * 3 / 4;
 
 Q_DECLARE_METATYPE(std::vector<Sync::MissingDataInfo> )
+Q_DECLARE_METATYPE(ndn::shared_ptr<const ndn::Data> )
 Q_DECLARE_METATYPE(size_t)
 
-ChatDialog::ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
-                       const ndn::Name& chatroomPrefix,
-		       const ndn::Name& localPrefix,
-                       const ndn::Name& defaultIdentity,
-                       const std::string& nick,
-                       bool trial,
+ChatDialog::ChatDialog(shared_ptr<ContactManager> contactManager,
+                       shared_ptr<Face> face,
+                       const Name& chatroomPrefix,
+		       const Name& localPrefix,
+                       const Name& defaultIdentity,
+                       const string& nick,
 		       QWidget *parent) 
-: QDialog(parent)
+  : QDialog(parent)
   , ui(new Ui::ChatDialog)
   , m_contactManager(contactManager)
+  , m_face(face)
+  , m_ioService(face->ioService())
   , m_chatroomPrefix(chatroomPrefix)
   , m_localPrefix(localPrefix)
   , m_defaultIdentity(defaultIdentity)
-  , m_invitationPolicy(new SecPolicyChronoChatInvitation(m_chatroomPrefix.get(-1).toEscapedString(), m_defaultIdentity))
-  , m_keyChain(new ndn::KeyChain())
   , m_nick(nick)
+  , m_scheduler(*face->ioService())
+  , m_keyChain(new KeyChain())
   , m_sock(NULL)
-  , m_lastMsgTime(0)
-  // , m_historyInitialized(false)
+  , m_lastMsgTime(time::now())
   , m_joined(false)
   , m_inviteListDialog(new InviteListDialog(m_contactManager))
 {
   qRegisterMetaType<std::vector<Sync::MissingDataInfo> >("std::vector<Sync::MissingDataInfo>");
+  qRegisterMetaType<ndn::shared_ptr<const ndn::Data> >("ndn::shared_ptr<const ndn::Data>");
   qRegisterMetaType<size_t>("size_t");
 
   ui->setupUi(this);
@@ -67,7 +76,7 @@ ChatDialog::ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
   m_localChatPrefix.append("%F0.").append(m_defaultIdentity);
   m_localChatPrefix.append("chronos").append(m_chatroomPrefix.get(-1)).append(randString.toStdString());
 
-  m_session = time(NULL);
+  m_session = static_cast<uint64_t>(time::now());
   m_scene = new DigestTreeScene(this);
 
   initializeSetting();
@@ -85,14 +94,13 @@ ChatDialog::ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
   createActions();
   createTrayIcon();
 
-  m_timer = new QTimer(this);
-
-  startFace();
-  m_verifier = ndn::ptr_lib::make_shared<ndn::Verifier>(m_invitationPolicy);
-  m_verifier->setFace(m_face);
-
-  ndn::Name certificateName = m_keyChain->getDefaultCertificateNameForIdentity(m_defaultIdentity);
-  m_syncPolicy = ndn::ptr_lib::make_shared<SecPolicySync>(m_defaultIdentity, certificateName, m_chatroomPrefix, m_face);
+#ifndef SECURITY
+  m_invitationValidator = make_shared<ValidatorNull>();
+  m_syncValidator = make_shared<ValidatorNull>();
+#else
+  m_invitationValidator = make_shared<chronos::ValidatorInvitation>();
+  m_syncValidator = ...;
+#endif
 
   connect(ui->inviteButton, SIGNAL(clicked()),
           this, SLOT(openInviteListDialog()));
@@ -102,12 +110,10 @@ ChatDialog::ChatDialog(ndn::ptr_lib::shared_ptr<ContactManager> contactManager,
           this, SLOT(returnPressed()));
   connect(ui->treeButton, SIGNAL(pressed()), 
           this, SLOT(treeButtonPressed()));
-  connect(this, SIGNAL(dataReceived(QString, const char *, size_t, bool, bool)), 
-          this, SLOT(processData(QString, const char *, size_t, bool, bool)));
+  connect(this, SIGNAL(dataReceived(ndn::shared_ptr<const ndn::Data>, bool, bool)), 
+          this, SLOT(processData(ndn::shared_ptr<const ndn::Data>, bool, bool)));
   connect(this, SIGNAL(treeUpdated(const std::vector<Sync::MissingDataInfo>)), 
           this, SLOT(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
-  connect(m_timer, SIGNAL(timeout()), 
-          this, SLOT(replot()));
   connect(m_scene, SIGNAL(replot()), 
           this, SLOT(replot()));
   connect(trayIcon, SIGNAL(messageClicked()), 
@@ -130,65 +136,7 @@ ChatDialog::~ChatDialog()
       delete m_sock;
       m_sock = NULL;
     }
-  shutdownFace();
 }
-
-void
-ChatDialog::startFace()
-{
-  m_face = ndn::ptr_lib::make_shared<ndn::Face>();
-  
-  connectToDaemon();
-
-  m_running = true;
-  m_thread = boost::thread (&ChatDialog::eventLoop, this);  
-}
-
-void
-ChatDialog::shutdownFace()
-{
-  {
-    boost::unique_lock<boost::recursive_mutex> lock(m_mutex);
-    m_running = false;
-  }
-  
-  m_thread.join();
-  m_face->shutdown();
-}
-
-void
-ChatDialog::eventLoop()
-{
-  while (m_running)
-    {
-      try{
-        m_face->processEvents();
-        usleep(1000);
-      }catch(std::exception& e){
-        _LOG_DEBUG(" " << e.what() );
-      }
-    }
-}
-
-void
-ChatDialog::connectToDaemon()
-{
-  //Hack! transport does not connect to daemon unless an interest is expressed.
-  ndn::Name name("/ndn");
-  ndn::ptr_lib::shared_ptr<ndn::Interest> interest = ndn::ptr_lib::make_shared<ndn::Interest>(name);
-  m_face->expressInterest(*interest, 
-                          boost::bind(&ChatDialog::onConnectionData, this, _1, _2),
-                          boost::bind(&ChatDialog::onConnectionDataTimeout, this, _1));
-}
-
-void
-ChatDialog::onConnectionData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest,
-                             const ndn::ptr_lib::shared_ptr<ndn::Data>& data)
-{ _LOG_DEBUG("onConnectionData"); }
-
-void
-ChatDialog::onConnectionDataTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest)
-{ _LOG_DEBUG("onConnectionDataTimeout"); }
 
 void
 ChatDialog::initializeSetting()
@@ -221,93 +169,72 @@ ChatDialog::updateLabels()
 }
 
 void
+ChatDialog::initializeSync()
+{
+  
+  m_sock = new Sync::SyncSocket(m_chatroomPrefix.toUri(),
+                                m_syncValidator,
+                                m_face,
+                                bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
+                                bind(&ChatDialog::processRemoveWrapper, this, _1));
+  
+  usleep(100000);
+
+  m_scheduler.scheduleEvent(time::milliseconds(600), bind(&ChatDialog::sendJoin, this));
+
+  if(static_cast<bool>(m_replotEventId))
+    m_scheduler.cancelEvent(m_replotEventId);
+  m_replotEventId = m_scheduler.schedulePeriodicEvent(time::seconds(0), time::milliseconds(FRESHNESS * 1000),
+                                                      bind(&ChatDialog::replot, this));
+  disableTreeDisplay();
+  m_scheduler.scheduleEvent(time::milliseconds(2200), bind(&ChatDialog::enableTreeDisplay, this));
+}
+
+void
 ChatDialog::sendInterest(const ndn::Interest& interest,
-                         const ndn::OnVerified& onVerified,
-                         const ndn::OnVerifyFailed& onVerifyFailed,
+                         const OnDataValidated& onValidated,
+                         const OnDataValidationFailed& onValidationFailed,
                          const OnEventualTimeout& timeoutNotify,
                          int retry /* = 1 */)
 {
   m_face->expressInterest(interest, 
-                          boost::bind(&ChatDialog::onTargetData, 
-                                      this,
-                                      _1,
-                                      _2,
-                                      onVerified, 
-                                      onVerifyFailed),
-                          boost::bind(&ChatDialog::onTargetTimeout,
-                                      this,
-                                      _1,
-                                      retry,
-                                      onVerified,
-                                      onVerifyFailed,
-                                      timeoutNotify));
+                          bind(&ChatDialog::onTargetData, 
+                               this, _1, _2, onValidated, onValidationFailed),
+                          bind(&ChatDialog::onTargetTimeout,
+                               this, _1, retry, 
+                               onValidated, onValidationFailed, timeoutNotify));
 }
 
 void
-ChatDialog::onTargetData(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
-                         const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
-                         const ndn::OnVerified& onVerified,
-                         const ndn::OnVerifyFailed& onVerifyFailed)
+ChatDialog::sendInvitation(shared_ptr<ContactItem> contact, bool isIntroducer)
 {
-  m_verifier->verifyData(data, onVerified, onVerifyFailed);
-}
+#ifdef WITH_SECURITY
+  m_invitationValidator->addTrustAnchor(contact->getSelfEndorseCertificate());
+#endif
 
-void
-ChatDialog::onTargetTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
-                            int retry,
-                            const ndn::OnVerified& onVerified,
-                            const ndn::OnVerifyFailed& onVerifyFailed,
-                            const OnEventualTimeout& timeoutNotify)
-{
-  if(retry > 0)
-    sendInterest(*interest, onVerified, onVerifyFailed, timeoutNotify, retry-1);
-  else
-    {
-      _LOG_DEBUG("Interest: " << interest->getName().toUri() << " eventually times out!");
-      timeoutNotify();
-    }
-}
+  Invitation invitation(contact->getNameSpace(),
+                               m_chatroomPrefix.get(-1),
+                               m_localPrefix);
+  ndn::Interest interest(invitation.getUnsignedInterestName());
 
-void
-ChatDialog::sendInvitation(ndn::ptr_lib::shared_ptr<ContactItem> contact, bool isIntroducer)
-{
-  m_invitationPolicy->addTrustAnchor(contact->getSelfEndorseCertificate());
+  m_keyChain->signByIdentity(interest, m_defaultIdentity);
 
-  ndn::Name certificateName = m_keyChain->getDefaultCertificateNameForIdentity(m_defaultIdentity);
+  OnDataValidated onValidated = bind(&ChatDialog::onInviteReplyValidated,
+                                     this, _1, contact->getNameSpace(), isIntroducer);
 
-  ChronosInvitation invitation(contact->getNameSpace(),
-                               m_chatroomPrefix.getSubName(m_chatroomPrefix.size()-1, 1), //!!Should be changed!
-                               m_localPrefix,
-                               certificateName);
+  OnDataValidationFailed onValidationFailed = bind(&ChatDialog::onInviteReplyValidationFailed,
+                                                   this, _1, contact->getNameSpace());
 
-  const ndn::Buffer &signedBlob = invitation.getSignedBlob();
-  ndn::Signature sig = m_keyChain->sign(signedBlob.buf(), signedBlob.size(), certificateName);
-  invitation.setSignatureValue(sig.getValue());
-
-  ndn::Interest interest(invitation.getInterestName());
-  ndn::OnVerified onVerified = boost::bind(&ChatDialog::onInviteReplyVerified,
-                                           this,
-                                           _1,
-                                           contact->getNameSpace(),
-                                           isIntroducer);
-
-  ndn::OnVerifyFailed onVerifyFailed = boost::bind(&ChatDialog::onInviteReplyVerifyFailed,
-                                                   this,
-                                                   _1,
-                                                   contact->getNameSpace());
-
-  OnEventualTimeout timeoutNotify = boost::bind(&ChatDialog::onInviteReplyTimeout,
-                                                     this,
-                                                     contact->getNameSpace());
+  OnEventualTimeout timeoutNotify = bind(&ChatDialog::onInviteReplyTimeout,
+                                         this, contact->getNameSpace());
                                                  
-
-  sendInterest(interest, onVerified, onVerifyFailed, timeoutNotify);
+  sendInterest(interest, onValidated, onValidationFailed, timeoutNotify);
 }
 
 void 
-ChatDialog::onInviteReplyVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& data, 
-                                  const ndn::Name& identity, 
-                                  bool isIntroducer)
+ChatDialog::onInviteReplyValidated(const shared_ptr<const Data>& data, 
+                                   const Name& identity, 
+                                   bool isIntroducer)
 {
   string content(reinterpret_cast<const char*>(data->getContent().value()), data->getContent().value_size());
   if(content == string("nack"))
@@ -317,45 +244,49 @@ ChatDialog::onInviteReplyVerified(const ndn::ptr_lib::shared_ptr<ndn::Data>& dat
 }
 
 void
-ChatDialog::onInviteReplyVerifyFailed(const ndn::ptr_lib::shared_ptr<ndn::Data>& data,
-                                      const ndn::Name& identity)
+ChatDialog::onInviteReplyValidationFailed(const shared_ptr<const Data>& data,
+                                          const Name& identity)
 {
-  _LOG_DEBUG("Reply from " << identity.toUri() << " cannot be verified!");
   QString msg = QString::fromUtf8("Reply from ") + QString::fromStdString(identity.toUri()) + " cannot be verified!";
   emit inivationRejection(msg);
 }
 
 
 void
-ChatDialog::onInviteReplyTimeout(const ndn::Name& identity)
+ChatDialog::onInviteReplyTimeout(const Name& identity)
 {
-  _LOG_DEBUG("Your invitation to " << identity.toUri() << " times out!");
   QString msg = QString::fromUtf8("Your invitation to ") + QString::fromStdString(identity.toUri()) + " times out!";
   emit inivationRejection(msg);
 }
 
 void
-ChatDialog::invitationRejected(const ndn::Name& identity)
+ChatDialog::invitationRejected(const Name& identity)
 {
-  _LOG_DEBUG(" " << identity.toUri() << " Rejected your invitation!");
   QString msg = QString::fromStdString(identity.toUri()) + " Rejected your invitation!";
   emit inivationRejection(msg);
 }
 
 void
-ChatDialog::invitationAccepted(const ndn::Name& identity, ndn::ptr_lib::shared_ptr<ndn::Data> data, const string& inviteePrefix, bool isIntroducer)
+ChatDialog::invitationAccepted(const Name& identity, 
+                               shared_ptr<const Data> data, 
+                               const string& inviteePrefix, 
+                               bool isIntroducer)
 {
   _LOG_DEBUG(" " << identity.toUri() << " Accepted your invitation!");
-  ndn::SignatureSha256WithRsa sig(data->getSignature());
-  const ndn::Name & keyLocatorName = sig.getKeyLocator().getName();
-  ndn::ptr_lib::shared_ptr<ndn::IdentityCertificate> dskCertificate = m_invitationPolicy->getValidatedDskCertificate(keyLocatorName);
+
+#ifdef WITH_SECURITY
+  SignatureSha256WithRsa sig(data->getSignature());
+  const Name & keyLocatorName = sig.getKeyLocator().getName();
+  shared_ptr<IdentityCertificate> dskCertificate = m_invitationValidator->getValidatedDskCertificate(keyLocatorName);
   m_syncPolicy->addSyncDataRule(inviteePrefix, *dskCertificate, isIntroducer);
   publishIntroCert(*dskCertificate, isIntroducer);
+#endif
 }
 
 void
-ChatDialog::publishIntroCert(const ndn::IdentityCertificate& dskCertificate, bool isIntroducer)
+ChatDialog::publishIntroCert(const IdentityCertificate& dskCertificate, bool isIntroducer)
 {
+#ifdef WITH_SECURITY
   SyncIntroCertificate syncIntroCertificate(m_chatroomPrefix,
                                             dskCertificate.getPublicKeyName(),
                                             m_keyChain->getDefaultKeyNameForIdentity(m_defaultIdentity),
@@ -367,39 +298,27 @@ ChatDialog::publishIntroCert(const ndn::IdentityCertificate& dskCertificate, boo
   _LOG_DEBUG("Publish Intro Certificate: " << syncIntroCertificate.getName());
   m_keyChain->sign(syncIntroCertificate, certName);
   m_face->put(syncIntroCertificate);
+#endif
 }
 
 void
-ChatDialog::addTrustAnchor(const EndorseCertificate& selfEndorseCertificate)
-{ m_invitationPolicy->addTrustAnchor(selfEndorseCertificate); }
-
-void
-ChatDialog::addChatDataRule(const ndn::Name& prefix, 
-                            const ndn::IdentityCertificate& identityCertificate,
+ChatDialog::addChatDataRule(const Name& prefix, 
+                            const IdentityCertificate& identityCertificate,
                             bool isIntroducer)
-{ m_syncPolicy->addSyncDataRule(prefix, identityCertificate, isIntroducer); }
-
- 
+{ 
+#ifdef WITH_SECURITY
+  m_syncValidator->addSyncDataRule(prefix, identityCertificate, isIntroducer); 
+#endif
+}
 
 void
-ChatDialog::initializeSync()
+ChatDialog::addTrustAnchor(const EndorseCertificate& cert)
 {
-  
-  m_sock = new Sync::SyncSocket(m_chatroomPrefix.toUri(),
-                                m_syncPolicy,
-                                m_face,
-                                boost::bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
-                                boost::bind(&ChatDialog::processRemoveWrapper, this, _1));
-  
-  usleep(100000);
-
-  QTimer::singleShot(600, this, SLOT(sendJoin()));
-  m_timer->start(FRESHNESS * 1000);
-  disableTreeDisplay();
-  QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
-  // Sync::CcnxWrapperPtr handle = boost::make_shared<Sync::CcnxWrapper> ();
-  // handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
+#ifdef WITH_SECURITY
+  m_syncValidator->addTrustAnchor(cert);
+#endif
 }
+
 
 void
 ChatDialog::returnPressed()
@@ -467,20 +386,20 @@ void ChatDialog::enableTreeDisplay()
 }
 
 void
-ChatDialog::processTreeUpdateWrapper(const std::vector<Sync::MissingDataInfo> v, Sync::SyncSocket *sock)
+ChatDialog::processTreeUpdateWrapper(const vector<Sync::MissingDataInfo>& v, Sync::SyncSocket *sock)
 {
   emit treeUpdated(v);
   _LOG_DEBUG("<<< Tree update signal emitted");
 }
 
 void
-ChatDialog::processRemoveWrapper(std::string prefix)
+ChatDialog::processRemoveWrapper(string prefix)
 {
   _LOG_DEBUG("Sync REMOVE signal received for prefix: " << prefix);
 }
 
 void
-ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
+ChatDialog::processTreeUpdate(const vector<Sync::MissingDataInfo>& v)
 {
   _LOG_DEBUG("<<< processing Tree Update");
 
@@ -524,71 +443,29 @@ ChatDialog::processTreeUpdate(const std::vector<Sync::MissingDataInfo> v)
 }
 
 void
-ChatDialog::processDataWrapper(const ndn::ptr_lib::shared_ptr<ndn::Data>& data)
+ChatDialog::processDataWrapper(const shared_ptr<const Data>& data)
 {
-  string name = data->getName().toUri();
-  const char* buf = reinterpret_cast<const char*>(data->getContent().value());
-  size_t len = data->getContent().value_size();
-
-  char *tempBuf = new char[len];
-  memcpy(tempBuf, buf, len);
-  emit dataReceived(name.c_str(), tempBuf, len, true, false);
-  _LOG_DEBUG("<<< " << name << " fetched");
+  emit dataReceived(data, true, false);
+  _LOG_DEBUG("<<< " << data->getName() << " fetched");
 }
 
 void
-ChatDialog::processDataNoShowWrapper(const ndn::ptr_lib::shared_ptr<ndn::Data>& data)
-{
-  string name = data->getName().toUri();
-  const char* buf = reinterpret_cast<const char*>(data->getContent().value());
-  size_t len = data->getContent().value_size();
-
-  char *tempBuf = new char[len];
-  memcpy(tempBuf, buf, len);
-  emit dataReceived(name.c_str(), tempBuf, len, false, false);
-
-  // if (!m_historyInitialized)
-  // {
-  //   fetchHistory(name);
-  //   m_historyInitialized = true;
-  // }
-}
-
-// void
-// ChatDialog::fetchHistory(std::string name)
-// {
-
-//   /****************************/
-//   /* TODO: fix following part */
-//   /****************************/
-//   string nameWithoutSeq = name.substr(0, name.find_last_of('/'));
-//   string prefix = nameWithoutSeq.substr(0, nameWithoutSeq.find_last_of('/'));
-//   prefix += "/history";
-//   // Ptr<Wrapper>CcnxWrapperPtr handle = boost::make_shared<Sync::CcnxWrapper> ();
-//   // QString randomString = getRandomString();
-//   // for (int i = 0; i < MAX_HISTORY_ENTRY; i++)
-//   // {
-//   //   QString interest = QString("%1/%2/%3").arg(prefix.c_str()).arg(randomString).arg(i);
-//   //   handle->sendInterest(interest.toStdString(), bind(&ChatDialog::processDataHistoryWrapper, this, _1, _2, _3));
-//   // }
-// }
+ChatDialog::processDataNoShowWrapper(const shared_ptr<const Data>& data)
+{ emit dataReceived(data, false, false); }
 
 void
-ChatDialog::processData(QString name, const char *buf, size_t len, bool show, bool isHistory)
+ChatDialog::processData(shared_ptr<const Data> data, bool show, bool isHistory)
 {
   SyncDemo::ChatMessage msg;
   bool corrupted = false;
-  if (!msg.ParseFromArray(buf, len))
+  if (!msg.ParseFromArray(data->getContent().value(), data->getContent().value_size()))
   {
-    _LOG_DEBUG("Errrrr.. Can not parse msg with name: " << name.toStdString() << ". what is happening?");
+    _LOG_DEBUG("Errrrr.. Can not parse msg with name: " << data->getName() << ". what is happening?");
     // nasty stuff: as a remedy, we'll form some standard msg for inparsable msgs
     msg.set_from("inconnu");
     msg.set_type(SyncDemo::ChatMessage::OTHER);
     corrupted = true;
   }
-
-  delete [] buf;
-  buf = NULL;
 
   // display msg received from network
   // we have to do so; this function is called by ccnd thread
@@ -603,7 +480,7 @@ ChatDialog::processData(QString name, const char *buf, size_t len, bool show, bo
   if (!isHistory)
   {
     // update the tree view
-    std::string stdStrName = name.toStdString();
+    std::string stdStrName = data->getName().toUri();
     std::string stdStrNameWithoutSeq = stdStrName.substr(0, stdStrName.find_last_of('/'));
     std::string prefix = stdStrNameWithoutSeq.substr(0, stdStrNameWithoutSeq.find_last_of('/'));
     _LOG_DEBUG("<<< updating scene for" << prefix << ": " << msg.from());
@@ -643,14 +520,14 @@ ChatDialog::sendJoin()
   boost::random::random_device rng;
   boost::random::uniform_int_distribution<> uniform(1, FRESHNESS / 5 * 1000);
   m_randomizedInterval = HELLO_INTERVAL * 1000 + uniform(rng);
-  QTimer::singleShot(m_randomizedInterval, this, SLOT(sendHello()));
+  m_scheduler.scheduleEvent(time::milliseconds(m_randomizedInterval), bind(&ChatDialog::sendHello, this));
 }
 
 void
 ChatDialog::sendHello()
 {
-  time_t now = time(NULL);
-  int elapsed = now - m_lastMsgTime;
+  int64_t now = time::now();
+  int elapsed = (now - m_lastMsgTime) / 1000000000;
   if (elapsed >= m_randomizedInterval / 1000)
   {
     SyncDemo::ChatMessage msg;
@@ -659,11 +536,12 @@ ChatDialog::sendHello()
     boost::random::random_device rng;
     boost::random::uniform_int_distribution<> uniform(1, FRESHNESS / 5 * 1000);
     m_randomizedInterval = HELLO_INTERVAL * 1000 + uniform(rng);
-    QTimer::singleShot(m_randomizedInterval, this, SLOT(sendHello()));
+    m_scheduler.scheduleEvent(time::milliseconds(m_randomizedInterval), bind(&ChatDialog::sendHello, this));
   }
   else
   {
-    QTimer::singleShot((m_randomizedInterval - elapsed * 1000), this, SLOT(sendHello()));
+    m_scheduler.scheduleEvent(time::milliseconds(m_randomizedInterval - elapsed * 1000), 
+                              bind(&ChatDialog::sendHello, this));
   }
 }
 
@@ -738,7 +616,8 @@ ChatDialog::reap()
     _LOG_DEBUG("Reaped: prefix = " << prefix);
     m_zombieIndex++;
     // reap again in 10 seconds
-    QTimer::singleShot(10000, this, SLOT(reap()));
+    m_scheduler.scheduleEvent(time::milliseconds(10000), 
+                              bind(&ChatDialog::reap, this));
   }
 }
 
@@ -811,8 +690,6 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
     }
     // resume new prefix
     m_user.setPrefix(newPrefix);
-    // Sync::CcnxWrapperPtr handle = Sync::CcnxWrapper::Create();
-    // handle->clearInterestFilter(oldPrefix.toStdString());
     delete m_sock;
     m_sock = NULL;
 
@@ -820,18 +697,19 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
     {
       usleep(100000);
       m_sock = new Sync::SyncSocket(m_chatroomPrefix.toUri(),
-                                    m_syncPolicy,
+                                    m_syncValidator,
                                     m_face,
                                     bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
                                     bind(&ChatDialog::processRemoveWrapper, this, _1));
       usleep(100000);
-      // Sync::CcnxWrapperPtr handle = boost::make_shared<Sync::CcnxWrapper> ();
-      // handle->setInterestFilter(m_user.getPrefix().toStdString(), bind(&ChatDialog::respondHistoryRequest, this, _1));
-      QTimer::singleShot(600, this, SLOT(sendJoin()));
-      m_timer->start(FRESHNESS * 1000);
+      m_scheduler.scheduleEvent(time::milliseconds(600), bind(&ChatDialog::sendJoin, this));
+      if(static_cast<bool>(m_replotEventId))
+        m_scheduler.cancelEvent(m_replotEventId);
+      m_replotEventId = m_scheduler.schedulePeriodicEvent(time::seconds(0), time::milliseconds(FRESHNESS * 1000),
+                                                          bind(&ChatDialog::replot, this));
       disableTreeDisplay();
-      QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
-    }catch(std::exception& e){
+      m_scheduler.scheduleEvent(time::milliseconds(2200), bind(&ChatDialog::enableTreeDisplay, this));
+    }catch(Face::Error& e){
       emit noNdnConnection(QString::fromStdString("Cannot conect to ndnd!\n Have you started your ndnd?"));
     }
   }
@@ -951,7 +829,7 @@ ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
   msg.set_from(m_user.getNick().toStdString());
   msg.set_to(m_user.getChatroom().toStdString());
   msg.set_data(text.toUtf8().constData());
-  time_t seconds = time(NULL);
+  int32_t seconds = static_cast<int32_t>(time::now()/1000000000);
   msg.set_timestamp(seconds);
   msg.set_type(SyncDemo::ChatMessage::CHAT);
 }
@@ -961,7 +839,7 @@ ChatDialog::formControlMessage(SyncDemo::ChatMessage &msg, SyncDemo::ChatMessage
 {
   msg.set_from(m_user.getNick().toStdString());
   msg.set_to(m_user.getChatroom().toStdString());
-  time_t seconds = time(NULL);
+  int32_t seconds = static_cast<int32_t>(time::now()/1000000000);
   msg.set_timestamp(seconds);
   msg.set_type(type);
 }
@@ -969,48 +847,43 @@ ChatDialog::formControlMessage(SyncDemo::ChatMessage &msg, SyncDemo::ChatMessage
 void
 ChatDialog::updateLocalPrefix()
 {
-  m_newLocalPrefixReady = false;
   ndn::Name interestName("/local/ndn/prefix");
   ndn::Interest interest(interestName);
   interest.setInterestLifetime(1000);
 
   m_face->expressInterest(interest, 
                           bind(&ChatDialog::onLocalPrefix, this, _1, _2), 
-                          bind(&ChatDialog::onLocalPrefixTimeout, this, _1));
-  
-  while(m_newLocalPrefixReady == false)
-    {
-#if BOOST_VERSION >= 1050000
-      boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
-#else
-      boost::this_thread::sleep(boost::posix_time::milliseconds(100));
-#endif
-    }
+                          bind(&ChatDialog::onLocalPrefixTimeout, this, _1));  
+}
+
+
+void
+ChatDialog::onLocalPrefix(const ndn::Interest& interest, 
+                          ndn::Data& data)
+{
+  string dataString(reinterpret_cast<const char*>(data.getContent().value()), data.getContent().value_size());
+  QString originPrefix = QString::fromStdString (dataString).trimmed ();
+  string trimmedString = originPrefix.toStdString();
+  m_newLocalPrefix = Name(trimmedString);
+
+  _LOG_DEBUG("now the prefix is " << m_newLocalPrefix.toUri());
+  _LOG_DEBUG("in use prefix is " << m_user.getOriginPrefix().toStdString());
+    
+  if (originPrefix != "" && m_user.getOriginPrefix () != originPrefix)
+    emit settingUpdated(m_user.getNick (), m_user.getChatroom (), originPrefix);
+}
+
+void
+ChatDialog::onLocalPrefixTimeout(const ndn::Interest& interest)
+{
+  m_newLocalPrefix = m_localPrefix;
+
   _LOG_DEBUG("now the prefix is " << m_newLocalPrefix.toUri());
   _LOG_DEBUG("in use prefix is " << m_user.getOriginPrefix().toStdString());
   QString originPrefix = QString::fromStdString(m_newLocalPrefix.toUri());
     
   if (originPrefix != "" && m_user.getOriginPrefix () != originPrefix)
     emit settingUpdated(m_user.getNick (), m_user.getChatroom (), originPrefix);
-}
-
-
-void
-ChatDialog::onLocalPrefix(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, 
-                          const ndn::ptr_lib::shared_ptr<ndn::Data>& data)
-{
-  string dataString(reinterpret_cast<const char*>(data->getContent().value()), data->getContent().value_size());
-  QString originPrefix = QString::fromStdString (dataString).trimmed ();
-  string trimmedString = originPrefix.toStdString();
-  m_newLocalPrefix = ndn::Name(trimmedString);
-  m_newLocalPrefixReady = true;
-}
-
-void
-ChatDialog::onLocalPrefixTimeout(const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest)
-{
-  m_newLocalPrefix = m_localPrefix;
-  m_newLocalPrefixReady = true;
 }
 
 static std::string chars2("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789");
@@ -1193,6 +1066,7 @@ ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
   size_t size = msg.ByteSize();
   char *buf = new char[size];
   msg.SerializeToArray(buf, size);
+  
   if (!msg.IsInitialized())
   {
     _LOG_DEBUG("Errrrr.. msg was not probally initialized "<<__FILE__ <<":"<<__LINE__<<". what is happening?");
@@ -1200,11 +1074,11 @@ ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
   }
   m_sock->publishData(m_user.getPrefix().toStdString(), m_session, buf, size, FRESHNESS);
 
-  delete buf;
+  delete[] buf;
 
-  m_lastMsgTime = time(NULL);
+  m_lastMsgTime = time::now();
 
-  int nextSequence = m_sock->getNextSeq(m_user.getPrefix().toStdString(), m_session);
+  uint64_t nextSequence = m_sock->getNextSeq(m_user.getPrefix().toStdString(), m_session);
   Sync::MissingDataInfo mdi = {m_user.getPrefix().toStdString(), Sync::SeqNo(0), Sync::SeqNo(nextSequence - 1)};
   std::vector<Sync::MissingDataInfo> v;
   v.push_back(mdi);
@@ -1225,8 +1099,8 @@ ChatDialog::openInviteListDialog()
 void
 ChatDialog::sendInvitationWrapper(QString invitee, bool isIntroducer)
 {
-  ndn::Name inviteeNamespace(invitee.toStdString());
-  ndn::ptr_lib::shared_ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
+  Name inviteeNamespace(invitee.toStdString());
+  shared_ptr<ContactItem> inviteeItem = m_contactManager->getContact(inviteeNamespace);
   sendInvitation(inviteeItem, isIntroducer);
 }
 
