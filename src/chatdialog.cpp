@@ -77,7 +77,7 @@ ChatDialog::ChatDialog(shared_ptr<ContactManager> contactManager,
   m_localChatPrefix.append("chronos").append(m_chatroomPrefix.get(-1)).append(randString.toStdString());
 
   m_session = static_cast<uint64_t>(time::now());
-  m_scene = new DigestTreeScene(this);
+  m_scene = new DigestTreeScene(m_ioService, this);
 
   initializeSetting();
   updateLabels();
@@ -122,6 +122,19 @@ ChatDialog::ChatDialog(shared_ptr<ContactManager> contactManager,
           this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
   connect(m_scene, SIGNAL(rosterChanged(QStringList)), 
           this, SLOT(updateRosterList(QStringList)));
+  connect(this, SIGNAL(triggerHello()),
+          this, SLOT(sendHello()));
+  connect(this, SIGNAL(triggerJoin()),
+          this, SLOT(sendJoin()));
+  connect(this, SIGNAL(triggerLeave()),
+          this, SLOT(sendLeave()));
+  connect(this, SIGNAL(triggerReplot()),
+          this, SLOT(replot()));
+  connect(this, SIGNAL(triggerEnableTreeDisplay()),
+          this, SLOT(enableTreeDisplay()));
+  connect(this, SIGNAL(triggerReap()),
+          this, SLOT(reap()));
+  
 
 
   initializeSync();
@@ -180,14 +193,14 @@ ChatDialog::initializeSync()
   
   usleep(100000);
 
-  m_scheduler.scheduleEvent(time::milliseconds(600), bind(&ChatDialog::sendJoin, this));
+  m_scheduler.scheduleEvent(time::milliseconds(600), bind(&ChatDialog::sendJoinWrapper, this));
 
   if(static_cast<bool>(m_replotEventId))
     m_scheduler.cancelEvent(m_replotEventId);
   m_replotEventId = m_scheduler.schedulePeriodicEvent(time::seconds(0), time::milliseconds(FRESHNESS * 1000),
-                                                      bind(&ChatDialog::replot, this));
+                                                      bind(&ChatDialog::replotWrapper, this));
   disableTreeDisplay();
-  m_scheduler.scheduleEvent(time::milliseconds(2200), bind(&ChatDialog::enableTreeDisplay, this));
+  m_scheduler.scheduleEvent(time::milliseconds(2200), bind(&ChatDialog::enableTreeDisplayWrapper, this));
 }
 
 void
@@ -386,6 +399,10 @@ void ChatDialog::enableTreeDisplay()
 }
 
 void
+ChatDialog::enableTreeDisplayWrapper()
+{ emit triggerEnableTreeDisplay(); }
+
+void
 ChatDialog::processTreeUpdateWrapper(const vector<Sync::MissingDataInfo>& v, Sync::SyncSocket *sock)
 {
   emit treeUpdated(v);
@@ -520,8 +537,12 @@ ChatDialog::sendJoin()
   boost::random::random_device rng;
   boost::random::uniform_int_distribution<> uniform(1, FRESHNESS / 5 * 1000);
   m_randomizedInterval = HELLO_INTERVAL * 1000 + uniform(rng);
-  m_scheduler.scheduleEvent(time::milliseconds(m_randomizedInterval), bind(&ChatDialog::sendHello, this));
+  m_scheduler.scheduleEvent(time::milliseconds(m_randomizedInterval), bind(&ChatDialog::sendHelloWrapper, this));
 }
+
+void
+ChatDialog::sendJoinWrapper()
+{ emit triggerJoin(); }
 
 void
 ChatDialog::sendHello()
@@ -536,14 +557,18 @@ ChatDialog::sendHello()
     boost::random::random_device rng;
     boost::random::uniform_int_distribution<> uniform(1, FRESHNESS / 5 * 1000);
     m_randomizedInterval = HELLO_INTERVAL * 1000 + uniform(rng);
-    m_scheduler.scheduleEvent(time::milliseconds(m_randomizedInterval), bind(&ChatDialog::sendHello, this));
+    m_scheduler.scheduleEvent(time::milliseconds(m_randomizedInterval), bind(&ChatDialog::sendHelloWrapper, this));
   }
   else
   {
     m_scheduler.scheduleEvent(time::milliseconds(m_randomizedInterval - elapsed * 1000), 
-                              bind(&ChatDialog::sendHello, this));
+                              bind(&ChatDialog::sendHelloWrapper, this));
   }
 }
+
+void
+ChatDialog::sendHelloWrapper()
+{ emit triggerHello(); }
 
 void
 ChatDialog::sendLeave()
@@ -559,12 +584,20 @@ ChatDialog::sendLeave()
 }
 
 void
+ChatDialog::sendLeaveWrapper()
+{ emit triggerLeave(); }
+
+void
 ChatDialog::replot()
 {
   boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
   m_scene->plot(m_sock->getRootDigest().c_str());
   fitView();
 }
+
+void
+ChatDialog::replotWrapper()
+{ emit triggerReplot(); }
 
 void
 ChatDialog::summonReaper()
@@ -617,9 +650,13 @@ ChatDialog::reap()
     m_zombieIndex++;
     // reap again in 10 seconds
     m_scheduler.scheduleEvent(time::milliseconds(10000), 
-                              bind(&ChatDialog::reap, this));
+                              bind(&ChatDialog::reapWrapper, this));
   }
 }
+
+void
+ChatDialog::reapWrapper()
+{ emit triggerReap(); }
 
 void
 ChatDialog::updateRosterList(QStringList staleUserList)
@@ -702,13 +739,13 @@ ChatDialog::settingUpdated(QString nick, QString chatroom, QString originPrefix)
                                     bind(&ChatDialog::processTreeUpdateWrapper, this, _1, _2),
                                     bind(&ChatDialog::processRemoveWrapper, this, _1));
       usleep(100000);
-      m_scheduler.scheduleEvent(time::milliseconds(600), bind(&ChatDialog::sendJoin, this));
+      m_scheduler.scheduleEvent(time::milliseconds(600), bind(&ChatDialog::sendJoinWrapper, this));
       if(static_cast<bool>(m_replotEventId))
         m_scheduler.cancelEvent(m_replotEventId);
       m_replotEventId = m_scheduler.schedulePeriodicEvent(time::seconds(0), time::milliseconds(FRESHNESS * 1000),
-                                                          bind(&ChatDialog::replot, this));
+                                                          bind(&ChatDialog::replotWrapper, this));
       disableTreeDisplay();
-      m_scheduler.scheduleEvent(time::milliseconds(2200), bind(&ChatDialog::enableTreeDisplay, this));
+      m_scheduler.scheduleEvent(time::milliseconds(2200), bind(&ChatDialog::enableTreeDisplayWrapper, this));
     }catch(Face::Error& e){
       emit noNdnConnection(QString::fromStdString("Cannot conect to ndnd!\n Have you started your ndnd?"));
     }
