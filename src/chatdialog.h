@@ -16,7 +16,6 @@
 #include <QDialog>
 #include <QTextTable>
 #include <QStringListModel>
-#include <QTimer>
 #include <QSystemTrayIcon>
 #include <QMenu>
 
@@ -233,6 +232,24 @@ signals:
   void
   inivationRejection(const QString& msg);
 
+  void
+  triggerHello();
+             
+  void
+  triggerJoin();
+  
+  void
+  triggerLeave();
+
+  void
+  triggerReplot();
+
+  void
+  triggerEnableTreeDisplay();
+
+  void
+  triggerReap();
+
 public slots:
   void 
   processTreeUpdate(const std::vector<Sync::MissingDataInfo>&);
@@ -253,23 +270,38 @@ private slots:
   void
   settingUpdated(QString, QString, QString);
 
+  void
+  sendJoinWrapper();
+
   void 
   sendJoin();
 
+  void
+  sendHelloWrapper();
+  
   void
   sendHello();
 
   void
   sendLeave();
 
+  void
+  sendLeaveWrapper();
+
   void 
   replot();
+
+  void
+  replotWrapper();
 
   void 
   updateRosterList(QStringList);
 
   void 
   enableTreeDisplay();
+
+  void
+  enableTreeDisplayWrapper();
 
   void
   updateLocalPrefix();
@@ -279,6 +311,9 @@ private slots:
 
   void
   reap();
+
+  void
+  reapWrapper();
 
   void 
   iconActivated(QSystemTrayIcon::ActivationReason reason);
