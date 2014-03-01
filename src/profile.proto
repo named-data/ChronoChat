@@ -7,5 +7,5 @@ message ProfileMsg
     required string oid = 1;
     required string data = 2;
   }
-  repeated ProfileEntry entry = 2;
+  repeated ProfileEntry entry = 1;
 }

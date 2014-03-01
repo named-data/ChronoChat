@@ -25,6 +25,7 @@ def configure(conf):
 
     if conf.options.debug:
         conf.define ('_DEBUG', 1)
+        conf.env['_DEBUG'] = True;
         flags = ['-O0',
                  '-Wall',
                  '-Wno-unused-variable',
@@ -53,6 +54,7 @@ def configure(conf):
     conf.check_boost(lib='system random thread filesystem unit_test_framework')
 
     if conf.options.with_tests:
+        conf.env['WITH_TESTS'] = True
         conf.define('WITH_TESTS', 1)
 
 
@@ -73,7 +75,7 @@ def build (bld):
         )
 
     # Unit tests
-    # if bld.get_define("WITH_TESTS"):
+    # if bld.env["WITH_TESTS"]:
     #   unittests = bld.program (
     #       target="unit-tests",
     #       source = bld.path.ant_glob(['test/**/*.cc']),
@@ -82,6 +84,16 @@ def build (bld):
     #       includes = "src",
     #       install_path = None,
     #       )
+
+    # Debug tools
+    if bld.env["_DEBUG"]:
+        for app in bld.path.ant_glob('debug-tools/*.cc'):
+            bld(features=['cxx', 'cxxprogram'],
+                target = '%s' % (str(app.change_ext('','.cc'))),
+                source = app,
+                use = 'NDN_CPP',
+                install_path = None,
+            )
       
       # Tmp disable
     if Utils.unversioned_sys_platform () == "darwin":

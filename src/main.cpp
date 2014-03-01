@@ -9,12 +9,9 @@
  */
 
 #include <QApplication>
-#include <QSystemTrayIcon>
+// #include <QSystemTrayIcon>
 
-#include "contactpanel.h"
-#include "contact-storage.h"
-#include "dns-storage.h"
-#include "contact-manager.h"
+#include "controller.h"
 #include "logging.h"
 #include <ndn-cpp-dev/face.hpp>
 #include <boost/thread/thread.hpp>
@@ -57,11 +54,9 @@ int main(int argc, char *argv[])
   NewApp app(argc, argv);
   
   shared_ptr<Face> face = make_shared<Face>();
-  ContactPanel contactPanel(face);
+  chronos::Controller controller(face);
 
-  contactPanel.show ();
-  contactPanel.activateWindow ();
-  contactPanel.raise ();
+  app.setQuitOnLastWindowClosed(false);
 
   boost::thread (runIO, face->ioService());
   

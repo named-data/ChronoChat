@@ -83,6 +83,9 @@ public:
   inline bool
   operator == (const Profile& profile) const;
 
+  inline bool
+  operator != (const Profile& profile) const;
+
 private:
   static const std::string OID_NAME;
   static const std::string OID_ORG;
@@ -100,7 +103,7 @@ operator << (Chronos::ProfileMsg& msg, const Profile& profile);
 Chronos::ProfileMsg&
 operator >> (Chronos::ProfileMsg& msg, Profile& profile);
 
-bool
+inline bool
 Profile::operator == (const Profile& profile) const
 {
   if(m_entries.size() != profile.m_entries.size())
@@ -117,6 +120,12 @@ Profile::operator == (const Profile& profile) const
     }
 
   return true;
+}
+
+inline bool
+Profile::operator != (const Profile& profile) const
+{
+  return !(*this == profile);
 }
 
 }//chronos

@@ -11,18 +11,16 @@
 #include "endorse-certificate.h"
 #include "endorse-extension.pb.h"
 #include <boost/iostreams/stream.hpp>
-#include "logging.h"
 
 using namespace std;
 using namespace ndn;
-
-
-INIT_LOGGER("EndorseCertificate");
 
 namespace chronos{
 
 const OID EndorseCertificate::PROFILE_EXT_OID("1.3.6.1.5.32.2.1");
 const OID EndorseCertificate::ENDORSE_EXT_OID("1.3.6.1.5.32.2.2");
+
+const std::vector<std::string> EndorseCertificate::DEFAULT_ENDORSE_LIST = std::vector<std::string>();
 
 Chronos::EndorseExtensionMsg&
 operator << (Chronos::EndorseExtensionMsg& endorseExtension, const vector<string>& endorseList)
@@ -104,6 +102,41 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
   addExtension(CertificateExtension(ENDORSE_EXT_OID, true, *endorseStream.buf()));
 
   encode();
+}
+
+EndorseCertificate::EndorseCertificate(const Name& keyName,
+                                       const PublicKey& key,
+                                       MillisecondsSince1970 notBefore,
+                                       MillisecondsSince1970 notAfter,
+                                       const Name& signer,
+                                       const Profile& profile,
+                                       const vector<string>& endorseList)
+  : Certificate()
+  , m_keyName(keyName)
+  , m_signer(signer)
+  , m_profile(profile)
+  , m_endorseList(endorseList)
+{
+  Name dataName = m_keyName;
+  dataName.append("PROFILE-CERT").append(m_signer.wireEncode()).appendVersion();
+  setName(dataName);
+  
+  setNotBefore(notBefore);
+  setNotAfter(notAfter);
+  addSubjectDescription(CertificateSubjectDescription("2.5.4.41", m_keyName.toUri()));
+  setPublicKeyInfo(key);
+
+  OBufferStream profileStream;
+  m_profile.encode(profileStream);
+  addExtension(CertificateExtension(PROFILE_EXT_OID, true, *profileStream.buf()));
+
+  OBufferStream endorseStream;
+  Chronos::EndorseExtensionMsg endorseExtension;
+  endorseExtension << m_endorseList;
+  endorseExtension.SerializeToOstream(&endorseStream);
+  addExtension(CertificateExtension(ENDORSE_EXT_OID, true, *endorseStream.buf()));
+
+  encode();  
 }
 
 EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertificate)

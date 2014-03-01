@@ -25,10 +25,8 @@ static const double Pi = 3.14159265358979323846264338327950288419717;
 
 //DisplayUserPtr DisplayUserNullPtr;
 
-DigestTreeScene::DigestTreeScene(ndn::shared_ptr<boost::asio::io_service> ioService,
-                                 QWidget *parent)
+DigestTreeScene::DigestTreeScene(QWidget *parent)
   : QGraphicsScene(parent)
-  , m_scheduler(*ioService)
 {
   previouslyUpdatedUser = DisplayUserNullPtr;
 }
@@ -60,7 +58,7 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
   if (rePlot) 
   {
     plot(digest);
-    m_scheduler.scheduleEvent(ndn::time::milliseconds(600), ndn::bind(&DigestTreeScene::emitReplot, this));
+    QTimer::singleShot(2100, this, SLOT(emitReplot()));
   }
   else 
   {

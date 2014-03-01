@@ -44,32 +44,40 @@ ValidatorPanel::checkPolicy (const Data& data,
   if(m_stepLimit == stepCount)
     {
       _LOG_ERROR("Reach the maximum steps of verification!");
-      onValidationFailed(data.shared_from_this());
+      onValidationFailed(data.shared_from_this(), 
+                         "Reach maximum validation steps: " + data.getName().toUri());
       return;
     }
 
-  try{
-    SignatureSha256WithRsa sig(data.getSignature());    
-    const Name& keyLocatorName = sig.getKeyLocator().getName();
+  try
+    {
+      SignatureSha256WithRsa sig(data.getSignature());
+      const Name& keyLocatorName = sig.getKeyLocator().getName();
 
-    if(m_endorseeRule->satisfy(data.getName(), keyLocatorName))
-      {
-        Name keyName = IdentityCertificate::certificateNameToPublicKeyName(keyLocatorName);
+      if(m_endorseeRule->satisfy(data.getName(), keyLocatorName))
+        {
+          Name keyName = IdentityCertificate::certificateNameToPublicKeyName(keyLocatorName);
 
-        if(m_trustAnchors.end() != m_trustAnchors.find(keyName) && Validator::verifySignature(data, sig, m_trustAnchors[keyName]))
-          onValidated(data.shared_from_this());
-        else
-          onValidationFailed(data.shared_from_this());
-      }
-    else
-      onValidationFailed(data.shared_from_this());
+          if(m_trustAnchors.end() != m_trustAnchors.find(keyName) && Validator::verifySignature(data, sig, m_trustAnchors[keyName]))
+            onValidated(data.shared_from_this());
+          else
+            onValidationFailed(data.shared_from_this(), "Cannot verify signature:" + data.getName().toUri());
+        }
+      else
+        onValidationFailed(data.shared_from_this(), "Does not satisfy rule: " + data.getName().toUri());
 
-    return;
-
-  }catch(...){
-    onValidationFailed(data.shared_from_this());
-    return;
-  }  
+      return;
+    }
+  catch(SignatureSha256WithRsa::Error &e)
+    {
+      return onValidationFailed(data.shared_from_this(), 
+                                "Not SignatureSha256WithRsa signature: " + data.getName().toUri());
+    }
+  catch(KeyLocator::Error &e)
+    {
+      return onValidationFailed(data.shared_from_this(),
+                                "Key Locator is not a name: " + data.getName().toUri());
+    }
 }
 
 }//chronos

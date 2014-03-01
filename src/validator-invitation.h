@@ -22,7 +22,7 @@ namespace chronos{
 
 class ValidatorInvitation : public ndn::Validator
 {
-  typedef ndn::function< void () > OnValidationFailed;
+  typedef ndn::function< void (const std::string&) > OnValidationFailed;
   typedef ndn::function< void () > OnValidated;
 
 public:
@@ -30,101 +30,59 @@ public:
 
   static const ndn::shared_ptr<ndn::CertificateCache> DefaultCertificateCache;
 
-  ValidatorInvitation(ndn::shared_ptr<ndn::Face> face,                      
-                      const std::string& chatroomName,
-                      const ndn::Name& signingIdentity,
-                      ndn::shared_ptr<ndn::CertificateCache> certificateCache = DefaultCertificateCache,
-                      int stepLimit = 10);
+  ValidatorInvitation();
   
   virtual
   ~ValidatorInvitation() {};
 
   void
-  addTrustAnchor(const EndorseCertificate& cert)
-  { m_trustAnchors[cert.getPublicKeyName()] = cert.getPublicKeyInfo(); }
+  addTrustAnchor(const ndn::Name& keyName, const ndn::PublicKey& key)
+  { 
+    m_trustAnchors[keyName] = key; 
+  }
 
   void
   removeTrustAnchor(const ndn::Name& keyName)
-  { m_trustAnchors.erase(keyName); }
-
-  ndn::shared_ptr<ndn::IdentityCertificate> 
-  getValidatedDskCertificate(const ndn::Name& certName)
-  {
-    ValidatedCertifcates::iterator it = m_dskCertificates.find(certName);
-    if(m_dskCertificates.end() != it)
-      return it->second;
-    else
-      return ndn::shared_ptr<ndn::IdentityCertificate>();
+  { 
+    m_trustAnchors.erase(keyName); 
   }
 
-
+  void
+  cleanTrustAnchor()
+  {
+    m_trustAnchors.clear();
+  }
+  
 protected:
   void
-  checkPolicy (const ndn::shared_ptr<const ndn::Data>& data, 
-               int stepCount, 
-               const ndn::OnDataValidated& onValidated, 
-               const ndn::OnDataValidationFailed& onValidationFailed,
-               std::vector<ndn::shared_ptr<ndn::ValidationRequest> >& nextSteps);
-
-  void
-  checkPolicy (const ndn::shared_ptr<const ndn::Interest>& interest, 
-               int stepCount, 
-               const ndn::OnInterestValidated& onValidated, 
-               const ndn::OnInterestValidationFailed& onValidationFailed,
-               std::vector<ndn::shared_ptr<ndn::ValidationRequest> >& nextSteps);
-
-private:
-  void 
-  onDskKeyLocatorValidated(const ndn::shared_ptr<const ndn::Data>& certData, 
-                           const uint8_t* buf,
-                           const size_t size,
-                           const ndn::SignatureSha256WithRsa& signature,
-                           const OnValidated& onValidated, 
-                           const OnValidationFailed& onValidationFailed);
+  checkPolicy(const ndn::Data& data, 
+              int stepCount, 
+              const ndn::OnDataValidated& onValidated, 
+              const ndn::OnDataValidationFailed& onValidationFailed,
+              std::vector<ndn::shared_ptr<ndn::ValidationRequest> >& nextSteps);
   
   void
-  onDskKeyLocatorValidationFailed(const ndn::shared_ptr<const ndn::Data>& certData, 
-                                  const OnValidationFailed& onValidationFailed);
-
-  void
-  processSignature (const uint8_t* buf, 
-                    const size_t size,
-                    const ndn::SignatureSha256WithRsa& signature,
-                    const ndn::Name& keyLocatorName,
-                    const OnValidated& onValidated, 
-                    const OnValidationFailed& onValidationFailed,
-                    int stepCount,
-                    std::vector<ndn::shared_ptr<ndn::ValidationRequest> >& nextSteps);
-
-  void
-  processFinalSignature (const uint8_t* buf, 
-                         const size_t size,
-                         const ndn::SignatureSha256WithRsa& signature,
-                         const ndn::Name& keyLocatorName,
-                         const OnValidated& onValidated, 
-                         const OnValidationFailed& onValidationFailed);
+  checkPolicy(const ndn::Interest& interest, 
+              int stepCount, 
+              const ndn::OnInterestValidated& onValidated, 
+              const ndn::OnInterestValidationFailed& onValidationFailed,
+              std::vector<ndn::shared_ptr<ndn::ValidationRequest> >& nextSteps);
 
 private:
+  void
+  internalCheck(const uint8_t* buf, size_t size,
+                const ndn::SignatureSha256WithRsa& sig,
+                const ndn::Data& innerData,
+                const OnValidated& onValidated, 
+                const OnValidationFailed& onValidationFailed);
 
+private:
   typedef std::map<ndn::Name, ndn::PublicKey> TrustAnchors;
-  typedef std::map<ndn::Name, ndn::shared_ptr<ndn::IdentityCertificate> > ValidatedCertifcates;
 
-  int m_stepLimit;
-  ndn::shared_ptr<ndn::CertificateCache> m_certificateCache;
-
-  std::string m_chatroomName;
-  ndn::Name m_signingIdentity;
-
-  ndn::shared_ptr<ndn::SecRuleRelative> m_invitationRule;
-  ndn::shared_ptr<ndn::SecRuleRelative> m_dskRule;
-
-  ndn::shared_ptr<ndn::Regex> m_kskRegex;
-  ndn::shared_ptr<ndn::Regex> m_keyNameRegex;
-
+  ndn::SecRuleRelative m_invitationReplyRule;
+  ndn::Regex m_invitationInterestRule;
+  ndn::Regex m_innerKeyRegex;
   TrustAnchors m_trustAnchors;
-
-  ValidatedCertifcates m_dskCertificates;
-
 };
 
 }//chronos

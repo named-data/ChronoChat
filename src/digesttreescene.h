@@ -19,7 +19,6 @@
 #include <QMap>
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp-dev/util/scheduler.hpp>
 #include <sync-seq-no.h>
 #include <sync-logic.h>
 #include <ctime>
@@ -45,8 +44,7 @@ typedef QMap<QString, DisplayUserPtr>::iterator Roster_iterator;
 typedef QMapIterator<QString, DisplayUserPtr> RosterIterator;
 
 public:
-  DigestTreeScene(ndn::shared_ptr<boost::asio::io_service> ioService,
-                  QWidget *parent = 0);
+  DigestTreeScene(QWidget *parent = 0);
   void processUpdate(const std::vector<Sync::MissingDataInfo> &v, QString digest);
   void msgReceived(QString prefix, QString nick);
   void clearAll();
@@ -73,7 +71,6 @@ private:
   QGraphicsTextItem *m_rootDigest; 
   DisplayUserPtr previouslyUpdatedUser;
   QString m_currentPrefix;
-  ndn::Scheduler m_scheduler;
 };
 
 class User 

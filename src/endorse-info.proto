@@ -1,0 +1,12 @@
+package chronos;
+
+message EndorseInfo
+{
+  message Endorsement
+  {
+    required string type    = 1;
+    required string value   = 2;
+    required string endorse = 3;
+  }
+  repeated Endorsement endorsement = 1;
+}

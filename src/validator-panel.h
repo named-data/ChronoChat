@@ -52,7 +52,10 @@ protected:
                const ndn::OnInterestValidated& onValidated, 
                const ndn::OnInterestValidationFailed& onValidationFailed,
                std::vector<ndn::shared_ptr<ndn::ValidationRequest> >& nextSteps)
-  { onValidationFailed(interest.shared_from_this()); }
+  {
+    onValidationFailed(interest.shared_from_this(),
+                       "No rules for interest.");
+  }
 
 private:
   int m_stepLimit;
@@ -62,11 +65,11 @@ private:
   
 };
 
-void
+inline void
 ValidatorPanel::addTrustAnchor(const EndorseCertificate& cert)
 { m_trustAnchors[cert.getPublicKeyName()] = cert.getPublicKeyInfo(); }
 
-void 
+inline void 
 ValidatorPanel::removeTrustAnchor(const ndn::Name& keyName)
 { m_trustAnchors.erase(keyName); }
 

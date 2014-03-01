@@ -1,10 +1,11 @@
-package Chronos;
+package chronos;
 
 message EndorseCollection
 {
   message Endorsement
   {
-    required string blob = 1;
+    required string certname = 1;
+    required string hash     = 2;
   }
   repeated Endorsement endorsement = 1;
 }

@@ -1,0 +1,6 @@
+package Chronos;
+
+message IntroCertListMsg
+{
+  repeated string certname = 1;
+}

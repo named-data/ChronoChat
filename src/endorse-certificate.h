@@ -24,15 +24,25 @@ class EndorseCertificate : public ndn::Certificate
 public:
   struct Error : public ndn::Certificate::Error { Error(const std::string &what) : ndn::Certificate::Error(what) {} };
 
+  static const std::vector<std::string> DEFAULT_ENDORSE_LIST;
+
   EndorseCertificate() {}
 
   EndorseCertificate(const ndn::IdentityCertificate& kskCertificate,
                      const Profile& profile,
-                     const std::vector<std::string>& endorseList = std::vector<std::string>());
+                     const std::vector<std::string>& endorseList = DEFAULT_ENDORSE_LIST);
 
   EndorseCertificate(const EndorseCertificate& endorseCertificate,
                      const ndn::Name& signer,
-                     const std::vector<std::string>& endorseList);
+                     const std::vector<std::string>& endorseList = DEFAULT_ENDORSE_LIST);
+
+  EndorseCertificate(const ndn::Name& keyName,
+                     const ndn::PublicKey& key,
+                     ndn::MillisecondsSince1970 notBefore,
+                     ndn::MillisecondsSince1970 notAfter,
+                     const ndn::Name& signer,
+                     const Profile& profile,
+                     const std::vector<std::string>& endorseList = DEFAULT_ENDORSE_LIST);
 
   EndorseCertificate(const EndorseCertificate& endorseCertificate);
 
@@ -63,7 +73,7 @@ private:
   static const ndn::OID ENDORSE_EXT_OID;
 
   ndn::Name m_keyName;
-  ndn::Name m_signer;
+  ndn::Name m_signer; // signing key name
   Profile m_profile;
   std::vector<std::string> m_endorseList;
 };

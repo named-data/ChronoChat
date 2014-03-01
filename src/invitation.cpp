@@ -23,14 +23,14 @@ INIT_LOGGER("Invitation");
 
 namespace chronos{
 
-const size_t  Invitation::NAME_SIZE_MIN  = 9;
-const size_t  Invitation::INVITEE_START  = 4;
-const ssize_t Invitation::SIGNATURE      = -1;
-const ssize_t Invitation::KEY_LOCATOR    = -2;
-const ssize_t Invitation::TIMESTAMP      = -3;
-const ssize_t Invitation::INVITER_PREFIX = -4;
-const ssize_t Invitation::CHATROOM       = -5;
-const Name    Invitation::INVITATION_PREFIX("/ndn/broadcast/chronos/chat-invitation");
+const size_t  Invitation::NAME_SIZE_MIN         = 7;
+const ssize_t Invitation::SIGNATURE             = -1;
+const ssize_t Invitation::KEY_LOCATOR           = -2;
+const ssize_t Invitation::TIMESTAMP             = -3;
+const ssize_t Invitation::INVITER_CERT          = -4;
+const ssize_t Invitation::INVITER_PREFIX        = -5;
+const ssize_t Invitation::CHATROOM              = -6;
+const ssize_t Invitation::CHRONOCHAT_INVITATION = -7;
 
 
 Invitation::Invitation(const Name& interestName)
@@ -39,25 +39,34 @@ Invitation::Invitation(const Name& interestName)
 
   if(nameSize < NAME_SIZE_MIN)
     throw Error("Wrong Invitation Name: Wrong length"); 
- 
-  if(!INVITATION_PREFIX.isPrefixOf(interestName))
-    throw Error("Wrong Invitation Name: Wrong invitation prefix");
 
-  m_interestName = interestName.getPrefix(-3);
+  if(interestName.get(CHRONOCHAT_INVITATION).toEscapedString() != "CHRONOCHAT-INVITATION")
+    throw Error("Wrong Invitation Name: Wrong application tags");
+
+  m_interestName = interestName.getPrefix(KEY_LOCATOR);
+  m_timestamp = interestName.get(TIMESTAMP).toNumber();
+  m_inviterCertificate.wireDecode(interestName.get(INVITER_CERT).blockFromValue());
   m_inviterRoutingPrefix.wireDecode(interestName.get(INVITER_PREFIX).blockFromValue());
-  m_chatroom.wireDecode(interestName.get(CHATROOM).blockFromValue());
-  m_inviteeNameSpace = interestName.getSubName(INVITEE_START, nameSize - NAME_SIZE_MIN);  
+  m_chatroom = interestName.get(CHATROOM).toEscapedString();  
+  m_inviteeNameSpace = interestName.getPrefix(CHRONOCHAT_INVITATION);  
 }
 
-Invitation::Invitation(const Name &inviteeNameSpace,
-                       const Name &chatroom,
-                       const Name &inviterRoutingPrefix)
+Invitation::Invitation(const Name& inviteeNameSpace,
+                       const string& chatroom,
+                       const Name& inviterRoutingPrefix,
+                       const IdentityCertificate& inviterCertificate)
   : m_inviteeNameSpace(inviteeNameSpace)
   , m_chatroom(chatroom)
   , m_inviterRoutingPrefix(inviterRoutingPrefix)
-{  
-  m_interestName = INVITATION_PREFIX;
-  m_interestName.append(inviteeNameSpace).append(chatroom.wireEncode()).append(inviterRoutingPrefix.wireEncode());
+  , m_inviterCertificate(inviterCertificate)
+  , m_timestamp(time::now())
+{
+  m_interestName = m_inviteeNameSpace;
+  m_interestName.append("CHRONOCHAT-INVITATION")
+    .append(m_chatroom)
+    .append(m_inviterRoutingPrefix.wireEncode())
+    .append(m_inviterCertificate.wireEncode())
+    .append(name::Component::fromNumber(m_timestamp));
 }
 
 Invitation::Invitation(const Invitation& invitation)
@@ -65,6 +74,9 @@ Invitation::Invitation(const Invitation& invitation)
   , m_inviteeNameSpace(invitation.m_inviteeNameSpace)
   , m_chatroom(invitation.m_chatroom)
   , m_inviterRoutingPrefix(invitation.m_inviterRoutingPrefix)
-{}
+  , m_inviterCertificate(invitation.m_inviterCertificate)
+  , m_timestamp(invitation.m_timestamp)
+{
+}
 
 }//chronos

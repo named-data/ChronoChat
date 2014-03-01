@@ -1,0 +1,6 @@
+package ChronoChat;
+
+message Conf {
+  required string identity = 1;
+  optional string nick = 2;
+}
