@@ -38,6 +38,7 @@ InvitationDialog::setInvitation(const string& alias,
                                 const Name& interestName)
 {
   string msg = alias;
+  m_invitationInterest = interestName;
   msg.append(" invites you to: ").append(chatroom);
   ui->msgLabel->setText(QString::fromStdString(msg));
 }

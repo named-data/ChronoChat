@@ -53,8 +53,8 @@ ValidatorInvitation::checkPolicy (const Data& data,
       Data innerData;
       innerData.wireDecode(data.getContent().blockFromValue());
       
-      return internalCheck(data.wireEncode().wire(), 
-                           data.wireEncode().size(),
+      return internalCheck(data.wireEncode().value(), 
+                           data.wireEncode().value_size() - data.getSignature().getValue().size(),
                            sig,
                            innerData,
                            bind(onValidated, data.shared_from_this()), 
@@ -123,10 +123,11 @@ ValidatorInvitation::internalCheck(const uint8_t* buf, size_t size,
         return onValidationFailed("Cannot reach any trust anchor");
 
       if(!Validator::verifySignature(buf, size, sig, m_trustAnchors[signingKeyName]))
-        return onValidationFailed("Cannot verify interest signature");
+        return onValidationFailed("Cannot verify outer signature");
 
-      if(!Validator::verifySignature(innerData, m_trustAnchors[signingKeyName]))
-        return onValidationFailed("Cannot verify interest signature");
+      // Temporarily disabled, we should get it back when we create a specific key for the chatroom.
+      // if(!Validator::verifySignature(innerData, m_trustAnchors[signingKeyName]))
+      //   return onValidationFailed("Cannot verify inner signature");
 
       if(!m_innerKeyRegex.match(innerData.getName())
           || m_innerKeyRegex.expand() != signingKeyName.getPrefix(-1))

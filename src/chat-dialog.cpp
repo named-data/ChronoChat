@@ -37,7 +37,7 @@ static const int HELLO_INTERVAL = FRESHNESS * 3 / 4;
 static const uint8_t CHRONOS_RP_SEPARATOR[2] = {0xF0, 0x2E}; // %F0.
 
 Q_DECLARE_METATYPE(std::vector<Sync::MissingDataInfo> )
-Q_DECLARE_METATYPE(ndn::Data)
+Q_DECLARE_METATYPE(ndn::shared_ptr<const ndn::Data>)
 Q_DECLARE_METATYPE(ndn::Interest)
 Q_DECLARE_METATYPE(size_t)
 
@@ -66,7 +66,7 @@ ChatDialog::ChatDialog(ContactManager* contactManager,
   , m_inviteListDialog(new InviteListDialog)
 {
   qRegisterMetaType<std::vector<Sync::MissingDataInfo> >("std::vector<Sync::MissingDataInfo>");
-  qRegisterMetaType<ndn::Data>("ndn.Data");
+  qRegisterMetaType<ndn::shared_ptr<const ndn::Data> >("ndn.DataPtr");
   qRegisterMetaType<ndn::Interest>("ndn.Interest");
   qRegisterMetaType<size_t>("size_t");
 
@@ -98,16 +98,16 @@ ChatDialog::ChatDialog(ContactManager* contactManager,
   connect(m_timer, SIGNAL(timeout()), 
           this, SLOT(onReplot()));
 
-  connect(this, SIGNAL(processData(const ndn::Data&, bool, bool)), 
-          this, SLOT(onProcessData(const ndn::Data&, bool, bool)));
+  connect(this, SIGNAL(processData(const ndn::shared_ptr<const ndn::Data>&, bool, bool)), 
+          this, SLOT(onProcessData(const ndn::shared_ptr<const ndn::Data>&, bool, bool)));
   connect(this, SIGNAL(processTreeUpdate(const std::vector<Sync::MissingDataInfo>)), 
           this, SLOT(onProcessTreeUpdate(const std::vector<Sync::MissingDataInfo>)));
-  connect(this, SIGNAL(reply(const ndn::Interest&, const ndn::Data&, size_t, bool)),
-          this, SLOT(onReply(const ndn::Interest&, const ndn::Data&, size_t, bool)));
+  connect(this, SIGNAL(reply(const ndn::Interest&, const ndn::shared_ptr<const ndn::Data>&, size_t, bool)),
+          this, SLOT(onReply(const ndn::Interest&, const ndn::shared_ptr<const ndn::Data>&, size_t, bool)));
   connect(this, SIGNAL(replyTimeout(const ndn::Interest&, size_t)),
           this, SLOT(onReplyTimeout(const ndn::Interest&, size_t)));
-  connect(this, SIGNAL(introCert(const ndn::Interest&, const ndn::Data&)),
-          this, SLOT(onIntroCert(const ndn::Interest&, const ndn::Data&)));
+  connect(this, SIGNAL(introCert(const ndn::Interest&, const ndn::shared_ptr<const ndn::Data>&)),
+          this, SLOT(onIntroCert(const ndn::Interest&, const ndn::shared_ptr<const ndn::Data>&)));
   connect(this, SIGNAL(introCertTimeout(const ndn::Interest&, int, const QString&)),
           this, SLOT(onIntroCertTimeout(const ndn::Interest&, int, const QString&)));
 
@@ -124,6 +124,8 @@ ChatDialog::ChatDialog(ContactManager* contactManager,
               this, SLOT(onInviteListDialogRequested()));
       connect(m_inviteListDialog, SIGNAL(sendInvitation(const QString&)),
               this, SLOT(onSendInvitation(const QString&)));
+      connect(this, SIGNAL(waitForContactList()),
+              m_contactManager, SLOT(onWaitForContactList()));
       connect(m_contactManager, SIGNAL(contactAliasListReady(const QStringList&)),
               m_inviteListDialog, SLOT(onContactAliasListReady(const QStringList&)));
       connect(m_contactManager, SIGNAL(contactIdListReady(const QStringList&)),
@@ -154,6 +156,7 @@ ChatDialog::~ChatDialog()
 void
 ChatDialog::addSyncAnchor(const Invitation& invitation)
 {
+  _LOG_DEBUG("Add sync anchor from invation");
   // Add inviter certificate as trust anchor.
   m_sock->addParticipant(invitation.getInviterCertificate());
 
@@ -172,14 +175,14 @@ ChatDialog::processTreeUpdateWrapper(const vector<Sync::MissingDataInfo>& v, Syn
 void
 ChatDialog::processDataWrapper(const shared_ptr<const Data>& data)
 {
-  emit processData(*data, true, false);
+  emit processData(data, true, false);
   _LOG_DEBUG("<<< " << data->getName() << " fetched");
 }
 
 void
 ChatDialog::processDataNoShowWrapper(const shared_ptr<const Data>& data)
 {
-  emit processData(*data, false, false);
+  emit processData(data, false, false);
 }
 
 void
@@ -199,6 +202,22 @@ ChatDialog::closeEvent(QCloseEvent *e)
                               "context memu of the system tray entry."));
   hide();
   e->ignore();
+}
+
+void
+ChatDialog::changeEvent(QEvent *e)
+{
+  switch(e->type())
+  {
+  case QEvent::ActivationChange:
+    if (isActiveWindow())
+    {
+      emit resetIcon();
+    }
+    break;
+  default:
+    break;
+  }
 }
 
 void
@@ -326,6 +345,7 @@ ChatDialog::sendInvitation(shared_ptr<Contact> contact, bool isIntroducer)
   // Send the invitation out
   Interest interest(interestName);
   interest.setMustBeFresh(true);
+  _LOG_DEBUG("sendInvitation: " << interest.getName());
   m_face->expressInterest(interest,
                           bind(&ChatDialog::replyWrapper, this, _1, _2, routablePrefixOffset, isIntroducer),
                           bind(&ChatDialog::replyTimeoutWrapper, this, _1, routablePrefixOffset));
@@ -337,13 +357,16 @@ ChatDialog::replyWrapper(const Interest& interest,
                          size_t routablePrefixOffset,
                          bool isIntroducer)
 {
-  emit reply(interest, data, routablePrefixOffset, isIntroducer);
+  _LOG_DEBUG("ChatDialog::replyWrapper");
+  emit reply(interest, data.shared_from_this(), routablePrefixOffset, isIntroducer);
+  _LOG_DEBUG("OK?");
 }
 
 void
 ChatDialog::replyTimeoutWrapper(const Interest& interest, 
                                 size_t routablePrefixOffset)
 {
+  _LOG_DEBUG("ChatDialog::replyTimeoutWrapper");
   emit replyTimeout(interest, routablePrefixOffset);
 }
 
@@ -429,6 +452,8 @@ ChatDialog::onIntroCertList(const Interest& interest, const Data& data)
       Interest interest(certName);
       interest.setMustBeFresh(true);
 
+      _LOG_DEBUG("onIntroCertList: to fetch " << certName);
+
       m_face->expressInterest(interest,
                               bind(&ChatDialog::introCertWrapper, this, _1, _2),
                               bind(&ChatDialog::introCertTimeoutWrapper, this, _1, 0, 
@@ -450,7 +475,7 @@ ChatDialog::onIntroCertListTimeout(const Interest& interest, int retry, const st
 void
 ChatDialog::introCertWrapper(const Interest& interest, Data& data)
 {
-  emit introCert(interest, data);
+  emit introCert(interest, data.shared_from_this());
 }
 
 void
@@ -500,6 +525,7 @@ ChatDialog::onCertSingleInterest(const Name& prefix, const ndn::Interest& intere
       const Sync::IntroCertificate& introCert = m_sock->getIntroCertificate(certName);
       Data data(interest.getName());
       data.setContent(introCert.wireEncode());
+      m_keyChain.sign(data,  m_myCertificate.getName());
       m_face->put(data);
     }
   catch(Sync::SyncSocket::Error& e)
@@ -526,12 +552,12 @@ ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
     _LOG_DEBUG("Errrrr.. msg was not probally initialized "<<__FILE__ <<":"<<__LINE__<<". what is happening?");
     abort();
   }
+  uint64_t nextSequence = m_sock->getNextSeq();
   m_sock->publishData(os.buf()->buf(), os.buf()->size(), FRESHNESS);
 
   m_lastMsgTime = time::now();
 
-  uint64_t nextSequence = m_sock->getNextSeq();
-  Sync::MissingDataInfo mdi = {m_localChatPrefix.toUri(), Sync::SeqNo(0), Sync::SeqNo(nextSequence - 1)};
+  Sync::MissingDataInfo mdi = {m_localChatPrefix.toUri(), Sync::SeqNo(0), Sync::SeqNo(nextSequence)};
   std::vector<Sync::MissingDataInfo> v;
   v.push_back(mdi);
   {
@@ -913,13 +939,13 @@ ChatDialog::onTreeButtonPressed()
 }
 
 void
-ChatDialog::onProcessData(const Data& data, bool show, bool isHistory)
+ChatDialog::onProcessData(const shared_ptr<const Data>& data, bool show, bool isHistory)
 {
   SyncDemo::ChatMessage msg;
   bool corrupted = false;
-  if (!msg.ParseFromArray(data.getContent().value(), data.getContent().value_size()))
+  if (!msg.ParseFromArray(data->getContent().value(), data->getContent().value_size()))
   {
-    _LOG_DEBUG("Errrrr.. Can not parse msg with name: " << data.getName() << ". what is happening?");
+    _LOG_DEBUG("Errrrr.. Can not parse msg with name: " << data->getName() << ". what is happening?");
     // nasty stuff: as a remedy, we'll form some standard msg for inparsable msgs
     msg.set_from("inconnu");
     msg.set_type(SyncDemo::ChatMessage::OTHER);
@@ -939,7 +965,7 @@ ChatDialog::onProcessData(const Data& data, bool show, bool isHistory)
   if (!isHistory)
   {
     // update the tree view
-    std::string stdStrName = data.getName().toUri();
+    std::string stdStrName = data->getName().toUri();
     std::string stdStrNameWithoutSeq = stdStrName.substr(0, stdStrName.find_last_of('/'));
     std::string prefix = stdStrNameWithoutSeq.substr(0, stdStrNameWithoutSeq.find_last_of('/'));
     _LOG_DEBUG("<<< updating scene for" << prefix << ": " << msg.from());
@@ -1030,6 +1056,7 @@ ChatDialog::onRosterChanged(QStringList staleUserList)
 void
 ChatDialog::onInviteListDialogRequested()
 {
+  emit waitForContactList();
   m_inviteListDialog->setInviteLabel(m_chatroomPrefix.toUri());
   m_inviteListDialog->show();
 }
@@ -1112,7 +1139,7 @@ ChatDialog::onSendInvitation(QString invitee)
 
 void 
 ChatDialog::onReply(const Interest& interest, 
-                    const Data& data,
+                    const shared_ptr<const Data>& data,
                     size_t routablePrefixOffset,
                     bool isIntroducer)
 {
@@ -1127,12 +1154,12 @@ ChatDialog::onReply(const Interest& interest,
   if(routablePrefixOffset > 0)
     {
       // It is an encapsulated packet, we only validate the inner packet.
-      Data innerData;
-      innerData.wireDecode(data.getContent().blockFromValue());
-      m_invitationValidator->validate(innerData, onValidated, onFailed);
+      shared_ptr<Data> innerData = make_shared<Data>();
+      innerData->wireDecode(data->getContent().blockFromValue());
+      m_invitationValidator->validate(*innerData, onValidated, onFailed);
     }
   else
-    m_invitationValidator->validate(data, onValidated, onFailed);
+    m_invitationValidator->validate(*data, onValidated, onFailed);
 }
 
 void
@@ -1152,16 +1179,16 @@ ChatDialog::onReplyTimeout(const Interest& interest,
 }
 
 void
-ChatDialog::onIntroCert(const ndn::Interest& interest, const Data& data)
+ChatDialog::onIntroCert(const Interest& interest, const shared_ptr<const Data>& data)
 {
   Data innerData;
-  innerData.wireDecode(data.getContent().blockFromValue());
+  innerData.wireDecode(data->getContent().blockFromValue());
   Sync::IntroCertificate introCert(innerData);
   m_sock->addParticipant(introCert);
 }
 
 void
-ChatDialog::onIntroCertTimeout(const ndn::Interest& interest, int retry, const QString& msg)
+ChatDialog::onIntroCertTimeout(const Interest& interest, int retry, const QString& msg)
 {
   _LOG_DEBUG("onIntroCertTimeout: " << msg.toStdString());
 }

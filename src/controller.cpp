@@ -34,6 +34,8 @@ using namespace ndn;
 Q_DECLARE_METATYPE(ndn::Name)
 Q_DECLARE_METATYPE(ndn::IdentityCertificate)
 Q_DECLARE_METATYPE(chronos::EndorseInfo)
+Q_DECLARE_METATYPE(ndn::Interest)
+Q_DECLARE_METATYPE(size_t)
 
 namespace chronos {
 
@@ -57,9 +59,13 @@ Controller::Controller(shared_ptr<Face> face,
   qRegisterMetaType<ndn::Name>("ndn.Name");
   qRegisterMetaType<ndn::IdentityCertificate>("ndn.IdentityCertificate");
   qRegisterMetaType<chronos::EndorseInfo>("chronos.EndorseInfo");
+  qRegisterMetaType<ndn::Interest>("ndn.Interest");
+  qRegisterMetaType<size_t>("size_t");
 
   connect(this, SIGNAL(localPrefixUpdated(const QString&)),
           this, SLOT(onLocalPrefixUpdated(const QString&)));
+  connect(this, SIGNAL(invitationInterest(const ndn::Name&, const ndn::Interest&, size_t)),
+          this, SLOT(onInvitationInterest(const ndn::Name&, const ndn::Interest&, size_t)));
 
   // Connection to ContactManager
   connect(this, SIGNAL(identityUpdated(const QString&)),
@@ -148,7 +154,9 @@ Controller::Controller(shared_ptr<Face> face,
 
   initialize();
 
-  createTrayIcon();          
+  createTrayIcon();
+
+  onUpdateLocalPrefixAction();
 }
   
 Controller::~Controller()
@@ -221,7 +229,7 @@ Controller::setInvitationListener()
   invitationPrefix.append(m_identity).append("CHRONOCHAT-INVITATION");
 
   m_invitationListenerId = m_face->setInterestFilter(invitationPrefix, 
-                                                     bind(&Controller::onInvitationInterest, this, _1, _2, offset),
+                                                     bind(&Controller::onInvitationInterestWrapper, this, _1, _2, offset),
                                                      bind(&Controller::onInvitationRegisterFailed, this, _1, _2));
 }
 
@@ -342,6 +350,7 @@ Controller::updateMenu()
   menu->addAction(m_settingsAction);
   menu->addAction(m_editProfileAction);
   menu->addSeparator();
+  menu->addAction(m_contactListAction);
   menu->addAction(m_addContactAction);
   menu->addSeparator();
   {
@@ -403,32 +412,15 @@ Controller::onLocalPrefixTimeout(const Interest& interest)
 }
 
 void
-Controller::onInvitationInterest(const Name& prefix, const Interest& interest, size_t routingPrefixOffset)
+Controller::onInvitationInterestWrapper(const Name& prefix, const Interest& interest, size_t routingPrefixOffset)
 {
-  shared_ptr<Interest> invitationInterest = make_shared<Interest>(boost::cref(interest.getName().getSubName(routingPrefixOffset)));
-
-  // check if the chatroom already exists;
-  try
-    {
-      Invitation invitation(invitationInterest->getName());
-      if(m_chatDialogList.find(invitation.getChatroom()) != m_chatDialogList.end())
-        return;
-    }
-  catch(Invitation::Error& e)
-    {
-      // Cannot parse the invitation;
-      return;
-    }
-
-  OnInterestValidated onValidated = bind(&Controller::onInvitationValidated, this, _1);
-  OnInterestValidationFailed onValidationFailed = bind(&Controller::onInvitationValidationFailed, this, _1, _2);
-  m_validator.validate(*invitationInterest, onValidated, onValidationFailed);
+  emit invitationInterest(prefix, interest, routingPrefixOffset);
 }
 
 void
 Controller::onInvitationRegisterFailed(const Name& prefix, const std::string& failInfo)
 {
-  std::cerr << "Controller::onInvitationRegisterFailed: " << failInfo << std::endl;
+  _LOG_DEBUG("Controller::onInvitationRegisterFailed: " << failInfo);
 }
 
 void
@@ -444,7 +436,7 @@ Controller::onInvitationValidated(const shared_ptr<const Interest>& interest)
 void
 Controller::onInvitationValidationFailed(const shared_ptr<const Interest>& interest, std::string failureInfo)
 {
-  std::cerr << "Invitation: " << interest->getName() << " cannot not be validated due to: " << failureInfo << std::endl;
+  _LOG_DEBUG("Invitation: " << interest->getName() << " cannot not be validated due to: " << failureInfo);
 }
 
 std::string
@@ -485,6 +477,8 @@ Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
           this, SLOT(onRemoveChatDialog(const QString&)));
   connect(chatDialog, SIGNAL(showChatMessage(const QString&, const QString&, const QString&)),
           this, SLOT(onShowChatMessage(const QString&, const QString&, const QString&)));
+  connect(chatDialog, SIGNAL(resetIcon()),
+          this, SLOT(onResetIcon()));
   connect(this, SIGNAL(localPrefixUpdated(const QString&)),
           chatDialog, SLOT(onLocalPrefixUpdated(const QString&)));
 
@@ -513,6 +507,7 @@ Controller::onIdentityUpdated(const QString& identity)
 
   m_identity = identityName;
   m_keyChain.createIdentity(m_identity);
+  setInvitationListener();
 
   emit closeDBModule();
   
@@ -645,6 +640,9 @@ Controller::onQuitAction()
       onRemoveChatDialog(QString::fromStdString(it->first));
     }
 
+  if(m_invitationListenerId != 0)
+    m_face->unsetInterestFilter(m_invitationListenerId);
+
   delete m_settingDialog;
   delete m_startChatDialog;
   delete m_profileEditor;
@@ -706,25 +704,29 @@ Controller::onInvitationResponded(const Name& invitationName, bool accepted)
       response.setName(invitationName);
       response.setFreshnessPeriod(1000);
     }
+  m_keyChain.signByIdentity(response, m_identity);
   
   // Check if we need a wrapper
   Name invitationRoutingPrefix = getInvitationRoutingPrefix();
   if(invitationRoutingPrefix.isPrefixOf(m_identity))
     {
-      m_keyChain.signByIdentity(response, m_identity);
       m_face->put(response);
     }
   else
     {
       Name wrappedName;
-      wrappedName.append(invitationRoutingPrefix).append(ROUTING_PREFIX_SEPARATOR, 2);
+      wrappedName.append(invitationRoutingPrefix)
+        .append(ROUTING_PREFIX_SEPARATOR, 2)
+        .append(response.getName());
+
+      _LOG_DEBUG("onInvitationResponded: prepare reply " << wrappedName);
       
       Data wrappedData(wrappedName);
       wrappedData.setContent(response.wireEncode());
       wrappedData.setFreshnessPeriod(1000);
 
-      m_keyChain.signByIdentity(response, m_identity);
-      m_face->put(response);
+      m_keyChain.signByIdentity(wrappedData, m_identity);
+      m_face->put(wrappedData);
     }
 
   // create chatroom
@@ -740,9 +742,9 @@ Controller::onInvitationResponded(const Name& invitationName, bool accepted)
       //We should create a chatroom specific key/cert (which should be created in the first half of this method, but let's use the default one for now.
       shared_ptr<IdentityCertificate> idCert = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
       ChatDialog* chatDialog = new ChatDialog(&m_contactManager, m_face, *idCert, chatroomPrefix, m_localPrefix, m_nick, true);
+      chatDialog->addSyncAnchor(invitation);
 
       addChatDialog(QString::fromStdString(invitation.getChatroom()), chatDialog);
-      chatDialog->addSyncAnchor(invitation);
       chatDialog->show();
     }
 }
@@ -754,6 +756,12 @@ Controller::onShowChatMessage(const QString& chatroomName, const QString& from, 
                           QString("<%1>: %2").arg(from).arg(data), 
                           QSystemTrayIcon::Information, 20000);
   m_trayIcon->setIcon(QIcon(":/images/note.png"));
+}
+
+void
+Controller::onResetIcon()
+{
+  m_trayIcon->setIcon(QIcon(":/images/icon_small.png"));
 }
 
 void
@@ -793,6 +801,30 @@ Controller::onError(const QString& msg)
 {
   QMessageBox::critical(this, tr("ChronoChat"), msg, QMessageBox::Ok);
   exit(1);
+}
+
+void
+Controller::onInvitationInterest(const Name& prefix, const Interest& interest, size_t routingPrefixOffset)
+{
+  _LOG_DEBUG("onInvitationInterest: " << interest.getName());
+  shared_ptr<Interest> invitationInterest = make_shared<Interest>(boost::cref(interest.getName().getSubName(routingPrefixOffset)));
+
+  // check if the chatroom already exists;
+  try
+    {
+      Invitation invitation(invitationInterest->getName());
+      if(m_chatDialogList.find(invitation.getChatroom()) != m_chatDialogList.end())
+        return;
+    }
+  catch(Invitation::Error& e)
+    {
+      // Cannot parse the invitation;
+      return;
+    }
+
+  OnInterestValidated onValidated = bind(&Controller::onInvitationValidated, this, _1);
+  OnInterestValidationFailed onValidationFailed = bind(&Controller::onInvitationValidationFailed, this, _1, _2);
+  m_validator.validate(*invitationInterest, onValidated, onValidationFailed);
 }
 
 } // namespace chronos

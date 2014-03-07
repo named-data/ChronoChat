@@ -81,6 +81,9 @@ protected:
   void 
   closeEvent(QCloseEvent *e);
 
+  void
+  changeEvent(QEvent *e);
+
   void 
   resizeEvent(QResizeEvent *);
   
@@ -196,7 +199,7 @@ private:
 
 signals:  
   void
-  processData(const ndn::Data& data, bool show, bool isHistory);
+  processData(const ndn::shared_ptr<const ndn::Data>& data, bool show, bool isHistory);
 
   void 
   processTreeUpdate(const std::vector<Sync::MissingDataInfo>);
@@ -211,17 +214,27 @@ signals:
   showChatMessage(const QString& chatroomName, const QString& from, const QString& data);
 
   void
-  reply(const ndn::Interest& interest, const ndn::Data& data, size_t routablePrefixOffset, bool isIntroducer);
+  resetIcon();
 
   void
-  replyTimeout(const ndn::Interest& interest, size_t routablePrefixOffset);
+  reply(const ndn::Interest& interest,
+        const ndn::shared_ptr<const ndn::Data>& data,
+        size_t routablePrefixOffset, bool isIntroducer);
 
   void
-  introCert(const ndn::Interest& interest, const ndn::Data& data);
+  replyTimeout(const ndn::Interest& interest, 
+               size_t routablePrefixOffset);
+
+  void
+  introCert(const ndn::Interest& interest,
+            const ndn::shared_ptr<const ndn::Data>& data);
   
   void
-  introCertTimeout(const ndn::Interest& interest, int retry, const QString& msg);
+  introCertTimeout(const ndn::Interest& interest,
+                   int retry, const QString& msg);
 
+  void
+  waitForContactList();
 
 public slots:
   void
@@ -238,7 +251,8 @@ private slots:
   onTreeButtonPressed();
 
   void 
-  onProcessData(const ndn::Data& data, bool show, bool isHistory);
+  onProcessData(const ndn::shared_ptr<const ndn::Data>& data,
+                bool show, bool isHistory);
 
   void 
   onProcessTreeUpdate(const std::vector<Sync::MissingDataInfo>&);
@@ -271,16 +285,21 @@ private slots:
   onSendInvitation(QString);
 
   void
-  onReply(const ndn::Interest& interest, const ndn::Data& data, size_t routablePrefixOffset, bool isIntroducer);
+  onReply(const ndn::Interest& interest,
+          const ndn::shared_ptr<const ndn::Data>& data,
+          size_t routablePrefixOffset, bool isIntroducer);
 
   void
-  onReplyTimeout(const ndn::Interest& interest, size_t routablePrefixOffset);
+  onReplyTimeout(const ndn::Interest& interest,
+                 size_t routablePrefixOffset);
 
   void
-  onIntroCert(const ndn::Interest& interest, const ndn::Data& data);
+  onIntroCert(const ndn::Interest& interest,
+              const ndn::shared_ptr<const ndn::Data>& data);
 
   void
-  onIntroCertTimeout(const ndn::Interest& interest, int retry, const QString& msg);
+  onIntroCertTimeout(const ndn::Interest& interest,
+                     int retry, const QString& msg);
 
 private:
   Ui::ChatDialog *ui;

@@ -1,2 +1,3 @@
 1. When clicking message balloon, the corresponding ChatDialog is raised.
-2. Check how does QT handle pointers created by new.
+2. Fix mulitple occurance problem.
+3. Add the trust spanning tree.

@@ -80,7 +80,7 @@ private: // private methods
   onLocalPrefixTimeout(const ndn::Interest& interest);
 
   void
-  onInvitationInterest(const ndn::Name& prefix, const ndn::Interest& interest, size_t routingPrefixOffset);
+  onInvitationInterestWrapper(const ndn::Name& prefix, const ndn::Interest& interest, size_t routingPrefixOffset);
   
   void
   onInvitationRegisterFailed(const ndn::Name& prefix, const std::string& failInfo);
@@ -112,6 +112,9 @@ signals:
 
   void
   refreshBrowseContact();
+
+  void
+  invitationInterest(const ndn::Name& prefix, const ndn::Interest& interest, size_t routingPrefixOffset);
 
 private slots:
   void
@@ -164,6 +167,9 @@ private slots:
 
   void
   onShowChatMessage(const QString& chatroomName, const QString& from, const QString& data);
+  
+  void
+  onResetIcon();
 
   void
   onRemoveChatDialog(const QString& chatroom);
@@ -173,6 +179,9 @@ private slots:
 
   void
   onError(const QString& msg);
+
+  void
+  onInvitationInterest(const ndn::Name& prefix, const ndn::Interest& interest, size_t routingPrefixOffset);
 
 private: // private member
   typedef std::map<std::string, QAction*> ChatActionList;
