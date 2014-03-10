@@ -9,7 +9,7 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "digesttreescene.h"
+#include "digest-tree-scene.h"
 
 #include <QtGui>
 
@@ -108,31 +108,32 @@ DigestTreeScene::msgReceived(QString prefix, QString nick)
 {
   Roster_iterator it = m_roster.find(prefix);
   if (it != m_roster.end()) 
-  {
-    std::cout << "Updating for prefix = " << prefix.toStdString() << " nick = " << nick.toStdString() << std::endl;
-    DisplayUserPtr p = it.value();
-    p->setReceived(time(NULL));
-    if (nick != p->getNick()) {
-    std::cout << "old nick = " << p->getNick().toStdString() << std::endl;
-      p->setNick(nick);
-      QGraphicsTextItem *nickItem = p->getNickTextItem();
-      QGraphicsRectItem *nickRectItem = p->getNickRectItem();
-      nickItem->setPlainText(p->getNick());
-      QRectF rectBR = nickRectItem->boundingRect();
-      QRectF nickBR = nickItem->boundingRect();
-      nickItem->setPos(rectBR.x() + (rectBR.width() - nickBR.width())/2, rectBR.y() + 5);
-      emit rosterChanged(QStringList());
-    }
-
-    reDrawNode(p, Qt::red);
-
-    if (previouslyUpdatedUser != DisplayUserNullPtr && previouslyUpdatedUser != p) 
     {
-      reDrawNode(previouslyUpdatedUser, Qt::darkBlue);
-    }
+      std::cout << "Updating for prefix = " << prefix.toStdString() << " nick = " << nick.toStdString() << std::endl;
+      DisplayUserPtr p = it.value();
+      p->setReceived(time(NULL));
+      if (nick != p->getNick()) 
+        {
+          std::cout << "old nick = " << p->getNick().toStdString() << std::endl;
+          p->setNick(nick);
+          QGraphicsTextItem *nickItem = p->getNickTextItem();
+          QGraphicsRectItem *nickRectItem = p->getNickRectItem();
+          nickItem->setPlainText(p->getNick());
+          QRectF rectBR = nickRectItem->boundingRect();
+          QRectF nickBR = nickItem->boundingRect();
+          nickItem->setPos(rectBR.x() + (rectBR.width() - nickBR.width())/2, rectBR.y() + 5);
+          emit rosterChanged(QStringList());
+        }
 
-    previouslyUpdatedUser = p;
-  }
+      reDrawNode(p, Qt::red);
+
+      if (previouslyUpdatedUser != DisplayUserNullPtr && previouslyUpdatedUser != p) 
+        {
+          reDrawNode(previouslyUpdatedUser, Qt::darkBlue);
+        }
+
+      previouslyUpdatedUser = p;
+    }
 }
 
 void
@@ -325,6 +326,6 @@ DigestTreeScene::reDrawNode(DisplayUserPtr p, QColor rimColor)
 }
 
 #if WAF
-#include "digesttreescene.moc"
-#include "digesttreescene.cpp.moc"
+#include "digest-tree-scene.moc"
+#include "digest-tree-scene.cpp.moc"
 #endif

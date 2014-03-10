@@ -647,8 +647,10 @@ Controller::onQuitAction()
   delete m_startChatDialog;
   delete m_profileEditor;
   delete m_invitationDialog;
+  delete m_browseContactDialog;
   delete m_addContactPanel;
-  // TODO: clean up all the dialog.
+
+  m_face->shutdown();
 
   QApplication::quit();
 }

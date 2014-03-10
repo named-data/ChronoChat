@@ -13,15 +13,9 @@
   <property name="windowTitle">
    <string>ChronoChat -- Powered By ChronoSync</string>
   </property>
-  <layout class="QVBoxLayout">
-   <property name="spacing">
-    <number>6</number>
-   </property>
+  <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <property name="spacing">
-      <number>-1</number>
-     </property>
+    <layout class="QHBoxLayout" name="firstLayout">
      <item>
       <layout class="QVBoxLayout" name="infoLayout">
        <item>
@@ -58,17 +52,32 @@
       </spacer>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="buttonLayout">
-       <property name="sizeConstraint">
-        <enum>QLayout::SetFixedSize</enum>
-       </property>
+      <layout class="QVBoxLayout" name="treeButtonLayout">
        <item>
-        <widget class="QPushButton" name="inviteButton">
+        <widget class="QPushButton" name="trustTreeButton">
          <property name="enabled">
           <bool>false</bool>
          </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>200</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="text">
-          <string>Invite</string>
+          <string>Show Trust Tree</string>
          </property>
          <property name="autoDefault">
           <bool>false</bool>
@@ -76,19 +85,19 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="treeButton">
+        <widget class="QPushButton" name="syncTreeButton">
          <property name="enabled">
           <bool>false</bool>
          </property>
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
          <property name="minimumSize">
           <size>
-           <width>200</width>
+           <width>0</width>
            <height>0</height>
           </size>
          </property>
@@ -104,6 +113,9 @@
          <property name="text">
           <string>Show ChronoSync Tree</string>
          </property>
+         <property name="autoDefault">
+          <bool>false</bool>
+         </property>
         </widget>
        </item>
       </layout>
@@ -111,11 +123,14 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="chatLayout_2">
+    <layout class="QHBoxLayout" name="secondLayout" stretch="1,6">
+     <property name="leftMargin">
+      <number>5</number>
+     </property>
      <item>
       <widget class="QListView" name="listView">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -146,13 +161,24 @@ background: #F0F0F0;</string>
       </widget>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="messageLayout">
+      <layout class="QVBoxLayout" name="viewerLayout">
        <item>
-        <widget class="QGraphicsView" name="treeViewer">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-        </widget>
+        <layout class="QHBoxLayout" name="treeViewLayout">
+         <item>
+          <widget class="QGraphicsView" name="syncTreeViewer">
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGraphicsView" name="trustTreeViewer">
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
         <widget class="QTextEdit" name="textEdit">
@@ -164,19 +190,54 @@ background: #F0F0F0;</string>
          </property>
         </widget>
        </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="thirdLayout" stretch="1,6">
+     <property name="spacing">
+      <number>10</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="inviteButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Invite</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="inputLayout">
        <item>
-        <layout class="QHBoxLayout" name="inputLayout">
-         <item>
-          <widget class="QLabel" name="label">
-           <property name="text">
-            <string>Message:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="lineEdit"/>
-         </item>
-        </layout>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Message:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="lineEdit"/>
        </item>
       </layout>
      </item>

@@ -9,16 +9,15 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#ifndef DIGESTTREESCENE_H
-#define DIGESTTREESCENE_H
-
-#include "treelayout.h"
+#ifndef DIGEST_TREE_SCENE_H
+#define DIGEST_TREE_SCENE_H
 
 #include <QtGui/QGraphicsScene>
 #include <QColor>
 #include <QMap>
 
 #ifndef Q_MOC_RUN
+#include "tree-layout.h"
 #include <sync-seq-no.h>
 #include <sync-logic.h>
 #include <ctime>
@@ -122,4 +121,4 @@ private:
   QGraphicsRectItem *m_nickRectItem;
 };
 
-#endif
+#endif // DIGEST_TREE_SCENE_H

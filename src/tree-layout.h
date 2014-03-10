@@ -7,11 +7,14 @@
  *
  * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ *         Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef TREELAYOUT_H
-#define TREELAYOUT_H
+#ifndef TREE_LAYOUT_H
+#define TREE_LAYOUT_H
+
 #include <vector>
+#include "trust-tree-node.h"
 
 class TreeLayout 
 {
@@ -33,11 +36,20 @@ private:
   int m_levelDistance;
 };
 
-class OneLevelTreeLayout: public TreeLayout
+class OneLevelTreeLayout : public TreeLayout
 {
 public:
   OneLevelTreeLayout(){}
   virtual void setOneLevelLayout(std::vector<Coordinate> &childNodesCo);
   virtual ~OneLevelTreeLayout(){}
 };
-#endif
+
+class MultipleLevelTreeLayout : public TreeLayout
+{
+public:
+  MultipleLevelTreeLayout(){}
+  virtual ~MultipleLevelTreeLayout(){}
+  virtual void setMultipleLevelTreeLayout(TrustTreeNodeList& nodeList);
+};
+
+#endif // TREE_LAYOUT_H

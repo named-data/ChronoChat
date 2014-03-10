@@ -24,6 +24,7 @@
 #include <ndn-cpp-dev/util/random.hpp>
 #include <cryptopp/hex.h>
 #include <cryptopp/files.h>
+#include <queue>
 #include "logging.h"
 #endif
 
@@ -71,13 +72,17 @@ ChatDialog::ChatDialog(ContactManager* contactManager,
   qRegisterMetaType<size_t>("size_t");
 
   m_scene = new DigestTreeScene(this);
+  m_trustScene = new TrustTreeScene(this);
   m_rosterModel = new QStringListModel(this);
   m_timer = new QTimer(this);
 
   ui->setupUi(this);
-  ui->treeViewer->setScene(m_scene);
+  ui->syncTreeViewer->setScene(m_scene);
   m_scene->setSceneRect(m_scene->itemsBoundingRect());
-  ui->treeViewer->hide();
+  ui->syncTreeViewer->hide();
+  ui->trustTreeViewer->setScene(m_trustScene);
+  m_trustScene->setSceneRect(m_trustScene->itemsBoundingRect());
+  ui->trustTreeViewer->hide();
   ui->listView->setModel(m_rosterModel);
 
   m_identity = IdentityCertificate::certificateNameToPublicKeyName(m_myCertificate.getName()).getPrefix(-1);
@@ -89,8 +94,10 @@ ChatDialog::ChatDialog(ContactManager* contactManager,
 
   connect(ui->lineEdit, SIGNAL(returnPressed()), 
           this, SLOT(onReturnPressed()));
-  connect(ui->treeButton, SIGNAL(pressed()), 
-          this, SLOT(onTreeButtonPressed()));
+  connect(ui->syncTreeButton, SIGNAL(pressed()), 
+          this, SLOT(onSyncTreeButtonPressed()));
+  connect(ui->trustTreeButton, SIGNAL(pressed()), 
+          this, SLOT(onTrustTreeButtonPressed()));
   connect(m_scene, SIGNAL(replot()),
           this, SLOT(onReplot()));
   connect(m_scene, SIGNAL(rosterChanged(QStringList)), 
@@ -120,6 +127,8 @@ ChatDialog::ChatDialog(ContactManager* contactManager,
                                                 "==", "\\1", "\\1", true);
 
       ui->inviteButton->setEnabled(true);
+      ui->trustTreeButton->setEnabled(true);
+
       connect(ui->inviteButton, SIGNAL(clicked()),
               this, SLOT(onInviteListDialogRequested()));
       connect(m_inviteListDialog, SIGNAL(sendInvitation(const QString&)),
@@ -159,6 +168,7 @@ ChatDialog::addSyncAnchor(const Invitation& invitation)
   _LOG_DEBUG("Add sync anchor from invation");
   // Add inviter certificate as trust anchor.
   m_sock->addParticipant(invitation.getInviterCertificate());
+  plotTrustTree();
 
   // Ask inviter for IntroCertificate
   Name inviterNameSpace = IdentityCertificate::certificateNameToPublicKeyName(invitation.getInviterCertificate().getName()).getPrefix(-1);
@@ -308,8 +318,8 @@ ChatDialog::initializeSync()
 
   QTimer::singleShot(600, this, SLOT(sendJoin()));
   m_timer->start(FRESHNESS * 1000);
-  disableTreeDisplay();
-  QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
+  disableSyncTreeDisplay();
+  QTimer::singleShot(2200, this, SLOT(enableSyncTreeDisplay()));
 }
 
 void
@@ -411,6 +421,7 @@ ChatDialog::invitationAccepted(const IdentityCertificate& inviteeCert,
 {
   // Add invitee certificate as trust anchor.
   m_sock->addParticipant(inviteeCert);
+  plotTrustTree();
 
   // Ask invitee for IntroCertificate.
   Name inviteeNameSpace = IdentityCertificate::certificateNameToPublicKeyName(inviteeCert.getName()).getPrefix(-1);
@@ -492,7 +503,7 @@ ChatDialog::onCertListInterest(const Name& prefix, const ndn::Interest& interest
 
   Chronos::IntroCertListMsg msg;
 
-  vector<Name>::const_iterator it = certNameList.begin();
+  vector<Name>::const_iterator it  = certNameList.begin();
   vector<Name>::const_iterator end = certNameList.end();
   for(; it != end; it++)
     {
@@ -568,10 +579,10 @@ ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
   }
 }
 
-void ChatDialog::disableTreeDisplay()
+void ChatDialog::disableSyncTreeDisplay()
 {
-  ui->treeButton->setEnabled(false);
-  ui->treeViewer->hide();
+  ui->syncTreeButton->setEnabled(false);
+  ui->syncTreeViewer->hide();
   fitView();
 }
 
@@ -775,7 +786,11 @@ ChatDialog::fitView()
   boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
   QRectF rect = m_scene->itemsBoundingRect();
   m_scene->setSceneRect(rect);
-  ui->treeViewer->fitInView(m_scene->itemsBoundingRect(), Qt::KeepAspectRatio);
+  ui->syncTreeViewer->fitInView(m_scene->itemsBoundingRect(), Qt::KeepAspectRatio);
+
+  QRectF trustRect = m_trustScene->itemsBoundingRect();
+  m_trustScene->setSceneRect(trustRect);
+  ui->trustTreeViewer->fitInView(m_trustScene->itemsBoundingRect(), Qt::KeepAspectRatio);
 }
 
 void
@@ -818,6 +833,94 @@ ChatDialog::summonReaper()
   reap();
 }
 
+void
+ChatDialog::getTree(TrustTreeNodeList& nodeList)
+{
+  typedef map<Name, shared_ptr<TrustTreeNode> > NodeMap;
+
+  vector<Name> certNameList;
+  NodeMap nodeMap;
+
+  m_sock->getIntroCertNames(certNameList);
+
+  vector<Name>::const_iterator it  = certNameList.begin();
+  vector<Name>::const_iterator end = certNameList.end();
+  for(; it != end; it++)
+    {
+      Name introducerCertName;
+      Name introduceeCertName;
+
+      introducerCertName.wireDecode(it->get(-2).blockFromValue());
+      introduceeCertName.wireDecode(it->get(-3).blockFromValue());
+
+      Name introducerName = IdentityCertificate::certificateNameToPublicKeyName(introducerCertName).getPrefix(-1);
+      Name introduceeName = IdentityCertificate::certificateNameToPublicKeyName(introduceeCertName).getPrefix(-1);
+
+      NodeMap::iterator introducerIt = nodeMap.find(introducerName);
+      if(introducerIt == nodeMap.end())
+        {
+          shared_ptr<TrustTreeNode> introducerNode(new TrustTreeNode(introducerName));
+          nodeMap[introducerName] = introducerNode;
+        }
+      shared_ptr<TrustTreeNode> erNode = nodeMap[introducerName];
+
+      NodeMap::iterator introduceeIt = nodeMap.find(introduceeName);
+      if(introduceeIt == nodeMap.end())
+        {
+          shared_ptr<TrustTreeNode> introduceeNode(new TrustTreeNode(introduceeName));
+          nodeMap[introduceeName] = introduceeNode;
+        }
+      shared_ptr<TrustTreeNode> eeNode = nodeMap[introduceeName];
+
+      erNode->addIntroducee(eeNode);
+      eeNode->addIntroducer(erNode);
+    }
+  
+  nodeList.clear();
+  queue<shared_ptr<TrustTreeNode> > nodeQueue;
+
+  NodeMap::iterator nodeIt = nodeMap.find(m_identity);
+  if(nodeIt == nodeMap.end())
+    return;
+
+  nodeQueue.push(nodeIt->second);
+  nodeIt->second->setLevel(0);
+  while(!nodeQueue.empty())
+    {
+      shared_ptr<TrustTreeNode>& node = nodeQueue.front();
+      node->setVisited();
+
+      TrustTreeNodeList& introducees = node->getIntroducees();
+      TrustTreeNodeList::iterator eeIt  = introducees.begin();
+      TrustTreeNodeList::iterator eeEnd = introducees.end();
+
+      for(; eeIt != eeEnd; eeIt++)
+        {
+          _LOG_DEBUG("introducee: " << (*eeIt)->name() << " visited: " << boolalpha << (*eeIt)->visited());
+          if(!(*eeIt)->visited())
+            {
+              nodeQueue.push(*eeIt);
+              (*eeIt)->setLevel(node->level()+1);
+            }
+        }
+
+      nodeList.push_back(node);
+      nodeQueue.pop();
+    }
+}
+
+void
+ChatDialog::plotTrustTree()
+{
+  TrustTreeNodeList nodeList;
+
+  getTree(nodeList);
+  {
+    boost::recursive_mutex::scoped_lock lock(m_sceneMutex);
+    m_trustScene->plotTrustTree(nodeList);
+    fitView();
+  }
+}
 
 // public slots:
 void
@@ -865,8 +968,8 @@ ChatDialog::onLocalPrefixUpdated(const QString& localPrefix)
           usleep(100000);
           QTimer::singleShot(600, this, SLOT(sendJoin()));
           m_timer->start(FRESHNESS * 1000);
-          disableTreeDisplay();
-          QTimer::singleShot(2200, this, SLOT(enableTreeDisplay()));
+          disableSyncTreeDisplay();
+          QTimer::singleShot(2200, this, SLOT(enableSyncTreeDisplay()));
         }
       else
         initializeSync();
@@ -922,17 +1025,34 @@ ChatDialog::onReturnPressed()
 }
 
 void 
-ChatDialog::onTreeButtonPressed()
+ChatDialog::onSyncTreeButtonPressed()
 {
-  if (ui->treeViewer->isVisible())
+  if (ui->syncTreeViewer->isVisible())
   {
-    ui->treeViewer->hide();
-    ui->treeButton->setText("Show ChronoSync Tree");
+    ui->syncTreeViewer->hide();
+    ui->syncTreeButton->setText("Show ChronoSync Tree");
   }
   else
   {
-    ui->treeViewer->show();
-    ui->treeButton->setText("Hide ChronoSync Tree");
+    ui->syncTreeViewer->show();
+    ui->syncTreeButton->setText("Hide ChronoSync Tree");
+  }
+
+  fitView();
+}
+
+void
+ChatDialog::onTrustTreeButtonPressed()
+{
+  if (ui->trustTreeViewer->isVisible())
+  {
+    ui->trustTreeViewer->hide();
+    ui->trustTreeButton->setText("Show Trust Tree");
+  }
+  else
+  {
+    ui->trustTreeViewer->show();
+    ui->trustTreeButton->setText("Hide Trust Tree");
   }
 
   fitView();
@@ -965,9 +1085,7 @@ ChatDialog::onProcessData(const shared_ptr<const Data>& data, bool show, bool is
   if (!isHistory)
   {
     // update the tree view
-    std::string stdStrName = data->getName().toUri();
-    std::string stdStrNameWithoutSeq = stdStrName.substr(0, stdStrName.find_last_of('/'));
-    std::string prefix = stdStrNameWithoutSeq.substr(0, stdStrNameWithoutSeq.find_last_of('/'));
+    std::string prefix = data->getName().getPrefix(-2).toUri();
     _LOG_DEBUG("<<< updating scene for" << prefix << ": " << msg.from());
     if (msg.type() == SyncDemo::ChatMessage::LEAVE)
     {
@@ -1051,6 +1169,7 @@ ChatDialog::onRosterChanged(QStringList staleUserList)
     msg.set_from(nick);
     appendMessage(msg);
   }
+  plotTrustTree();
 }
 
 void
@@ -1108,9 +1227,9 @@ ChatDialog::sendLeave()
   _LOG_DEBUG("Sync REMOVE signal sent");
 }
 
-void ChatDialog::enableTreeDisplay()
+void ChatDialog::enableSyncTreeDisplay()
 {
-  ui->treeButton->setEnabled(true);
+  ui->syncTreeButton->setEnabled(true);
   // treeViewer->show();
   // fitView();
 }
@@ -1185,6 +1304,7 @@ ChatDialog::onIntroCert(const Interest& interest, const shared_ptr<const Data>& 
   innerData.wireDecode(data->getContent().blockFromValue());
   Sync::IntroCertificate introCert(innerData);
   m_sock->addParticipant(introCert);
+  plotTrustTree();
 }
 
 void
@@ -1192,7 +1312,6 @@ ChatDialog::onIntroCertTimeout(const Interest& interest, int retry, const QStrin
 {
   _LOG_DEBUG("onIntroCertTimeout: " << msg.toStdString());
 }
-
 
 
 #if WAF

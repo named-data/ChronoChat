@@ -28,12 +28,13 @@
 #include "contact.h"
 #include "chatbuf.pb.h"
 #include "intro-cert-list.pb.h"
-#include "digesttreescene.h"
+#include "digest-tree-scene.h"
+#include "trust-tree-scene.h"
+#include "trust-tree-node.h"
 #include <sync-socket.h>
 #include <sync-seq-no.h>
 #include <ndn-cpp-dev/security/key-chain.hpp>
 #include "validator-invitation.h"
-
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/thread.hpp>
@@ -162,7 +163,7 @@ private:
   sendMsg(SyncDemo::ChatMessage &msg);
 
   void 
-  disableTreeDisplay();
+  disableSyncTreeDisplay();
 
   void 
   appendMessage(const SyncDemo::ChatMessage msg, bool isHistory = false);
@@ -196,6 +197,12 @@ private:
 
   void 
   summonReaper();
+
+  void
+  getTree(TrustTreeNodeList& nodeList);
+
+  void
+  plotTrustTree();
 
 signals:  
   void
@@ -248,7 +255,10 @@ private slots:
   onReturnPressed();
 
   void 
-  onTreeButtonPressed();
+  onSyncTreeButtonPressed();
+
+  void
+  onTrustTreeButtonPressed();
 
   void 
   onProcessData(const ndn::shared_ptr<const ndn::Data>& data,
@@ -276,7 +286,7 @@ private slots:
   sendLeave();
 
   void 
-  enableTreeDisplay();
+  enableSyncTreeDisplay();
 
   void
   reap();
@@ -324,6 +334,7 @@ private:
   ndn::Name m_localChatPrefix;
   std::string m_nick;
   DigestTreeScene *m_scene;
+  TrustTreeScene *m_trustScene;
   QStringListModel *m_rosterModel;
   QTimer* m_timer;
 
