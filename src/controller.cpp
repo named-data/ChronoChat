@@ -484,7 +484,7 @@ Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
 
   QAction* chatAction = new QAction(chatroomName, this);
   m_chatActionList[chatroomName.toStdString()] = chatAction;
-  connect(chatAction, SIGNAL(triggered()), chatDialog, SLOT(showNormal()));
+  connect(chatAction, SIGNAL(triggered()), chatDialog, SLOT(raise()));
 
   QAction* closeAction = new QAction(chatroomName, this);
   m_closeActionList[chatroomName.toStdString()] = closeAction;
