@@ -733,8 +733,6 @@ ContactManager::onUpdateProfile()
 void
 ContactManager::onRefreshBrowseContact()
 {
-  return; // the website info is not available.
-
   std::vector<std::string> bufferedIdCertNames;
   try
     {
