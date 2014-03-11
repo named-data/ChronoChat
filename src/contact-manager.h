@@ -53,7 +53,10 @@ public:
     contactList.clear();
     contactList.insert(contactList.end(), m_contactList.begin(), m_contactList.end());
   }
-private:  
+private:
+  ndn::shared_ptr<ndn::IdentityCertificate>
+  loadTrustAnchor();
+
   void
   initializeSecurity();
 

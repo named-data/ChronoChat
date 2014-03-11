@@ -14,6 +14,7 @@
 
 #include "contact-manager.h"
 #include <QStringList>
+#include <QFile>
 
 #ifndef Q_MOC_RUN
 #include <ndn-cpp-dev/util/crypto.hpp>
@@ -23,6 +24,7 @@
 #include <cryptopp/base64.h>
 #include <cryptopp/files.h>
 #include <cryptopp/sha.h>
+#include <cryptopp/filters.h>
 #include <boost/asio.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
@@ -52,11 +54,55 @@ ContactManager::~ContactManager()
 {}
 
 // private methods
+shared_ptr<IdentityCertificate>
+ContactManager::loadTrustAnchor()
+{
+  shared_ptr<IdentityCertificate> anchor;
+
+  QFile anchorFile(":/security/anchor.cert");
+
+  if (!anchorFile.open(QIODevice::ReadOnly))
+    {
+      emit warning(QString("Cannot load trust anchor!"));
+
+      return anchor;
+    }
+
+  qint64 fileSize = anchorFile.size();
+  char* buf = new char[fileSize];
+  anchorFile.read(buf, fileSize);
+
+  try
+    {
+      using namespace CryptoPP;
+
+      OBufferStream os;
+      StringSource(reinterpret_cast<const uint8_t*>(buf), fileSize, true, new Base64Decoder(new FileSink(os)));
+      anchor = make_shared<IdentityCertificate>();
+      anchor->wireDecode(Block(os.buf()));
+    }
+  catch(CryptoPP::Exception& e)
+    {
+      emit warning(QString("Cannot load trust anchor!"));
+    }
+  catch(IdentityCertificate::Error& e)
+    {
+      emit warning(QString("Cannot load trust anchor!"));
+    }
+  catch(Block::Error& e)
+    {
+      emit warning(QString("Cannot load trust anchor!"));
+    }
+
+  delete [] buf;
+
+  return anchor;
+}
+
 void
 ContactManager::initializeSecurity()
 {
-  fs::path anchorPath = fs::path(getenv("HOME")) / ".chronos" / "anchor.cert";
-  shared_ptr<IdentityCertificate> anchor = io::load<IdentityCertificate>(anchorPath.c_str());
+  shared_ptr<IdentityCertificate> anchor = loadTrustAnchor();
 
   shared_ptr<ValidatorRegex> validator = make_shared<ValidatorRegex>(m_face);
   validator->addDataVerificationRule(make_shared<SecRuleRelative>("^([^<DNS>]*)<DNS><ENDORSED>",
