@@ -141,7 +141,7 @@ ContactManager::fetchCollectEndorse(const Name& identity)
   interest.setMustBeFresh(true);
 
   OnDataValidated onValidated = bind(&ContactManager::onDnsCollectEndorseValidated, this, _1, identity);
-  OnDataValidationFailed onValidationFailed = bind(&ContactManager::onDnsCollectEndorseValidationFailed, this, _1, identity);
+  OnDataValidationFailed onValidationFailed = bind(&ContactManager::onDnsCollectEndorseValidationFailed, this, _1, _2, identity);
   TimeoutNotify timeoutNotify = bind(&ContactManager::onDnsCollectEndorseTimeoutNotify, this, _1, identity);
 
   sendInterest(interest, onValidated, onValidationFailed, timeoutNotify, 0);
@@ -264,6 +264,7 @@ ContactManager::onDnsSelfEndorseCertValidated(const shared_ptr<const Data>& data
 
 void
 ContactManager::onDnsSelfEndorseCertValidationFailed(const shared_ptr<const Data>& data, 
+                                                     const string& failInfo,
                                                      const Name& identity)
 {
   // If we cannot validate the Self-Endorse-Certificate, we may retry or fetch id-cert,
@@ -296,6 +297,7 @@ ContactManager::onDnsCollectEndorseValidated(const shared_ptr<const Data>& data,
 
 void
 ContactManager::onDnsCollectEndorseValidationFailed(const shared_ptr<const Data>& data, 
+                                                    const string& failInfo,
                                                     const Name& identity)
 {
   prepareEndorseInfo(identity);
@@ -361,7 +363,7 @@ ContactManager::collectEndorsement()
         interest.setInterestLifetime(1000);
         
         OnDataValidated onValidated = bind(&ContactManager::onDnsEndorseeValidated, this, _1);
-        OnDataValidationFailed onValidationFailed = bind(&ContactManager::onDnsEndorseeValidationFailed, this, _1);
+        OnDataValidationFailed onValidationFailed = bind(&ContactManager::onDnsEndorseeValidationFailed, this, _1, _2);
         TimeoutNotify timeoutNotify = bind(&ContactManager::onDnsEndorseeTimeoutNotify, this, _1);
         
         sendInterest(interest, onValidated, onValidationFailed, timeoutNotify, 0);
@@ -382,7 +384,7 @@ ContactManager::onDnsEndorseeValidated(const shared_ptr<const Data>& data)
 }
 
 void
-ContactManager::onDnsEndorseeValidationFailed(const shared_ptr<const Data>& data)
+ContactManager::onDnsEndorseeValidationFailed(const shared_ptr<const Data>& data, const string& failInfo)
 {
   decreaseCollectStatus();
 }
@@ -438,7 +440,7 @@ ContactManager::onIdentityCertValidated(const shared_ptr<const Data>& data)
 }
 
 void
-ContactManager::onIdentityCertValidationFailed(const shared_ptr<const Data>& data)
+ContactManager::onIdentityCertValidationFailed(const shared_ptr<const Data>& data, const string& failInfo)
 {
   _LOG_DEBUG("ContactManager::onIdentityCertValidationFailed " << data->getName());
   decreaseIdCertCount();
@@ -674,7 +676,7 @@ ContactManager::onFetchContactInfo(const QString& identity)
   interest.setMustBeFresh(true);
 
   OnDataValidated onValidated = bind(&ContactManager::onDnsSelfEndorseCertValidated, this, _1, identityName);
-  OnDataValidationFailed onValidationFailed = bind(&ContactManager::onDnsSelfEndorseCertValidationFailed, this, _1, identityName);
+  OnDataValidationFailed onValidationFailed = bind(&ContactManager::onDnsSelfEndorseCertValidationFailed, this, _1, _2, identityName);
   TimeoutNotify timeoutNotify = bind(&ContactManager::onDnsSelfEndorseCertTimeoutNotify, this, _1, identityName);
 
   sendInterest(interest, onValidated, onValidationFailed, timeoutNotify, 0);
@@ -813,7 +815,7 @@ ContactManager::onRefreshBrowseContact()
       interest.setMustBeFresh(true);
       
       OnDataValidated onValidated = bind(&ContactManager::onIdentityCertValidated, this, _1);
-      OnDataValidationFailed onValidationFailed = bind(&ContactManager::onIdentityCertValidationFailed, this, _1);
+      OnDataValidationFailed onValidationFailed = bind(&ContactManager::onIdentityCertValidationFailed, this, _1, _2);
       TimeoutNotify timeoutNotify = bind(&ContactManager::onIdentityCertTimeoutNotify, this, _1);
 
       sendInterest(interest, onValidated, onValidationFailed, timeoutNotify, 0);

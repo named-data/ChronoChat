@@ -38,14 +38,18 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
   bool rePlot = false; 
   for (int i = 0; i < n; i++) 
   {
-    Roster_iterator it = m_roster.find(v[i].prefix.c_str());
+    QString routablePrefix(v[i].prefix.c_str());
+    QString prefix = trimRoutablePrefix(routablePrefix);
+
+    Roster_iterator it = m_roster.find(prefix);
     if (it == m_roster.end()) 
     {
+      // std::cout << "processUpdate v[" << i << "]: " << prefix.toStdString() << std::endl;
       rePlot = true; 
       DisplayUserPtr p(new DisplayUser());
       time_t tempTime = time(NULL) - FRESHNESS + 1;
       p->setReceived(tempTime);
-      p->setPrefix(v[i].prefix.c_str());
+      p->setPrefix(prefix);
       p->setSeq(v[i].high);
       m_roster.insert(p->getPrefix(), p);
     }
@@ -64,7 +68,10 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
   {
     for (int i = 0; i < n; i++) 
     {
-      Roster_iterator it = m_roster.find(v[i].prefix.c_str());
+      QString routablePrefix(v[i].prefix.c_str());
+      QString prefix = trimRoutablePrefix(routablePrefix);
+    
+      Roster_iterator it = m_roster.find(prefix);
       if (it != m_roster.end()) {
         DisplayUserPtr p = it.value();
         QGraphicsTextItem *item = p->getSeqTextItem();
@@ -104,17 +111,19 @@ DigestTreeScene::getRosterList()
 }
 
 void
-DigestTreeScene::msgReceived(QString prefix, QString nick)
+DigestTreeScene::msgReceived(QString routablePrefix, QString nick)
 {
+  QString prefix = trimRoutablePrefix(routablePrefix);
   Roster_iterator it = m_roster.find(prefix);
+  // std::cout << "msgReceived prefix: " << prefix.toStdString() << std::endl;
   if (it != m_roster.end()) 
     {
-      std::cout << "Updating for prefix = " << prefix.toStdString() << " nick = " << nick.toStdString() << std::endl;
+      // std::cout << "Updating for prefix = " << prefix.toStdString() << " nick = " << nick.toStdString() << std::endl;
       DisplayUserPtr p = it.value();
       p->setReceived(time(NULL));
       if (nick != p->getNick()) 
         {
-          std::cout << "old nick = " << p->getNick().toStdString() << std::endl;
+          // std::cout << "old nick = " << p->getNick().toStdString() << std::endl;
           p->setNick(nick);
           QGraphicsTextItem *nickItem = p->getNickTextItem();
           QGraphicsRectItem *nickRectItem = p->getNickRectItem();
@@ -323,6 +332,33 @@ DigestTreeScene::reDrawNode(DisplayUserPtr p, QColor rimColor)
     QRectF textBR = seqTextItem->boundingRect();
     QRectF innerBR = innerItem->boundingRect();
     seqTextItem->setPos(innerBR.x() + (innerBR.width() - textBR.width())/2, innerBR.y() + (innerBR.height() - textBR.height())/2);
+}
+
+QString 
+DigestTreeScene::trimRoutablePrefix(QString prefix)
+{
+  bool encaped = false;
+  ndn::Name prefixName(prefix.toStdString());
+
+  ndn::Name::const_iterator it  = prefixName.begin();
+  ndn::Name::const_iterator end = prefixName.end();
+  size_t offset = 0;
+
+  for(; it != end; it++, offset++)
+    {
+      if(it->toEscapedString() == "%F0.")
+        {
+          encaped = true;
+          break;
+        }
+    }
+
+  if(!encaped)
+    return prefix;
+  else
+    {
+      return QString(prefixName.getSubName(offset+1).toUri().c_str());
+    }
 }
 
 #if WAF

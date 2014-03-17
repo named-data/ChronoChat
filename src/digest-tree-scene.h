@@ -65,6 +65,8 @@ private:
   void plotNode(const std::vector<TreeLayout::Coordinate> &v, QString digest, int nodeSize);
   void reDrawNode(DisplayUserPtr p, QColor rimColor);
 
+  QString trimRoutablePrefix(QString prefix);
+
 private:
   Roster m_roster;
   QGraphicsTextItem *m_rootDigest; 

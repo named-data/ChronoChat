@@ -76,6 +76,7 @@ private:
 
   void
   onDnsSelfEndorseCertValidationFailed(const ndn::shared_ptr<const ndn::Data>& selfEndorseCertificate, 
+                                       const std::string& failInfo,
                                        const ndn::Name& identity);
 
   void
@@ -88,7 +89,8 @@ private:
                                const ndn::Name& identity);
 
   void
-  onDnsCollectEndorseValidationFailed(const ndn::shared_ptr<const ndn::Data>& data, 
+  onDnsCollectEndorseValidationFailed(const ndn::shared_ptr<const ndn::Data>& data,
+                                      const std::string& failInfo,
                                       const ndn::Name& identity);
 
   void
@@ -116,7 +118,8 @@ private:
   onDnsEndorseeValidated(const ndn::shared_ptr<const ndn::Data>& data);
 
   void
-  onDnsEndorseeValidationFailed(const ndn::shared_ptr<const ndn::Data>& data);
+  onDnsEndorseeValidationFailed(const ndn::shared_ptr<const ndn::Data>& data,
+                                const std::string& failInfo);
 
   void
   onDnsEndorseeTimeoutNotify(const ndn::Interest& interest);
@@ -132,7 +135,8 @@ private:
   onIdentityCertValidated(const ndn::shared_ptr<const ndn::Data>& data);
   
   void
-  onIdentityCertValidationFailed(const ndn::shared_ptr<const ndn::Data>& data);
+  onIdentityCertValidationFailed(const ndn::shared_ptr<const ndn::Data>& data,
+                                 const std::string& failInfo);
 
   void
   onIdentityCertTimeoutNotify(const ndn::Interest& interest);
