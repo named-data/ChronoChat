@@ -106,8 +106,8 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
 
 EndorseCertificate::EndorseCertificate(const Name& keyName,
                                        const PublicKey& key,
-                                       MillisecondsSince1970 notBefore,
-                                       MillisecondsSince1970 notAfter,
+                                       const time::system_clock::TimePoint& notBefore,
+                                       const time::system_clock::TimePoint& notAfter,
                                        const Name& signer,
                                        const Profile& profile,
                                        const vector<string>& endorseList)

@@ -21,7 +21,10 @@ main()
   Name test("/ndn/test");
   Name testKeyName = keyChain.generateRSAKeyPairAsDefault(test, true);
   shared_ptr<IdentityCertificate> testCert = 
-    keyChain.prepareUnsignedIdentityCertificate(testKeyName, root, getNow(), getNow() + 630720000, subjectDescription);
+    keyChain.prepareUnsignedIdentityCertificate(testKeyName, root, 
+                                                time::system_clock::now(),
+                                                time::system_clock::now() + time::days(7300), 
+                                                subjectDescription);
   keyChain.signByIdentity(*testCert, root);
   keyChain.addCertificateAsIdentityDefault(*testCert);
 
@@ -30,7 +33,10 @@ main()
     {
       Name aliceKeyName = keyChain.generateRSAKeyPairAsDefault(alice, true);
       shared_ptr<IdentityCertificate> aliceCert = 
-	keyChain.prepareUnsignedIdentityCertificate(aliceKeyName, test, getNow(), getNow() + 630720000, subjectDescription);
+	keyChain.prepareUnsignedIdentityCertificate(aliceKeyName, test, 
+                                                    time::system_clock::now(),
+                                                    time::system_clock::now() + time::days(7300), 
+                                                    subjectDescription);
       keyChain.signByIdentity(*aliceCert, test);
       keyChain.addCertificateAsIdentityDefault(*aliceCert);
     }

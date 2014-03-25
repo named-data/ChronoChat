@@ -62,8 +62,8 @@ public:
   Contact(const ndn::Name& identity,
           const std::string& alias,
           const ndn::Name& keyName,
-          ndn::MillisecondsSince1970 notBefore,
-          ndn::MillisecondsSince1970 notAfter,
+          const ndn::time::system_clock::TimePoint& notBefore,
+          const ndn::time::system_clock::TimePoint& notAfter,
           const ndn::PublicKey& key,
           bool isIntroducer)
     : m_namespace(identity)
@@ -130,13 +130,13 @@ public:
     return m_publicKey;
   }
 
-  ndn::MillisecondsSince1970
+  const ndn::time::system_clock::TimePoint&
   getNotBefore() const
   {
     return m_notBefore;
   }
 
-  ndn::MillisecondsSince1970
+  const ndn::time::system_clock::TimePoint&
   getNotAfter() const
   {
     return m_notAfter;
@@ -224,8 +224,8 @@ protected:
   std::string m_institution;
   ndn::Name m_keyName;
   ndn::PublicKey m_publicKey;
-  ndn::MillisecondsSince1970 m_notBefore;
-  ndn::MillisecondsSince1970 m_notAfter;
+  ndn::time::system_clock::TimePoint m_notBefore;
+  ndn::time::system_clock::TimePoint m_notAfter;
 
   bool m_isIntroducer;
   Profile m_profile;

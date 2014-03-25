@@ -137,7 +137,7 @@ ContactManager::fetchCollectEndorse(const Name& identity)
   interestName.append("DNS").append("ENDORSED");
 
   Interest interest(interestName);
-  interest.setInterestLifetime(1000);
+  interest.setInterestLifetime(time::milliseconds(1000));
   interest.setMustBeFresh(true);
 
   OnDataValidated onValidated = bind(&ContactManager::onDnsCollectEndorseValidated, this, _1, identity);
@@ -158,7 +158,7 @@ ContactManager::fetchEndorseCertificateInternal(const Name& identity, int certIn
   Name interestName(endorseCollection->endorsement(certIndex).certname());
 
   Interest interest(interestName);
-  interest.setInterestLifetime(1000);
+  interest.setInterestLifetime(time::milliseconds(1000));
   interest.setMustBeFresh(true);
 
   m_face->expressInterest(interest,
@@ -360,7 +360,7 @@ ContactManager::collectEndorsement()
         interestName.append("DNS").append(m_identity.wireEncode()).append("ENDORSEE");
         
         Interest interest(interestName);
-        interest.setInterestLifetime(1000);
+        interest.setInterestLifetime(time::milliseconds(1000));
         
         OnDataValidated onValidated = bind(&ContactManager::onDnsEndorseeValidated, this, _1);
         OnDataValidationFailed onValidationFailed = bind(&ContactManager::onDnsEndorseeValidationFailed, this, _1, _2);
@@ -511,7 +511,7 @@ ContactManager::publishSelfEndorseCertificateInDNS(const EndorseCertificate& sel
   Data data;
   data.setName(dnsName);
   data.setContent(selfEndorseCertificate.wireEncode());
-  data.setFreshnessPeriod(1000);
+  data.setFreshnessPeriod(time::milliseconds(1000));
 
   m_keyChain.signByIdentity(data, m_identity);
 
@@ -672,7 +672,7 @@ ContactManager::onFetchContactInfo(const QString& identity)
   // _LOG_DEBUG("onFetchContactInfo " << identity.toStdString() << " profile: " << interestName);
   
   Interest interest(interestName);
-  interest.setInterestLifetime(1000);
+  interest.setInterestLifetime(time::milliseconds(1000));
   interest.setMustBeFresh(true);
 
   OnDataValidated onValidated = bind(&ContactManager::onDnsSelfEndorseCertValidated, this, _1, identityName);
@@ -811,7 +811,7 @@ ContactManager::onRefreshBrowseContact()
       Name certName(*it);
 
       Interest interest(certName);
-      interest.setInterestLifetime(1000);
+      interest.setInterestLifetime(time::milliseconds(1000));
       interest.setMustBeFresh(true);
       
       OnDataValidated onValidated = bind(&ContactManager::onIdentityCertValidated, this, _1);

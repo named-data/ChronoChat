@@ -59,7 +59,7 @@ Invitation::Invitation(const Name& inviteeNameSpace,
   , m_chatroom(chatroom)
   , m_inviterRoutingPrefix(inviterRoutingPrefix)
   , m_inviterCertificate(inviterCertificate)
-  , m_timestamp(time::now())
+  , m_timestamp(time::toUnixTimestamp(time::system_clock::now()).count())
 {
   m_interestName = m_inviteeNameSpace;
   m_interestName.append("CHRONOCHAT-INVITATION")

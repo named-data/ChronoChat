@@ -336,8 +336,8 @@ ContactStorage::addContact(const Contact& contact)
   sqlite3_bind_text(stmt, 2, contact.getAlias().c_str(), contact.getAlias().size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 3, contact.getPublicKeyName().toUri().c_str(), contact.getPublicKeyName().toUri().size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 4, reinterpret_cast<const char*>(contact.getPublicKey().get().buf()), contact.getPublicKey().get().size(), SQLITE_TRANSIENT);
-  sqlite3_bind_int64(stmt, 5, contact.getNotBefore());
-  sqlite3_bind_int64(stmt, 6, contact.getNotAfter());
+  sqlite3_bind_int64(stmt, 5, time::toUnixTimestamp(contact.getNotBefore()).count());
+  sqlite3_bind_int64(stmt, 6, time::toUnixTimestamp(contact.getNotAfter()).count());
   sqlite3_bind_int(stmt, 7, (isIntroducer ? 1 : 0));
 
   int res = sqlite3_step (stmt);
@@ -400,8 +400,8 @@ ContactStorage::getContact(const Name& identity) const
       string alias(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
       string keyName(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
       PublicKey key(sqlite3_column_text(stmt, 2), sqlite3_column_bytes (stmt, 2));
-      int64_t notBefore = sqlite3_column_int64 (stmt, 3);
-      int64_t notAfter = sqlite3_column_int64 (stmt, 4);
+      time::system_clock::TimePoint notBefore = time::fromUnixTimestamp(time::milliseconds(sqlite3_column_int64 (stmt, 3)));
+      time::system_clock::TimePoint notAfter = time::fromUnixTimestamp(time::milliseconds(sqlite3_column_int64 (stmt, 4)));
       int isIntroducer = sqlite3_column_int (stmt, 5);
 
       contact = shared_ptr<Contact>(new Contact(identity, alias, Name(keyName), notBefore, notAfter, key, isIntroducer));

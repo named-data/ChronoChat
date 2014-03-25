@@ -38,8 +38,8 @@ public:
 
   EndorseCertificate(const ndn::Name& keyName,
                      const ndn::PublicKey& key,
-                     ndn::MillisecondsSince1970 notBefore,
-                     ndn::MillisecondsSince1970 notAfter,
+                     const ndn::time::system_clock::TimePoint& notBefore,
+                     const ndn::time::system_clock::TimePoint& notAfter,
                      const ndn::Name& signer,
                      const Profile& profile,
                      const std::vector<std::string>& endorseList = DEFAULT_ENDORSE_LIST);

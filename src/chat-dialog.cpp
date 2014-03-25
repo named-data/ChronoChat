@@ -60,10 +60,10 @@ ChatDialog::ChatDialog(ContactManager* contactManager,
   , m_localPrefix(localPrefix)
   , m_useRoutablePrefix(false)
   , m_nick(nick)
-  , m_lastMsgTime(time::now())
+  , m_lastMsgTime(time::toUnixTimestamp(time::system_clock::now()).count())
   , m_joined(false)
   , m_sock(NULL)
-  , m_session(static_cast<uint64_t>(time::now()))
+  , m_session(static_cast<uint64_t>(time::toUnixTimestamp(time::system_clock::now()).count()))
   , m_inviteListDialog(new InviteListDialog)
 {
   qRegisterMetaType<std::vector<Sync::MissingDataInfo> >("std::vector<Sync::MissingDataInfo>");
@@ -566,7 +566,7 @@ ChatDialog::sendMsg(SyncDemo::ChatMessage &msg)
   uint64_t nextSequence = m_sock->getNextSeq();
   m_sock->publishData(os.buf()->buf(), os.buf()->size(), FRESHNESS);
 
-  m_lastMsgTime = time::now();
+  m_lastMsgTime = time::toUnixTimestamp(time::system_clock::now()).count();
 
   Sync::MissingDataInfo mdi = {m_localChatPrefix.toUri(), Sync::SeqNo(0), Sync::SeqNo(nextSequence)};
   std::vector<Sync::MissingDataInfo> v;
@@ -705,7 +705,7 @@ ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
   msg.set_from(m_nick);
   msg.set_to(m_chatroomName);
   msg.set_data(text.toStdString());
-  int32_t seconds = static_cast<int32_t>(time::now()/1000000000);
+  int32_t seconds = static_cast<int32_t>(time::toUnixTimestamp(time::system_clock::now()).count()/1000000000);
   msg.set_timestamp(seconds);
   msg.set_type(SyncDemo::ChatMessage::CHAT);
 }
@@ -715,7 +715,7 @@ ChatDialog::formControlMessage(SyncDemo::ChatMessage &msg, SyncDemo::ChatMessage
 {
   msg.set_from(m_nick);
   msg.set_to(m_chatroomName);
-  int32_t seconds = static_cast<int32_t>(time::now()/1000000000);
+  int32_t seconds = static_cast<int32_t>(time::toUnixTimestamp(time::system_clock::now()).count()/1000000000);
   msg.set_timestamp(seconds);
   msg.set_type(type);
 }
@@ -1196,7 +1196,7 @@ ChatDialog::sendJoin()
 void
 ChatDialog::sendHello()
 {
-  int64_t now = time::now();
+  int64_t now = time::toUnixTimestamp(time::system_clock::now()).count();
   int elapsed = (now - m_lastMsgTime) / 1000000000;
   if (elapsed >= m_randomizedInterval / 1000)
   {

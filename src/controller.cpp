@@ -257,7 +257,7 @@ Controller::loadConf()
       m_identity.clear();
       // TODO: change below to system default;
       m_identity.append("chronochat-tmp-identity")
-        .append(boost::lexical_cast<std::string>(random::generateWord64()));
+        .append(getRandomString());
       
       m_nick = m_identity.get(-1).toUri();
     }
@@ -608,7 +608,7 @@ Controller::onUpdateLocalPrefixAction()
 {
   // Name interestName();
   Interest interest("/local/ndn/prefix");
-  interest.setInterestLifetime(1000);
+  interest.setInterestLifetime(time::milliseconds(1000));
   interest.setMustBeFresh(true);
 
   m_face->expressInterest(interest, 
@@ -650,7 +650,7 @@ Controller::onQuitAction()
   delete m_browseContactDialog;
   delete m_addContactPanel;
 
-  m_face->shutdown();
+  m_face->ioService()->stop();
 
   QApplication::quit();
 }
@@ -699,12 +699,12 @@ Controller::onInvitationResponded(const Name& invitationName, bool accepted)
       chatroomCert = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
 
       response.setContent(chatroomCert->wireEncode());
-      response.setFreshnessPeriod(1000);      
+      response.setFreshnessPeriod(time::milliseconds(1000));
     }
   else
     {
       response.setName(invitationName);
-      response.setFreshnessPeriod(1000);
+      response.setFreshnessPeriod(time::milliseconds(1000));
     }
   m_keyChain.signByIdentity(response, m_identity);
   
@@ -725,7 +725,7 @@ Controller::onInvitationResponded(const Name& invitationName, bool accepted)
       
       Data wrappedData(wrappedName);
       wrappedData.setContent(response.wireEncode());
-      wrappedData.setFreshnessPeriod(1000);
+      wrappedData.setFreshnessPeriod(time::milliseconds(1000));
 
       m_keyChain.signByIdentity(wrappedData, m_identity);
       m_face->put(wrappedData);
