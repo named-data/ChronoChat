@@ -32,12 +32,13 @@
 #endif
 
 using namespace ndn;
-using namespace std;
 namespace fs = boost::filesystem;
 
 INIT_LOGGER("chronos.ContactManager");
 
 namespace chronos{
+
+using ndn::shared_ptr;
 
 static const uint8_t DNS_RP_SEPARATOR[2] = {0xF0, 0x2E}; // %F0.
 
@@ -181,7 +182,7 @@ ContactManager::prepareEndorseInfo(const Name& identity)
   Profile::const_iterator pIt  = profile.begin();
   Profile::const_iterator pEnd = profile.end();
 
-  map<string, int> endorseCount;
+  std::map<std::string, int> endorseCount;
   for(; pIt != pEnd; pIt++)
     {
       // _LOG_DEBUG("prepareEndorseInfo: profile[" << pIt->first << "]: " << pIt->second);
@@ -190,8 +191,8 @@ ContactManager::prepareEndorseInfo(const Name& identity)
 
   int endorseCertCount = 0;
 
-  vector<shared_ptr<EndorseCertificate> >::const_iterator cIt  = m_bufferedContacts[identity].m_endorseCertList.begin();
-  vector<shared_ptr<EndorseCertificate> >::const_iterator cEnd = m_bufferedContacts[identity].m_endorseCertList.end();
+  std::vector<shared_ptr<EndorseCertificate> >::const_iterator cIt  = m_bufferedContacts[identity].m_endorseCertList.begin();
+  std::vector<shared_ptr<EndorseCertificate> >::const_iterator cEnd = m_bufferedContacts[identity].m_endorseCertList.end();
 
   for(; cIt != cEnd; cIt++, endorseCertCount++)
     {
@@ -210,8 +211,8 @@ ContactManager::prepareEndorseInfo(const Name& identity)
       if(tmpProfile != profile)
         continue;
 
-      const vector<string>& endorseList = (*cIt)->getEndorseList();
-      vector<string>::const_iterator eIt = endorseList.begin();
+      const std::vector<std::string>& endorseList = (*cIt)->getEndorseList();
+      std::vector<std::string>::const_iterator eIt = endorseList.begin();
       for(; eIt != endorseList.end(); eIt++)
         endorseCount[*eIt] += 1;
     }
@@ -223,7 +224,7 @@ ContactManager::prepareEndorseInfo(const Name& identity)
       EndorseInfo::Endorsement* endorsement = endorseInfo->add_endorsement();
       endorsement->set_type(pIt->first);
       endorsement->set_value(pIt->second);
-      stringstream ss;
+      std::stringstream ss;
       ss << endorseCount[pIt->first] << "/" << endorseCertCount;
       endorsement->set_endorse(ss.str());
     }
@@ -264,7 +265,7 @@ ContactManager::onDnsSelfEndorseCertValidated(const shared_ptr<const Data>& data
 
 void
 ContactManager::onDnsSelfEndorseCertValidationFailed(const shared_ptr<const Data>& data, 
-                                                     const string& failInfo,
+                                                     const std::string& failInfo,
                                                      const Name& identity)
 {
   // If we cannot validate the Self-Endorse-Certificate, we may retry or fetch id-cert,
@@ -297,7 +298,7 @@ ContactManager::onDnsCollectEndorseValidated(const shared_ptr<const Data>& data,
 
 void
 ContactManager::onDnsCollectEndorseValidationFailed(const shared_ptr<const Data>& data, 
-                                                    const string& failInfo,
+                                                    const std::string& failInfo,
                                                     const Name& identity)
 {
   prepareEndorseInfo(identity);
@@ -316,9 +317,9 @@ ContactManager::onEndorseCertificateInternal(const Interest& interest,
                                              Data& data, 
                                              const Name& identity, 
                                              int certIndex,
-                                             string hash)
+                                             std::string hash)
 {
-  stringstream ss;
+  std::stringstream ss;
   {  
     using namespace CryptoPP;
 
@@ -384,7 +385,7 @@ ContactManager::onDnsEndorseeValidated(const shared_ptr<const Data>& data)
 }
 
 void
-ContactManager::onDnsEndorseeValidationFailed(const shared_ptr<const Data>& data, const string& failInfo)
+ContactManager::onDnsEndorseeValidationFailed(const shared_ptr<const Data>& data, const std::string& failInfo)
 {
   decreaseCollectStatus();
 }
@@ -440,7 +441,7 @@ ContactManager::onIdentityCertValidated(const shared_ptr<const Data>& data)
 }
 
 void
-ContactManager::onIdentityCertValidationFailed(const shared_ptr<const Data>& data, const string& failInfo)
+ContactManager::onIdentityCertValidationFailed(const shared_ptr<const Data>& data, const std::string& failInfo)
 {
   _LOG_DEBUG("ContactManager::onIdentityCertValidationFailed " << data->getName());
   decreaseIdCertCount();
@@ -489,7 +490,7 @@ ContactManager::getSignedSelfEndorseCertificate(const Profile& profile)
 
   shared_ptr<IdentityCertificate> signingCert = m_keyChain.getCertificate(certificateName);
 
-  vector<string> endorseList;
+  std::vector<std::string> endorseList;
   Profile::const_iterator it = profile.begin();
   for(; it != profile.end(); it++)
     endorseList.push_back(it->first);
@@ -528,7 +529,7 @@ ContactManager::generateEndorseCertificate(const Name& identity)
 
   Name signerKeyName = m_keyChain.getDefaultKeyNameForIdentity(m_identity);
 
-  vector<string> endorseList;
+  std::vector<std::string> endorseList;
   m_contactStorage->getEndorseList(identity, endorseList);
 
   shared_ptr<EndorseCertificate> cert = 
@@ -630,7 +631,7 @@ ContactManager::onDnsInterest(const Name& prefix, const Interest& interest)
 }
   
 void
-ContactManager::onDnsRegisterFailed(const Name& prefix, const string& failInfo)
+ContactManager::onDnsRegisterFailed(const Name& prefix, const std::string& failInfo)
 {
   emit warning(QString(failInfo.c_str()));
 }
@@ -752,7 +753,7 @@ ContactManager::onRefreshBrowseContact()
       request_stream << "Host: ndncert.named-data.net\r\n\r\n";
       request_stream.flush();
 
-      string line1;
+      std::string line1;
       std::getline(request_stream,line1);
       if (!request_stream)
         {
@@ -778,7 +779,7 @@ ContactManager::onRefreshBrowseContact()
           emit warning(QString::fromStdString("Fail to fetch certificate directory! #4"));
           return;
         }
-      vector<string> headers;
+      std::vector<std::string> headers;
       std::string header;
       while (std::getline(request_stream, header) && header != "\r")
         headers.push_back(header);

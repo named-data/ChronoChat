@@ -17,16 +17,16 @@
 #include <cryptopp/files.h>
 #include "logging.h"
 
-using namespace std;
 using namespace ndn;
 namespace fs = boost::filesystem;
-
 
 INIT_LOGGER ("chronos.ContactStorage");
 
 namespace chronos{
 
-const string INIT_SP_TABLE = "\
+using ndn::shared_ptr;
+
+const std::string INIT_SP_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
   SelfProfile(                                                       \n \
       profile_type      BLOB NOT NULL,                               \n \
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS                                           \n \
 CREATE INDEX sp_index ON SelfProfile(profile_type);                  \n \
 "; // user's own profile;
 
-const string INIT_SE_TABLE = "\
+const std::string INIT_SE_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
   SelfEndorse(                                                       \n \
       identity          BLOB NOT NULL UNIQUE,                        \n \
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS                                           \n \
 CREATE INDEX se_index ON SelfEndorse(identity);                      \n \
 "; // user's self endorse cert;
 
-const string INIT_CONTACT_TABLE = "\
+const std::string INIT_CONTACT_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
   Contact(                                                           \n \
       contact_namespace BLOB NOT NULL,                               \n \
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS                                           \n \
 CREATE INDEX contact_index ON Contact(contact_namespace);            \n \
 "; // contact's basic info
 
-const string INIT_TS_TABLE = "\
+const std::string INIT_TS_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
   TrustScope(                                                        \n \
       id                INTEGER PRIMARY KEY AUTOINCREMENT,           \n \
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS                                           \n \
 CREATE INDEX ts_index ON TrustScope(contact_namespace);              \n \
 "; // contact's trust scope;
 
-const string INIT_CP_TABLE = "\
+const std::string INIT_CP_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
   ContactProfile(                                                    \n \
       profile_identity  BLOB NOT NULL,                               \n \
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS                                           \n \
 CREATE INDEX cp_index ON ContactProfile(profile_identity);           \n \
 "; // contact's profile
 
-const string INIT_PE_TABLE = "\
+const std::string INIT_PE_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
   ProfileEndorse(                                                    \n \
       identity          BLOB NOT NULL UNIQUE,                        \n \
@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS                                           \n \
 CREATE INDEX pe_index ON ProfileEndorse(identity);                   \n \
 "; // user's endorsement on contacts
 
-const string INIT_CE_TABLE = "\
+const std::string INIT_CE_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
   CollectEndorse(                                                    \n \
       endorser          BLOB NOT NULL,                               \n \
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS                                           \n \
   );                                                                 \n \
 "; // contact's endorsements on the user
 
-const string INIT_DD_TABLE = "\
+const std::string INIT_DD_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                           \n \
   DnsData(                                                           \n \
       dns_name      BLOB NOT NULL,                                   \n \
@@ -149,12 +149,12 @@ ContactStorage::ContactStorage(const Name& identity)
 
 }
 
-string
+std::string
 ContactStorage::getDBName()
 {
-  string dbName("chronos-");
+  std::string dbName("chronos-");
 
-  stringstream ss;
+  std::stringstream ss;
   {
     using namespace CryptoPP;
 
@@ -168,7 +168,7 @@ ContactStorage::getDBName()
 }
 
 void
-ContactStorage::initializeTable(const string& tableName, const string& sqlCreateStmt)
+ContactStorage::initializeTable(const std::string& tableName, const std::string& sqlCreateStmt)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT name FROM sqlite_master WHERE type='table' And name=?", -1, &stmt, 0);
@@ -198,8 +198,8 @@ ContactStorage::getSelfProfile()
 
   while( sqlite3_step (stmt) == SQLITE_ROW)
     {
-      string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      string profileValue(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
+      std::string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      std::string profileValue(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
       (*profile)[profileType] = profileValue;
     }
 
@@ -261,8 +261,8 @@ ContactStorage::getCollectEndorse(EndorseCollection& endorseCollection)
 
   while(sqlite3_step (stmt) == SQLITE_ROW)
     {
-      string certName(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes(stmt, 1));
-      stringstream ss;
+      std::string certName(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes(stmt, 1));
+      std::stringstream ss;
       {
         using namespace CryptoPP;
         SHA256 hash;
@@ -279,7 +279,7 @@ ContactStorage::getCollectEndorse(EndorseCollection& endorseCollection)
 }
 
 void
-ContactStorage::getEndorseList(const Name& identity, vector<string>& endorseList)
+ContactStorage::getEndorseList(const Name& identity, std::vector<std::string>& endorseList)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT profile_type FROM ContactProfile WHERE profile_identity=? AND endorse=1 ORDER BY profile_type", -1, &stmt, 0);
@@ -287,7 +287,7 @@ ContactStorage::getEndorseList(const Name& identity, vector<string>& endorseList
 
   while( sqlite3_step (stmt) == SQLITE_ROW)
     {
-      string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      std::string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
       endorseList.push_back(profileType);      
     }
   sqlite3_finalize (stmt);  
@@ -297,7 +297,7 @@ ContactStorage::getEndorseList(const Name& identity, vector<string>& endorseList
 void 
 ContactStorage::removeContact(const Name& identityName)
 {
-  string identity = identityName.toUri();
+  std::string identity = identityName.toUri();
   
   sqlite3_stmt *stmt;  
   sqlite3_prepare_v2 (m_db, "DELETE FROM Contact WHERE contact_namespace=?", -1, &stmt, 0);
@@ -322,7 +322,7 @@ ContactStorage::addContact(const Contact& contact)
   if(doesContactExist(contact.getNameSpace()))
     throw Error("Normal Contact has already existed");
 
-  string identity = contact.getNameSpace().toUri();
+  std::string identity = contact.getNameSpace().toUri();
   bool isIntroducer = contact.isIntroducer();
 
   sqlite3_stmt *stmt;  
@@ -397,8 +397,8 @@ ContactStorage::getContact(const Name& identity) const
 
   if(sqlite3_step (stmt) == SQLITE_ROW)
     {
-      string alias(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      string keyName(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
+      std::string alias(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      std::string keyName(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
       PublicKey key(sqlite3_column_text(stmt, 2), sqlite3_column_bytes (stmt, 2));
       time::system_clock::TimePoint notBefore = time::fromUnixTimestamp(time::milliseconds(sqlite3_column_int64 (stmt, 3)));
       time::system_clock::TimePoint notAfter = time::fromUnixTimestamp(time::milliseconds(sqlite3_column_int64 (stmt, 4)));
@@ -413,8 +413,8 @@ ContactStorage::getContact(const Name& identity) const
   
   while(sqlite3_step (stmt) == SQLITE_ROW)
     {
-      string type(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      string value(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
+      std::string type(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      std::string value(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)), sqlite3_column_bytes (stmt, 1));
       profile[type] = value;
     }
   sqlite3_finalize (stmt);
@@ -427,7 +427,7 @@ ContactStorage::getContact(const Name& identity) const
 
       while(sqlite3_step (stmt) == SQLITE_ROW)
         {
-          Name scope(string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
+          Name scope(std::string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0)));
           contact->addTrustScope(scope);
         }
       sqlite3_finalize (stmt);
@@ -450,7 +450,7 @@ ContactStorage::updateIsIntroducer(const Name& identity, bool isIntroducer)
 }
 
 void 
-ContactStorage::updateAlias(const Name& identity, string alias)
+ContactStorage::updateAlias(const Name& identity, std::string alias)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "UPDATE Contact SET contact_alias=? WHERE contact_namespace=?", -1, &stmt, 0);
@@ -483,22 +483,22 @@ ContactStorage::doesContactExist(const Name& name)
 }
 
 void
-ContactStorage::getAllContacts(vector<shared_ptr<Contact> >& contacts) const
+ContactStorage::getAllContacts(std::vector<shared_ptr<Contact> >& contacts) const
 {
-  vector<Name> contactNames;
+  std::vector<Name> contactNames;
 
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT contact_namespace FROM Contact", -1, &stmt, 0);
   
   while(sqlite3_step (stmt) == SQLITE_ROW)
     {
-      string identity(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes(stmt, 0));
+      std::string identity(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes(stmt, 0));
       contactNames.push_back(Name(identity));
     }
   sqlite3_finalize (stmt);
 
-  vector<Name>::iterator it  = contactNames.begin();
-  vector<Name>::iterator end = contactNames.end();
+  std::vector<Name>::iterator it  = contactNames.begin();
+  std::vector<Name>::iterator end = contactNames.end();
   for(; it != end; it++)
     {
       shared_ptr<Contact> contact = getContact(*it);
@@ -509,9 +509,9 @@ ContactStorage::getAllContacts(vector<shared_ptr<Contact> >& contacts) const
 
 void
 ContactStorage::updateDnsData(const Block& data, 
-                              const string& name, 
-                              const string& type, 
-                              const string& dataName)
+                              const std::string& name, 
+                              const std::string& type, 
+                              const std::string& dataName)
 {  
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "INSERT OR REPLACE INTO DnsData (dns_name, dns_type, dns_value, data_name) VALUES (?, ?, ?, ?)", -1, &stmt, 0);
@@ -545,7 +545,7 @@ ContactStorage::getDnsData(const Name& dataName)
 }
 
 shared_ptr<Data>
-ContactStorage::getDnsData(const string& name, const string& type)
+ContactStorage::getDnsData(const std::string& name, const std::string& type)
 {
   shared_ptr<Data> data;
 

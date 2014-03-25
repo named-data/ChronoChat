@@ -11,8 +11,6 @@
 #include "start-chat-dialog.h"
 #include "ui_start-chat-dialog.h"
 
-using namespace std;
-
 StartChatDialog::StartChatDialog(QWidget *parent) 
   : QDialog(parent)
   , ui(new Ui::StartChatDialog)
@@ -31,7 +29,7 @@ StartChatDialog::~StartChatDialog()
 }
 
 void
-StartChatDialog::setChatroom(const string& chatroom)
+StartChatDialog::setChatroom(const std::string& chatroom)
 { 
   ui->chatroomInput->setText(QString::fromStdString(chatroom)); 
 }

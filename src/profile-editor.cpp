@@ -20,8 +20,6 @@
 
 INIT_LOGGER("ProfileEditor")
 
-using namespace std;
-
 ProfileEditor::ProfileEditor(QWidget *parent) 
   : QDialog(parent)
   , ui(new Ui::ProfileEditor)

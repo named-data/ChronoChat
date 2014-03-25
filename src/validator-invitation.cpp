@@ -13,12 +13,13 @@
 
 #include "logging.h"
 
-using namespace std;
 using namespace ndn;
 
 INIT_LOGGER("ValidatorInvitation");
 
 namespace chronos{
+
+using ndn::shared_ptr;
 
 const shared_ptr<CertificateCache> ValidatorInvitation::DefaultCertificateCache = shared_ptr<CertificateCache>();
 
@@ -37,7 +38,7 @@ ValidatorInvitation::checkPolicy (const Data& data,
                                   int stepCount, 
                                   const OnDataValidated& onValidated, 
                                   const OnDataValidationFailed& onValidationFailed,
-                                  vector<shared_ptr<ValidationRequest> >& nextSteps)
+                                  std::vector<shared_ptr<ValidationRequest> >& nextSteps)
 {
   try
     {
@@ -72,7 +73,7 @@ ValidatorInvitation::checkPolicy (const Interest& interest,
                                   int stepCount, 
                                   const OnInterestValidated& onValidated, 
                                   const OnInterestValidationFailed& onValidationFailed,
-                                  vector<shared_ptr<ValidationRequest> >& nextSteps)
+                                  std::vector<shared_ptr<ValidationRequest> >& nextSteps)
 {
   try
     {

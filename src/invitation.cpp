@@ -15,7 +15,6 @@
 
 #include "logging.h"
 
-using namespace std;
 using namespace ndn;
 
 INIT_LOGGER("Invitation");
@@ -52,7 +51,7 @@ Invitation::Invitation(const Name& interestName)
 }
 
 Invitation::Invitation(const Name& inviteeNameSpace,
-                       const string& chatroom,
+                       const std::string& chatroom,
                        const Name& inviterRoutingPrefix,
                        const IdentityCertificate& inviterCertificate)
   : m_inviteeNameSpace(inviteeNameSpace)

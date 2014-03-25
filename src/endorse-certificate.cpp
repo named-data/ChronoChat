@@ -12,7 +12,7 @@
 #include "endorse-extension.pb.h"
 #include <boost/iostreams/stream.hpp>
 
-using namespace std;
+
 using namespace ndn;
 
 namespace chronos{
@@ -23,9 +23,9 @@ const OID EndorseCertificate::ENDORSE_EXT_OID("1.3.6.1.5.32.2.2");
 const std::vector<std::string> EndorseCertificate::DEFAULT_ENDORSE_LIST = std::vector<std::string>();
 
 Chronos::EndorseExtensionMsg&
-operator << (Chronos::EndorseExtensionMsg& endorseExtension, const vector<string>& endorseList)
+operator << (Chronos::EndorseExtensionMsg& endorseExtension, const std::vector<std::string>& endorseList)
 { 
-  vector<string>::const_iterator it = endorseList.begin();
+  std::vector<std::string>::const_iterator it = endorseList.begin();
   for(; it != endorseList.end(); it++)
     endorseExtension.add_endorseentry()->set_name(*it);
 
@@ -33,7 +33,7 @@ operator << (Chronos::EndorseExtensionMsg& endorseExtension, const vector<string
 }
 
 Chronos::EndorseExtensionMsg&
-operator >> (Chronos::EndorseExtensionMsg& endorseExtension, vector<string>& endorseList)
+operator >> (Chronos::EndorseExtensionMsg& endorseExtension, std::vector<std::string>& endorseList)
 {
   for(int i = 0; i < endorseExtension.endorseentry_size(); i ++)
     endorseList.push_back(endorseExtension.endorseentry(i).name());
@@ -43,7 +43,7 @@ operator >> (Chronos::EndorseExtensionMsg& endorseExtension, vector<string>& end
 
 EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate,
                                        const Profile& profile,
-                                       const vector<string>& endorseList)
+                                       const std::vector<std::string>& endorseList)
   : Certificate()
   , m_profile(profile)
   , m_endorseList(endorseList)
@@ -75,7 +75,7 @@ EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate
 
 EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertificate,
                                        const Name& signer,
-                                       const vector<string>& endorseList)
+                                       const std::vector<std::string>& endorseList)
   : Certificate()
   , m_keyName(endorseCertificate.m_keyName)
   , m_signer(signer)
@@ -110,7 +110,7 @@ EndorseCertificate::EndorseCertificate(const Name& keyName,
                                        const time::system_clock::TimePoint& notAfter,
                                        const Name& signer,
                                        const Profile& profile,
-                                       const vector<string>& endorseList)
+                                       const std::vector<std::string>& endorseList)
   : Certificate()
   , m_keyName(keyName)
   , m_signer(signer)

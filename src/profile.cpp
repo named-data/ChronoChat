@@ -11,32 +11,31 @@
 #include "profile.h"
 #include "logging.h"
 
-using namespace std;
 using namespace ndn;
 
 INIT_LOGGER("Profile");
 
 namespace chronos{
 
-const string Profile::OID_NAME("2.5.4.41");
-const string Profile::OID_ORG("2.5.4.11");
-const string Profile::OID_GROUP("2.5.4.1");
-const string Profile::OID_HOMEPAGE("2.5.4.3");
-const string Profile::OID_ADVISOR("2.5.4.80");
-const string Profile::OID_EMAIL("1.2.840.113549.1.9.1");
+const std::string Profile::OID_NAME("2.5.4.41");
+const std::string Profile::OID_ORG("2.5.4.11");
+const std::string Profile::OID_GROUP("2.5.4.1");
+const std::string Profile::OID_HOMEPAGE("2.5.4.3");
+const std::string Profile::OID_ADVISOR("2.5.4.80");
+const std::string Profile::OID_EMAIL("1.2.840.113549.1.9.1");
 
 Profile::Profile(const IdentityCertificate& identityCertificate)
 {
   Name keyName = IdentityCertificate::certificateNameToPublicKeyName(identityCertificate.getName());
 
-  m_entries[string("IDENTITY")] = keyName.getPrefix(-1).toUri();
+  m_entries[std::string("IDENTITY")] = keyName.getPrefix(-1).toUri();
   
-  const vector<CertificateSubjectDescription>& subList = identityCertificate.getSubjectDescriptionList();
-  vector<CertificateSubjectDescription>::const_iterator it = subList.begin();
+  const std::vector<CertificateSubjectDescription>& subList = identityCertificate.getSubjectDescriptionList();
+  std::vector<CertificateSubjectDescription>::const_iterator it = subList.begin();
   for(; it != subList.end(); it++)
     {
-      const string oidStr = it->getOidString();
-      string valueStr = it->getValue();
+      const std::string oidStr = it->getOidString();
+      std::string valueStr = it->getValue();
       if(oidStr == OID_NAME)
         m_entries["name"] = valueStr;
       else if(oidStr == OID_ORG)
@@ -60,8 +59,8 @@ Profile::Profile(const Name& identityName)
 }
 
 Profile::Profile(const Name& identityName,
-		 const string& name,
-		 const string& institution)
+		 const std::string& name,
+		 const std::string& institution)
 {
   m_entries["IDENTITY"] = identityName.toUri();
   m_entries["name"] = name;
@@ -73,7 +72,7 @@ Profile::Profile(const Profile& profile)
 {}
 
 void
-Profile::encode(ostream& os) const
+Profile::encode(std::ostream& os) const
 {
   Chronos::ProfileMsg profileMsg;
   profileMsg << (*this);
@@ -81,7 +80,7 @@ Profile::encode(ostream& os) const
 }
 
 void
-Profile::decode(istream& is)
+Profile::decode(std::istream& is)
 {
   Chronos::ProfileMsg profileMsg;    
   profileMsg.ParseFromIstream(&is);
@@ -91,7 +90,7 @@ Profile::decode(istream& is)
 Chronos::ProfileMsg&
 operator << (Chronos::ProfileMsg& profileMsg, const Profile& profile)
 {
-  map<string, string>::const_iterator it = profile.begin();
+  std::map<std::string, std::string>::const_iterator it = profile.begin();
   for(; it != profile.end(); it++)
     {
       Chronos::ProfileMsg::ProfileEntry* profileEntry = profileMsg.add_entry();

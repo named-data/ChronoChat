@@ -28,8 +28,8 @@
 #include "logging.h"
 #endif
 
-using namespace std;
 using namespace ndn;
+using ndn::shared_ptr;
 using namespace chronos;
 
 INIT_LOGGER("ChatDialog");
@@ -47,7 +47,7 @@ ChatDialog::ChatDialog(ContactManager* contactManager,
                        const IdentityCertificate& myCertificate,
                        const Name& chatroomPrefix,
 		       const Name& localPrefix,
-                       const string& nick,
+                       const std::string& nick,
                        bool withSecurity,
 		       QWidget* parent) 
   : QDialog(parent)
@@ -176,7 +176,7 @@ ChatDialog::addSyncAnchor(const Invitation& invitation)
 }
 
 void
-ChatDialog::processTreeUpdateWrapper(const vector<Sync::MissingDataInfo>& v, Sync::SyncSocket *sock)
+ChatDialog::processTreeUpdateWrapper(const std::vector<Sync::MissingDataInfo>& v, Sync::SyncSocket *sock)
 {
   emit processTreeUpdate(v);
   _LOG_DEBUG("<<< Tree update signal emitted");
@@ -196,7 +196,7 @@ ChatDialog::processDataNoShowWrapper(const shared_ptr<const Data>& data)
 }
 
 void
-ChatDialog::processRemoveWrapper(string prefix)
+ChatDialog::processRemoveWrapper(std::string prefix)
 {
   _LOG_DEBUG("Sync REMOVE signal received for prefix: " << prefix);
 }
@@ -402,7 +402,7 @@ ChatDialog::onReplyValidated(const shared_ptr<const Data>& data,
 
 void
 ChatDialog::onReplyValidationFailed(const shared_ptr<const Data>& data,
-                                    const string& failureInfo)
+                                    const std::string& failureInfo)
 {
   _LOG_DEBUG("Invitation reply cannot be validated: " + failureInfo + " ==> " + data->getName().toUri());
 }
@@ -473,7 +473,7 @@ ChatDialog::onIntroCertList(const Interest& interest, const Data& data)
 }
 
 void
-ChatDialog::onIntroCertListTimeout(const Interest& interest, int retry, const string& msg)
+ChatDialog::onIntroCertListTimeout(const Interest& interest, int retry, const std::string& msg)
 {
   if(retry > 0)
     m_face->expressInterest(interest,
@@ -498,13 +498,13 @@ ChatDialog::introCertTimeoutWrapper(const Interest& interest, int retry, const Q
 void
 ChatDialog::onCertListInterest(const Name& prefix, const ndn::Interest& interest)
 {
-  vector<Name> certNameList;
+  std::vector<Name> certNameList;
   m_sock->getIntroCertNames(certNameList);
 
   Chronos::IntroCertListMsg msg;
 
-  vector<Name>::const_iterator it  = certNameList.begin();
-  vector<Name>::const_iterator end = certNameList.end();
+  std::vector<Name>::const_iterator it  = certNameList.begin();
+  std::vector<Name>::const_iterator end = certNameList.end();
   for(; it != end; it++)
     {
       Name certName;
@@ -522,7 +522,7 @@ ChatDialog::onCertListInterest(const Name& prefix, const ndn::Interest& interest
 }
 
 void
-ChatDialog::onCertListRegisterFailed(const Name& prefix, const string& msg)
+ChatDialog::onCertListRegisterFailed(const Name& prefix, const std::string& msg)
 {
   _LOG_DEBUG("ChatDialog::onCertListRegisterFailed failed: " + msg);
 }
@@ -546,7 +546,7 @@ ChatDialog::onCertSingleInterest(const Name& prefix, const ndn::Interest& intere
 }
 
 void
-ChatDialog::onCertSingleRegisterFailed(const Name& prefix, const string& msg)
+ChatDialog::onCertSingleRegisterFailed(const Name& prefix, const std::string& msg)
 {
   _LOG_DEBUG("ChatDialog::onCertListRegisterFailed failed: " + msg);
 }
@@ -757,11 +757,11 @@ ChatDialog::printTimeInCell(QTextTable *table, time_t timestamp)
   timeCell.firstCursorPosition().insertText(formatTime(timestamp));
 }
 
-string
+std::string
 ChatDialog::getRandomString()
 {
   uint32_t r = random::generateWord32();
-  stringstream ss;
+  std::stringstream ss;
   {
     using namespace CryptoPP;
     StringSource(reinterpret_cast<uint8_t*>(&r), 4, true,
@@ -797,13 +797,13 @@ void
 ChatDialog::summonReaper()
 {
   Sync::SyncLogic &logic = m_sock->getLogic ();
-  map<string, bool> branches = logic.getBranchPrefixes();
+  std::map<std::string, bool> branches = logic.getBranchPrefixes();
   QMap<QString, DisplayUserPtr> roster = m_scene->getRosterFull();
 
   m_zombieList.clear();
 
   QMapIterator<QString, DisplayUserPtr> it(roster);
-  map<string, bool>::iterator mapIt;
+  std::map<std::string, bool>::iterator mapIt;
   while(it.hasNext())
   {
     it.next();
@@ -836,15 +836,15 @@ ChatDialog::summonReaper()
 void
 ChatDialog::getTree(TrustTreeNodeList& nodeList)
 {
-  typedef map<Name, shared_ptr<TrustTreeNode> > NodeMap;
+  typedef std::map<Name, shared_ptr<TrustTreeNode> > NodeMap;
 
-  vector<Name> certNameList;
+  std::vector<Name> certNameList;
   NodeMap nodeMap;
 
   m_sock->getIntroCertNames(certNameList);
 
-  vector<Name>::const_iterator it  = certNameList.begin();
-  vector<Name>::const_iterator end = certNameList.end();
+  std::vector<Name>::const_iterator it  = certNameList.begin();
+  std::vector<Name>::const_iterator end = certNameList.end();
   for(; it != end; it++)
     {
       Name introducerCertName;
@@ -877,7 +877,7 @@ ChatDialog::getTree(TrustTreeNodeList& nodeList)
     }
   
   nodeList.clear();
-  queue<shared_ptr<TrustTreeNode> > nodeQueue;
+  std::queue<shared_ptr<TrustTreeNode> > nodeQueue;
 
   NodeMap::iterator nodeIt = nodeMap.find(m_identity);
   if(nodeIt == nodeMap.end())
@@ -1101,7 +1101,7 @@ ChatDialog::onProcessData(const shared_ptr<const Data>& data, bool show, bool is
 }
 
 void
-ChatDialog::onProcessTreeUpdate(const vector<Sync::MissingDataInfo>& v)
+ChatDialog::onProcessTreeUpdate(const std::vector<Sync::MissingDataInfo>& v)
 {
   _LOG_DEBUG("<<< processing Tree Update");
 
@@ -1239,7 +1239,7 @@ ChatDialog::reap()
 {
   if (m_zombieIndex < m_zombieList.size())
   {
-    string prefix = m_zombieList.at(m_zombieIndex).toStdString();
+    std::string prefix = m_zombieList.at(m_zombieIndex).toStdString();
     m_sock->remove(prefix);
     _LOG_DEBUG("Reaped: prefix = " << prefix);
     m_zombieIndex++;

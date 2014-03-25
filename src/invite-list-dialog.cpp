@@ -11,8 +11,6 @@
 #include "invite-list-dialog.h"
 #include "ui_invite-list-dialog.h"
 
-using namespace std;
-
 InviteListDialog::InviteListDialog(QWidget *parent) 
   :QDialog(parent)
   , ui(new Ui::InviteListDialog)
@@ -35,9 +33,9 @@ InviteListDialog::~InviteListDialog()
 }
 
 void
-InviteListDialog::setInviteLabel(string label)
+InviteListDialog::setInviteLabel(std::string label)
 { 
-  string msg("invite to chatroom:\n");
+  std::string msg("invite to chatroom:\n");
   msg += label;
   ui->inviteLabel->setText(QString::fromStdString(msg));
 }

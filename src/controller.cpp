@@ -39,6 +39,8 @@ Q_DECLARE_METATYPE(size_t)
 
 namespace chronos {
 
+using ndn::shared_ptr;
+
 static const uint8_t ROUTING_PREFIX_SEPARATOR[2] = {0xF0, 0x2E};
 
 // constructor & destructor

@@ -14,11 +14,12 @@
 
 using namespace std;
 using namespace ndn;
-using namespace ndn::ptr_lib;
 
 INIT_LOGGER("ValidatorPanel");
 
 namespace chronos{
+
+using ndn::shared_ptr;
 
 const shared_ptr<CertificateCache> ValidatorPanel::DEFAULT_CERT_CACHE = shared_ptr<CertificateCache>();
 
@@ -39,7 +40,7 @@ ValidatorPanel::checkPolicy (const Data& data,
                              int stepCount, 
                              const OnDataValidated& onValidated, 
                              const OnDataValidationFailed& onValidationFailed,
-                             vector<shared_ptr<ValidationRequest> >& nextSteps)
+                             std::vector<shared_ptr<ValidationRequest> >& nextSteps)
 {
   if(m_stepLimit == stepCount)
     {

@@ -16,7 +16,6 @@
 #include "profile.h"
 #endif
 
-using namespace std;
 using namespace ndn;
 using namespace chronos;
 

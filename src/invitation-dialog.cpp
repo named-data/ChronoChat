@@ -12,7 +12,6 @@
 #include "invitation-dialog.h"
 #include "ui_invitation-dialog.h"
 
-using namespace std;
 using namespace ndn;
 
 InvitationDialog::InvitationDialog(QWidget *parent) 
@@ -33,11 +32,11 @@ InvitationDialog::~InvitationDialog()
 }
 
 void
-InvitationDialog::setInvitation(const string& alias,
-                                const string& chatroom,
+InvitationDialog::setInvitation(const std::string& alias,
+                                const std::string& chatroom,
                                 const Name& interestName)
 {
-  string msg = alias;
+  std::string msg = alias;
   m_invitationInterest = interestName;
   msg.append(" invites you to: ").append(chatroom);
   ui->msgLabel->setText(QString::fromStdString(msg));

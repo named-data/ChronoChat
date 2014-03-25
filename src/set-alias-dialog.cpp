@@ -12,9 +12,6 @@
 #include "ui_set-alias-dialog.h"
 
 
-using namespace ndn;
-using namespace std;
-
 SetAliasDialog::SetAliasDialog(QWidget *parent) 
   : QDialog(parent)
   , ui(new Ui::SetAliasDialog)

@@ -19,6 +19,7 @@
 INIT_LOGGER("MAIN");
 
 using namespace ndn;
+using ndn::shared_ptr;
 
 class NewApp : public QApplication
 {
