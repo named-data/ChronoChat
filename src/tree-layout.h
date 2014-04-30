@@ -16,7 +16,7 @@
 #include <vector>
 #include "trust-tree-node.h"
 
-class TreeLayout 
+class TreeLayout
 {
 public:
   struct Coordinate

@@ -11,8 +11,8 @@
 #ifndef CHRONOS_CONTACT_H
 #define CHRONOS_CONTACT_H
 
-#include <ndn-cpp-dev/security/identity-certificate.hpp>
-#include <ndn-cpp-dev/util/regex.hpp>
+#include <ndn-cxx/security/identity-certificate.hpp>
+#include <ndn-cxx/util/regex.hpp>
 #include "endorse-certificate.h"
 #include <vector>
 
@@ -35,7 +35,7 @@ public:
     m_name = m_profile.get("name");
     m_alias = alias.empty() ? m_name : alias;
     m_institution = m_profile.get("institution");
-    
+
     m_keyName = identityCertificate.getPublicKeyName();
     m_namespace = m_keyName.getPrefix(-1);
     m_publicKey = identityCertificate.getPublicKeyInfo();
@@ -47,13 +47,13 @@ public:
     : m_notBefore(endorseCertificate.getNotBefore())
     , m_notAfter(endorseCertificate.getNotAfter())
     , m_isIntroducer(isIntroducer)
-  { 
+  {
     m_profile = endorseCertificate.getProfile();
-    
+
     m_name = m_profile.get("name");
     m_alias = alias.empty() ? m_name : alias;
     m_institution = m_profile.get("institution");
-    
+
     m_keyName = endorseCertificate.getPublicKeyName();;
     m_namespace = m_keyName.getPrefix(-1);
     m_publicKey = endorseCertificate.getPublicKeyInfo();
@@ -75,7 +75,7 @@ public:
     , m_isIntroducer(isIntroducer)
   {
   }
-  
+
   Contact(const Contact& contact)
     : m_namespace(contact.m_namespace)
     , m_alias(contact.m_alias)
@@ -89,7 +89,7 @@ public:
     , m_profile(contact.m_profile)
     , m_trustScope(contact.m_trustScope)
   {}
-  
+
   virtual
   ~Contact()
   {}
@@ -121,7 +121,7 @@ public:
   const ndn::Name&
   getPublicKeyName() const
   {
-    return m_keyName; 
+    return m_keyName;
   }
 
   const ndn::PublicKey&
@@ -163,15 +163,15 @@ public:
   }
 
   void
-  setIsIntroducer(bool isIntroducer) 
-  { 
-    m_isIntroducer = isIntroducer; 
+  setIsIntroducer(bool isIntroducer)
+  {
+    m_isIntroducer = isIntroducer;
   }
 
   void
   addTrustScope(const ndn::Name& nameSpace)
-  { 
-    m_trustScope[nameSpace] = ndn::Regex::fromName(nameSpace); 
+  {
+    m_trustScope[nameSpace] = ndn::Regex::fromName(nameSpace);
   }
 
   void
@@ -229,7 +229,7 @@ protected:
 
   bool m_isIntroducer;
   Profile m_profile;
-  
+
   TrustScopes m_trustScope;
 };
 

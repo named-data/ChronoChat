@@ -27,7 +27,7 @@ class ProfileEditor : public QDialog
 
 public:
   explicit ProfileEditor(QWidget *parent = 0);
-  
+
   ~ProfileEditor();
 
 public slots:
@@ -36,7 +36,7 @@ public slots:
 
   void
   onIdentityUpdated(const QString& identity);
-  
+
 private slots:
   void
   onAddClicked();

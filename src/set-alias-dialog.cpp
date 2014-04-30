@@ -12,16 +12,16 @@
 #include "ui_set-alias-dialog.h"
 
 
-SetAliasDialog::SetAliasDialog(QWidget *parent) 
+SetAliasDialog::SetAliasDialog(QWidget *parent)
   : QDialog(parent)
   , ui(new Ui::SetAliasDialog)
 {
     ui->setupUi(this);
 
     connect(ui->okButton, SIGNAL(clicked()),
-	    this, SLOT(onOkClicked()));
+            this, SLOT(onOkClicked()));
     connect(ui->cancelButton, SIGNAL(clicked()),
-	    this, SLOT(onCancelClicked()));
+            this, SLOT(onCancelClicked()));
 }
 
 SetAliasDialog::~SetAliasDialog()
@@ -38,14 +38,14 @@ SetAliasDialog::onOkClicked()
 
 void
 SetAliasDialog::onCancelClicked()
-{ 
-  this->close(); 
+{
+  this->close();
 }
 
-void 
+void
 SetAliasDialog::setTargetIdentity(const QString& targetIdentity, const QString& alias)
-{ 
-  m_targetIdentity = targetIdentity; 
+{
+  m_targetIdentity = targetIdentity;
   QString msg = QString("Set alias for %1:").arg(targetIdentity);
   ui->introLabel->setText(msg);
   ui->aliasInput->setText(alias);

@@ -10,8 +10,8 @@
 
 #include "invitation.h"
 
-#include <ndn-cpp-dev/security/identity-certificate.hpp>
-#include <ndn-cpp-dev/security/signature-sha256-with-rsa.hpp>
+#include <ndn-cxx/security/identity-certificate.hpp>
+#include <ndn-cxx/security/signature-sha256-with-rsa.hpp>
 
 #include "logging.h"
 
@@ -37,7 +37,7 @@ Invitation::Invitation(const Name& interestName)
   size_t nameSize = interestName.size();
 
   if(nameSize < NAME_SIZE_MIN)
-    throw Error("Wrong Invitation Name: Wrong length"); 
+    throw Error("Wrong Invitation Name: Wrong length");
 
   if(interestName.get(CHRONOCHAT_INVITATION).toEscapedString() != "CHRONOCHAT-INVITATION")
     throw Error("Wrong Invitation Name: Wrong application tags");
@@ -46,8 +46,8 @@ Invitation::Invitation(const Name& interestName)
   m_timestamp = interestName.get(TIMESTAMP).toNumber();
   m_inviterCertificate.wireDecode(interestName.get(INVITER_CERT).blockFromValue());
   m_inviterRoutingPrefix.wireDecode(interestName.get(INVITER_PREFIX).blockFromValue());
-  m_chatroom = interestName.get(CHATROOM).toEscapedString();  
-  m_inviteeNameSpace = interestName.getPrefix(CHRONOCHAT_INVITATION);  
+  m_chatroom = interestName.get(CHATROOM).toEscapedString();
+  m_inviteeNameSpace = interestName.getPrefix(CHRONOCHAT_INVITATION);
 }
 
 Invitation::Invitation(const Name& inviteeNameSpace,

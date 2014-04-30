@@ -11,9 +11,9 @@
 #ifndef CHRONOS_VALIDATOR_PANEL_H
 #define CHRONOS_VALIDATOR_PANEL_H
 
-#include <ndn-cpp-dev/security/validator.hpp>
-#include <ndn-cpp-dev/security/sec-rule-relative.hpp>
-#include <ndn-cpp-dev/security/certificate-cache.hpp>
+#include <ndn-cxx/security/validator.hpp>
+#include <ndn-cxx/security/sec-rule-relative.hpp>
+#include <ndn-cxx/security/certificate-cache.hpp>
 #include <map>
 
 #include "endorse-certificate.h"
@@ -23,7 +23,7 @@ namespace chronos{
 class ValidatorPanel : public ndn::Validator
 {
 public:
-  
+
   static const ndn::shared_ptr<ndn::CertificateCache> DEFAULT_CERT_CACHE;
 
   ValidatorPanel(int stepLimit = 10,
@@ -31,7 +31,7 @@ public:
 
   ~ValidatorPanel()
   {}
-  
+
   inline void
   addTrustAnchor(const EndorseCertificate& selfEndorseCertificate);
 
@@ -40,16 +40,16 @@ public:
 
 protected:
   virtual void
-  checkPolicy (const ndn::Data& data, 
-               int stepCount, 
-               const ndn::OnDataValidated& onValidated, 
+  checkPolicy (const ndn::Data& data,
+               int stepCount,
+               const ndn::OnDataValidated& onValidated,
                const ndn::OnDataValidationFailed& onValidationFailed,
                std::vector<ndn::shared_ptr<ndn::ValidationRequest> >& nextSteps);
 
   virtual void
-  checkPolicy (const ndn::Interest& interest, 
-               int stepCount, 
-               const ndn::OnInterestValidated& onValidated, 
+  checkPolicy (const ndn::Interest& interest,
+               int stepCount,
+               const ndn::OnInterestValidated& onValidated,
                const ndn::OnInterestValidationFailed& onValidationFailed,
                std::vector<ndn::shared_ptr<ndn::ValidationRequest> >& nextSteps)
   {
@@ -62,14 +62,14 @@ private:
   ndn::shared_ptr<ndn::CertificateCache> m_certificateCache;
   ndn::shared_ptr<ndn::SecRuleRelative> m_endorseeRule;
   std::map<ndn::Name, ndn::PublicKey> m_trustAnchors;
-  
+
 };
 
 inline void
 ValidatorPanel::addTrustAnchor(const EndorseCertificate& cert)
 { m_trustAnchors[cert.getPublicKeyName()] = cert.getPublicKeyInfo(); }
 
-inline void 
+inline void
 ValidatorPanel::removeTrustAnchor(const ndn::Name& keyName)
 { m_trustAnchors.erase(keyName); }
 

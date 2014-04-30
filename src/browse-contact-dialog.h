@@ -17,7 +17,7 @@
 #include <QTableWidgetItem>
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp-dev/security/identity-certificate.hpp>
+#include <ndn-cxx/security/identity-certificate.hpp>
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #endif
@@ -29,9 +29,9 @@ class BrowseContactDialog;
 class BrowseContactDialog : public QDialog
 {
   Q_OBJECT
-  
+
 public:
-  explicit 
+  explicit
   BrowseContactDialog(QWidget *parent = 0);
 
   ~BrowseContactDialog();
@@ -64,7 +64,7 @@ public slots:
 signals:
   void
   directAddClicked();
-  
+
   void
   fetchIdCert(const QString& certName);
 

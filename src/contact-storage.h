@@ -15,7 +15,6 @@
 #include "endorse-collection.pb.h"
 #include <sqlite3.h>
 
-
 namespace chronos{
 
 class ContactStorage
@@ -25,15 +24,15 @@ public:
   struct Error : public std::runtime_error { Error(const std::string &what) : std::runtime_error(what) {} };
 
   ContactStorage(const ndn::Name& identity);
-  
-  ~ContactStorage() 
+
+  ~ContactStorage()
   {
-    sqlite3_close(m_db); 
+    sqlite3_close(m_db);
   }
 
   ndn::shared_ptr<Profile>
   getSelfProfile();
-  
+
   void
   addSelfEndorseCertificate(const EndorseCertificate& endorseCertificate);
 
@@ -63,7 +62,7 @@ public:
   void
   updateIsIntroducer(const ndn::Name& identity, bool isIntroducer);
 
-  void 
+  void
   updateAlias(const ndn::Name& identity, std::string alias);
 
   void
@@ -80,11 +79,11 @@ public:
   {
     updateDnsData(data.wireEncode(), endorsee, "ENDORSEE", data.getName().toUri());
   }
-  
+
   void
   updateDnsOthersEndorse(const ndn::Data& data)
   {
-    updateDnsData(data.wireEncode(), "N/A", "ENDORSED", data.getName().toUri()); 
+    updateDnsData(data.wireEncode(), "N/A", "ENDORSED", data.getName().toUri());
   }
 
   ndn::shared_ptr<ndn::Data>
@@ -96,7 +95,7 @@ public:
 private:
   std::string
   getDBName();
-  
+
   void
   initializeTable(const std::string& tableName, const std::string& sqlCreateStmt);
 

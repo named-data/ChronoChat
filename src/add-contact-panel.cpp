@@ -50,7 +50,7 @@ AddContactPanel::~AddContactPanel()
 void
 AddContactPanel::onCancelClicked()
 {
-  this->close(); 
+  this->close();
 }
 
 void
@@ -78,10 +78,10 @@ AddContactPanel::onContactEndorseInfoReady(const chronos::EndorseInfo& endorseIn
 
   for(int rowCount = 0; rowCount < entrySize; rowCount++)
     {
-      ui->infoView->insertRow(rowCount);  
+      ui->infoView->insertRow(rowCount);
       QTableWidgetItem* type = new QTableWidgetItem(QString::fromStdString(endorseInfo.endorsement(rowCount).type()));
       ui->infoView->setItem(rowCount, 0, type);
-    
+
       QTableWidgetItem* value = new QTableWidgetItem(QString::fromStdString(endorseInfo.endorsement(rowCount).value()));
       ui->infoView->setItem(rowCount, 1, value);
 

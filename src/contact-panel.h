@@ -21,7 +21,6 @@
 #ifndef Q_MOC_RUN
 #endif
 
-
 namespace Ui {
 class ContactPanel;
 }
@@ -31,7 +30,7 @@ class ContactPanel : public QDialog
   Q_OBJECT
 
 public:
-  explicit 
+  explicit
   ContactPanel(QWidget *parent = 0);
 
   virtual
@@ -56,7 +55,7 @@ signals:
 
   void
   updateIsIntroducer(const QString& identity, bool isIntro);
-  
+
   void
   updateEndorseCertificate(const QString& identity);
 
@@ -77,11 +76,11 @@ public slots:
   onContactIdListReady(const QStringList& idList);
 
   void
-  onContactInfoReady(const QString& identity, 
-                     const QString& name, 
+  onContactInfoReady(const QString& identity,
+                     const QString& name,
                      const QString& institute,
                      bool isIntro);
-  
+
 private slots:
   void
   onSelectionChanged(const QItemSelection &selected,
@@ -111,7 +110,7 @@ private slots:
   void
   onEndorseButtonClicked();
 
-  void 
+  void
   onAliasChanged(const QString& identity, const QString& alias);
 
 private:
@@ -131,7 +130,7 @@ private:
   // Actions.
   QAction* m_menuAlias;
   QAction* m_menuDelete;
-  
+
   // Internal data structure.
   QStringList m_contactAliasList;
   QStringList m_contactIdList;

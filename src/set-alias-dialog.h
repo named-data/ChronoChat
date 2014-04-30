@@ -14,7 +14,7 @@
 #include <QDialog>
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp-dev/name.hpp>
+#include <ndn-cxx/name.hpp>
 #endif
 
 namespace Ui {
@@ -26,7 +26,7 @@ class SetAliasDialog : public QDialog
   Q_OBJECT
 
 public:
-  explicit 
+  explicit
   SetAliasDialog(QWidget *parent = 0);
 
   ~SetAliasDialog();
@@ -42,7 +42,7 @@ private slots:
   void
   onOkClicked();
 
-  void 
+  void
   onCancelClicked();
 
 private:

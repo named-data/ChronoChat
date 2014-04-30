@@ -14,7 +14,7 @@
 #include <QDialog>
 
 #ifndef Q_MOC_RUN
-#include <ndn-cpp-dev/name.hpp>
+#include <ndn-cxx/name.hpp>
 #endif
 
 namespace Ui {
@@ -41,7 +41,7 @@ signals:
 private slots:
   void
   onOkClicked();
-  
+
   void
   onCancelClicked();
 

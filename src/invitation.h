@@ -12,9 +12,9 @@
 #define CHRONOS_INVITATION_H
 
 
-#include <ndn-cpp-dev/name.hpp>
-#include <ndn-cpp-dev/signature.hpp>
-#include <ndn-cpp-dev/security/identity-certificate.hpp>
+#include <ndn-cxx/name.hpp>
+#include <ndn-cxx/signature.hpp>
+#include <ndn-cxx/security/identity-certificate.hpp>
 
 namespace chronos{
 
@@ -75,7 +75,7 @@ class Invitation
   const uint64_t
   getTimestamp() const
   { return m_timestamp; }
-  
+
   const ndn::Name&
   getUnsignedInterestName() const
   { return m_interestName; }

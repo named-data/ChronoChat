@@ -28,8 +28,8 @@
 #ifndef Q_MOC_RUN
 #include "contact-manager.h"
 #include "validator-invitation.h"
-#include <ndn-cpp-dev/face.hpp>
-#include <ndn-cpp-dev/security/key-chain.hpp>
+#include <ndn-cxx/face.hpp>
+#include <ndn-cxx/security/key-chain.hpp>
 #endif
 
 namespace chronos {
@@ -41,7 +41,7 @@ class Controller : public QDialog
 public: // public methods
   Controller(ndn::shared_ptr<ndn::Face> face,
              QWidget* parent = 0);
-  
+
   virtual
   ~Controller();
 
@@ -64,7 +64,7 @@ private: // private methods
   void
   saveConf();
 
-  void 
+  void
   createActions();
 
   void
@@ -81,7 +81,7 @@ private: // private methods
 
   void
   onInvitationInterestWrapper(const ndn::Name& prefix, const ndn::Interest& interest, size_t routingPrefixOffset);
-  
+
   void
   onInvitationRegisterFailed(const ndn::Name& prefix, const std::string& failInfo);
 
@@ -167,7 +167,7 @@ private slots:
 
   void
   onShowChatMessage(const QString& chatroomName, const QString& from, const QString& data);
-  
+
   void
   onResetIcon();
 

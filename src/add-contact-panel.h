@@ -27,7 +27,7 @@ class AddContactPanel : public QDialog
   Q_OBJECT
 
 public:
-  explicit 
+  explicit
   AddContactPanel(QWidget *parent = 0);
 
   ~AddContactPanel();
@@ -39,7 +39,7 @@ public slots:
 private slots:
   void
   onCancelClicked();
-  
+
   void
   onSearchClicked();
 

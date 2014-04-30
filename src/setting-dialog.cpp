@@ -16,7 +16,7 @@ SettingDialog::SettingDialog(QWidget *parent)
   , ui(new Ui::SettingDialog)
 {
   ui->setupUi(this);
-  
+
   connect(ui->saveButton, SIGNAL(clicked()),
           this, SLOT(onSaveClicked()));
   connect(ui->cancelButton, SIGNAL(clicked()),

@@ -20,7 +20,7 @@
 
 INIT_LOGGER("ProfileEditor")
 
-ProfileEditor::ProfileEditor(QWidget *parent) 
+ProfileEditor::ProfileEditor(QWidget *parent)
   : QDialog(parent)
   , ui(new Ui::ProfileEditor)
   , m_tableModel(new QSqlTableModel())
@@ -59,7 +59,7 @@ ProfileEditor::onIdentityUpdated(const QString& identity)
 
   m_identity = identity;
   ui->identityInput->setText(identity);
-  
+
   m_tableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
   m_tableModel->setTable("SelfProfile");
   m_tableModel->select();
@@ -85,10 +85,10 @@ ProfileEditor::onDeleteClicked()
   QItemSelectionModel* selectionModel = ui->profileTable->selectionModel();
   QModelIndexList indexList = selectionModel->selectedIndexes();
 
-  int i = indexList.size() - 1;  
+  int i = indexList.size() - 1;
   for(; i >= 0; i--)
     m_tableModel->removeRow(indexList[i].row());
-    
+
   m_tableModel->submitAll();
 }
 

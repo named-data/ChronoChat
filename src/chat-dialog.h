@@ -33,7 +33,7 @@
 #include "trust-tree-node.h"
 #include <sync-socket.h>
 #include <sync-seq-no.h>
-#include <ndn-cpp-dev/security/key-chain.hpp>
+#include <ndn-cxx/security/key-chain.hpp>
 #include "validator-invitation.h"
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
@@ -51,7 +51,7 @@ class ChatDialog : public QDialog
   Q_OBJECT
 
 public:
-  explicit 
+  explicit
   ChatDialog(chronos::ContactManager* contactManager,
              ndn::shared_ptr<ndn::Face> face,
              const ndn::IdentityCertificate& myCertificate,
@@ -62,40 +62,40 @@ public:
              QWidget* parent = 0);
 
   ~ChatDialog();
-  
-  void 
+
+  void
   addSyncAnchor(const chronos::Invitation& invitation);
 
-  void 
+  void
   processTreeUpdateWrapper(const std::vector<Sync::MissingDataInfo>&, Sync::SyncSocket *);
 
-  void 
+  void
   processDataWrapper(const ndn::shared_ptr<const ndn::Data>& data);
 
-  void 
+  void
   processDataNoShowWrapper(const ndn::shared_ptr<const ndn::Data>& data);
 
-  void 
+  void
   processRemoveWrapper(std::string);
 
 protected:
-  void 
+  void
   closeEvent(QCloseEvent *e);
 
   void
   changeEvent(QEvent *e);
 
-  void 
+  void
   resizeEvent(QResizeEvent *);
-  
-  void 
+
+  void
   showEvent(QShowEvent *);
 
 private:
   void
   updatePrefix();
-  
-  void 
+
+  void
   updateLabels();
 
   void
@@ -104,17 +104,17 @@ private:
   void
   sendInvitation(ndn::shared_ptr<chronos::Contact> contact, bool isIntroducer);
 
-  void 
-  replyWrapper(const ndn::Interest& interest, 
+  void
+  replyWrapper(const ndn::Interest& interest,
                ndn::Data& data,
                size_t routablePrefixOffset,
                bool isIntroducer);
 
-  void 
+  void
   replyTimeoutWrapper(const ndn::Interest& interest,
                       size_t routablePrefixOffset);
 
-  void 
+  void
   onReplyValidated(const ndn::shared_ptr<const ndn::Data>& data,
                    size_t inviteeRoutablePrefixOffset,
                    bool isIntroduce);
@@ -125,10 +125,10 @@ private:
 
   void
   invitationRejected(const ndn::Name& identity);
-  
-  void 
+
+  void
   invitationAccepted(const ndn::IdentityCertificate& inviteeCert,
-                     const ndn::Name& inviteePrefix, 
+                     const ndn::Name& inviteePrefix,
                      bool isIntroducer);
 
   void
@@ -142,7 +142,7 @@ private:
 
   void
   introCertWrapper(const ndn::Interest& interest, ndn::Data& data);
-  
+
   void
   introCertTimeoutWrapper(const ndn::Interest& interest, int retry, const QString& msg);
 
@@ -159,43 +159,43 @@ private:
   onCertSingleRegisterFailed(const ndn::Name& prefix, const std::string& msg);
 
 
-  void 
+  void
   sendMsg(SyncDemo::ChatMessage &msg);
 
-  void 
+  void
   disableSyncTreeDisplay();
 
-  void 
+  void
   appendMessage(const SyncDemo::ChatMessage msg, bool isHistory = false);
 
-  void 
+  void
   processRemove(QString prefix);
 
   ndn::Name
   getInviteeRoutablePrefix(const ndn::Name& invitee);
 
-  void 
+  void
   formChatMessage(const QString &text, SyncDemo::ChatMessage &msg);
 
-  void 
+  void
   formControlMessage(SyncDemo::ChatMessage &msg, SyncDemo::ChatMessage::ChatMessageType type);
 
-  QString 
+  QString
   formatTime(time_t);
 
-  void 
+  void
   printTimeInCell(QTextTable *, time_t);
 
-  std::string 
+  std::string
   getRandomString();
 
-  void 
+  void
   showMessage(const QString&, const QString&);
 
-  void 
+  void
   fitView();
 
-  void 
+  void
   summonReaper();
 
   void
@@ -204,11 +204,11 @@ private:
   void
   plotTrustTree();
 
-signals:  
+signals:
   void
   processData(const ndn::shared_ptr<const ndn::Data>& data, bool show, bool isHistory);
 
-  void 
+  void
   processTreeUpdate(const std::vector<Sync::MissingDataInfo>);
 
   void
@@ -216,7 +216,7 @@ signals:
 
   void
   inivationRejection(const QString& msg);
-             
+
   void
   showChatMessage(const QString& chatroomName, const QString& from, const QString& data);
 
@@ -229,13 +229,13 @@ signals:
         size_t routablePrefixOffset, bool isIntroducer);
 
   void
-  replyTimeout(const ndn::Interest& interest, 
+  replyTimeout(const ndn::Interest& interest,
                size_t routablePrefixOffset);
 
   void
   introCert(const ndn::Interest& interest,
             const ndn::shared_ptr<const ndn::Data>& data);
-  
+
   void
   introCertTimeout(const ndn::Interest& interest,
                    int retry, const QString& msg);
@@ -254,29 +254,29 @@ private slots:
   void
   onReturnPressed();
 
-  void 
+  void
   onSyncTreeButtonPressed();
 
   void
   onTrustTreeButtonPressed();
 
-  void 
+  void
   onProcessData(const ndn::shared_ptr<const ndn::Data>& data,
                 bool show, bool isHistory);
 
-  void 
+  void
   onProcessTreeUpdate(const std::vector<Sync::MissingDataInfo>&);
 
-  void 
+  void
   onReplot();
 
-  void 
+  void
   onRosterChanged(QStringList);
 
   void
   onInviteListDialogRequested();
 
-  void 
+  void
   sendJoin();
 
   void
@@ -285,7 +285,7 @@ private slots:
   void
   sendLeave();
 
-  void 
+  void
   enableSyncTreeDisplay();
 
   void

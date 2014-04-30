@@ -13,7 +13,7 @@
 
 #include "controller.h"
 #include "logging.h"
-#include <ndn-cpp-dev/face.hpp>
+#include <ndn-cxx/face.hpp>
 #include <boost/thread/thread.hpp>
 
 INIT_LOGGER("MAIN");
@@ -28,16 +28,16 @@ public:
     : QApplication(argc, argv)
   { }
 
-  bool notify(QObject * receiver, QEvent * event) 
+  bool notify(QObject * receiver, QEvent * event)
   {
     try {
         return QApplication::notify(receiver, event);
-    } 
+    }
     catch(std::exception& e){
       std::cerr << "Exception thrown:" << e.what() << std::endl;
       return false;
     }
-    
+
   }
 };
 
@@ -53,13 +53,13 @@ void runIO(shared_ptr<boost::asio::io_service> ioService)
 int main(int argc, char *argv[])
 {
   NewApp app(argc, argv);
-  
+
   shared_ptr<Face> face = make_shared<Face>();
   chronos::Controller controller(face);
 
   app.setQuitOnLastWindowClosed(false);
 
   boost::thread (runIO, face->ioService());
-  
+
   return app.exec();
 }

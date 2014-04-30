@@ -191,7 +191,7 @@ ContactStorage::initializeTable(const std::string& tableName, const std::string&
 
 shared_ptr<Profile>
 ContactStorage::getSelfProfile()
-{  
+{
   shared_ptr<Profile> profile = make_shared<Profile>(m_identity);
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT profile_type, profile_value FROM SelfProfile", -1, &stmt, 0);
@@ -249,7 +249,7 @@ ContactStorage::updateCollectEndorse(const EndorseCertificate& endorseCertificat
   const Block &block = endorseCertificate.wireEncode();
   sqlite3_bind_text(stmt, 3, reinterpret_cast<const char*>(block.wire()), block.size(), SQLITE_TRANSIENT);
   int res = sqlite3_step (stmt);
-  sqlite3_finalize (stmt); 
+  sqlite3_finalize (stmt);
   return;
 }
 
@@ -288,18 +288,18 @@ ContactStorage::getEndorseList(const Name& identity, std::vector<std::string>& e
   while( sqlite3_step (stmt) == SQLITE_ROW)
     {
       std::string profileType(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      endorseList.push_back(profileType);      
+      endorseList.push_back(profileType);
     }
-  sqlite3_finalize (stmt);  
+  sqlite3_finalize (stmt);
 }
 
 
-void 
+void
 ContactStorage::removeContact(const Name& identityName)
 {
   std::string identity = identityName.toUri();
-  
-  sqlite3_stmt *stmt;  
+
+  sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "DELETE FROM Contact WHERE contact_namespace=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.c_str(), identity.size (), SQLITE_TRANSIENT);
   int res = sqlite3_step (stmt);
@@ -309,13 +309,13 @@ ContactStorage::removeContact(const Name& identityName)
   sqlite3_bind_text(stmt, 1, identity.c_str(),  identity.size (), SQLITE_TRANSIENT);
   res = sqlite3_step (stmt);
   sqlite3_finalize (stmt);
-  
+
   sqlite3_prepare_v2 (m_db, "DELETE FROM TrustScope WHERE contact_namespace=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, identity.c_str(),  identity.size (), SQLITE_TRANSIENT);
   res = sqlite3_step (stmt);
-  sqlite3_finalize (stmt);         
+  sqlite3_finalize (stmt);
 }
-  
+
 void
 ContactStorage::addContact(const Contact& contact)
 {
@@ -325,9 +325,9 @@ ContactStorage::addContact(const Contact& contact)
   std::string identity = contact.getNameSpace().toUri();
   bool isIntroducer = contact.isIntroducer();
 
-  sqlite3_stmt *stmt;  
-  sqlite3_prepare_v2 (m_db, 
-                      "INSERT INTO Contact (contact_namespace, contact_alias, contact_keyName, contact_key, notBefore, notAfter, is_introducer) values (?, ?, ?, ?, ?, ?, ?)", 
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db,
+                      "INSERT INTO Contact (contact_namespace, contact_alias, contact_keyName, contact_key, notBefore, notAfter, is_introducer) values (?, ?, ?, ?, ?, ?, ?)",
                       -1,
                       &stmt,
                       0);
@@ -351,10 +351,10 @@ ContactStorage::addContact(const Contact& contact)
 
   for(; it != profile.end(); it++)
     {
-      sqlite3_prepare_v2 (m_db, 
-                          "INSERT INTO ContactProfile (profile_identity, profile_type, profile_value, endorse) values (?, ?, ?, 0)", 
-                          -1, 
-                          &stmt, 
+      sqlite3_prepare_v2 (m_db,
+                          "INSERT INTO ContactProfile (profile_identity, profile_type, profile_value, endorse) values (?, ?, ?, 0)",
+                          -1,
+                          &stmt,
                           0);
       sqlite3_bind_text(stmt, 1, identity.c_str(),  identity.size (), SQLITE_TRANSIENT);
       sqlite3_bind_text(stmt, 2, it->first.c_str(), it->first.size(), SQLITE_TRANSIENT);
@@ -370,15 +370,15 @@ ContactStorage::addContact(const Contact& contact)
 
       while(it != end)
         {
-          sqlite3_prepare_v2 (m_db, 
-                              "INSERT INTO TrustScope (contact_namespace, trust_scope) values (?, ?)", 
-                              -1, 
-                              &stmt, 
+          sqlite3_prepare_v2 (m_db,
+                              "INSERT INTO TrustScope (contact_namespace, trust_scope) values (?, ?)",
+                              -1,
+                              &stmt,
                               0);
           sqlite3_bind_text(stmt, 1, identity.c_str(), identity.size (), SQLITE_TRANSIENT);
           sqlite3_bind_text(stmt, 2, it->first.toUri().c_str(), it->first.toUri().size(), SQLITE_TRANSIENT);
           res = sqlite3_step (stmt);
-          sqlite3_finalize (stmt);          
+          sqlite3_finalize (stmt);
           it++;
         }
     }
@@ -410,7 +410,7 @@ ContactStorage::getContact(const Name& identity) const
 
   sqlite3_prepare_v2 (m_db, "SELECT profile_type, profile_value FROM ContactProfile where profile_identity=?", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, identity.toUri().c_str(), identity.toUri().size(), SQLITE_TRANSIENT);
-  
+
   while(sqlite3_step (stmt) == SQLITE_ROW)
     {
       std::string type(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes (stmt, 0));
@@ -449,7 +449,7 @@ ContactStorage::updateIsIntroducer(const Name& identity, bool isIntroducer)
   return;
 }
 
-void 
+void
 ContactStorage::updateAlias(const Name& identity, std::string alias)
 {
   sqlite3_stmt *stmt;
@@ -465,20 +465,20 @@ bool
 ContactStorage::doesContactExist(const Name& name)
 {
   bool result = false;
-  
+
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT count(*) FROM Contact WHERE contact_namespace=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, name.toUri().c_str(), name.toUri().size(), SQLITE_TRANSIENT);
 
   int res = sqlite3_step (stmt);
-    
+
   if (res == SQLITE_ROW)
     {
       int countAll = sqlite3_column_int (stmt, 0);
       if (countAll > 0)
         result = true;
-    } 
-  sqlite3_finalize (stmt); 
+    }
+  sqlite3_finalize (stmt);
   return result;
 }
 
@@ -489,7 +489,7 @@ ContactStorage::getAllContacts(std::vector<shared_ptr<Contact> >& contacts) cons
 
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT contact_namespace FROM Contact", -1, &stmt, 0);
-  
+
   while(sqlite3_step (stmt) == SQLITE_ROW)
     {
       std::string identity(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), sqlite3_column_bytes(stmt, 0));
@@ -508,16 +508,16 @@ ContactStorage::getAllContacts(std::vector<shared_ptr<Contact> >& contacts) cons
 }
 
 void
-ContactStorage::updateDnsData(const Block& data, 
-                              const std::string& name, 
-                              const std::string& type, 
+ContactStorage::updateDnsData(const Block& data,
+                              const std::string& name,
+                              const std::string& type,
                               const std::string& dataName)
-{  
+{
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "INSERT OR REPLACE INTO DnsData (dns_name, dns_type, dns_value, data_name) VALUES (?, ?, ?, ?)", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, name.c_str(), name.size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 2, type.c_str(), type.size(), SQLITE_TRANSIENT);
-  sqlite3_bind_text(stmt, 3, reinterpret_cast<const char*>(data.wire()), data.size(), SQLITE_TRANSIENT); 
+  sqlite3_bind_text(stmt, 3, reinterpret_cast<const char*>(data.wire()), data.size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 4, dataName.c_str(), dataName.size(), SQLITE_TRANSIENT);
   int res = sqlite3_step(stmt);
 
@@ -533,7 +533,7 @@ ContactStorage::getDnsData(const Name& dataName)
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT dns_value FROM DnsData where data_name=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, dataName.toUri().c_str(), dataName.toUri().size(), SQLITE_TRANSIENT);
-  
+
   if(sqlite3_step (stmt) == SQLITE_ROW)
     {
       data = make_shared<Data>();
@@ -553,7 +553,7 @@ ContactStorage::getDnsData(const std::string& name, const std::string& type)
   sqlite3_prepare_v2 (m_db, "SELECT dns_value FROM DnsData where dns_name=? and dns_type=?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, name.c_str(), name.size(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 2, type.c_str(), type.size(), SQLITE_TRANSIENT);
-  
+
   if(sqlite3_step (stmt) == SQLITE_ROW)
     {
       data = make_shared<Data>();

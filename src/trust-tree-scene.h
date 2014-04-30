@@ -11,8 +11,6 @@
 #ifndef TRUST_TREE_SCENE_H
 #define TRUST_TREE_SCENE_H
 
-
-
 #include <QtGui/QGraphicsScene>
 #include <QColor>
 #include <QMap>

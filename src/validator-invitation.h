@@ -11,9 +11,9 @@
 #ifndef CHRONOS_VALIDATOR_INVITATION_H
 #define CHRONOS_VALIDATOR_INVITATION_H
 
-#include <ndn-cpp-dev/security/validator.hpp>
-#include <ndn-cpp-dev/security/certificate-cache.hpp>
-#include <ndn-cpp-dev/security/sec-rule-relative.hpp>
+#include <ndn-cxx/security/validator.hpp>
+#include <ndn-cxx/security/certificate-cache.hpp>
+#include <ndn-cxx/security/sec-rule-relative.hpp>
 #include <map>
 
 #include "endorse-certificate.h"
@@ -31,20 +31,20 @@ public:
   static const ndn::shared_ptr<ndn::CertificateCache> DefaultCertificateCache;
 
   ValidatorInvitation();
-  
+
   virtual
   ~ValidatorInvitation() {};
 
   void
   addTrustAnchor(const ndn::Name& keyName, const ndn::PublicKey& key)
-  { 
-    m_trustAnchors[keyName] = key; 
+  {
+    m_trustAnchors[keyName] = key;
   }
 
   void
   removeTrustAnchor(const ndn::Name& keyName)
-  { 
-    m_trustAnchors.erase(keyName); 
+  {
+    m_trustAnchors.erase(keyName);
   }
 
   void
@@ -52,19 +52,19 @@ public:
   {
     m_trustAnchors.clear();
   }
-  
+
 protected:
   void
-  checkPolicy(const ndn::Data& data, 
-              int stepCount, 
-              const ndn::OnDataValidated& onValidated, 
+  checkPolicy(const ndn::Data& data,
+              int stepCount,
+              const ndn::OnDataValidated& onValidated,
               const ndn::OnDataValidationFailed& onValidationFailed,
               std::vector<ndn::shared_ptr<ndn::ValidationRequest> >& nextSteps);
-  
+
   void
-  checkPolicy(const ndn::Interest& interest, 
-              int stepCount, 
-              const ndn::OnInterestValidated& onValidated, 
+  checkPolicy(const ndn::Interest& interest,
+              int stepCount,
+              const ndn::OnInterestValidated& onValidated,
               const ndn::OnInterestValidationFailed& onValidationFailed,
               std::vector<ndn::shared_ptr<ndn::ValidationRequest> >& nextSteps);
 
@@ -73,7 +73,7 @@ private:
   internalCheck(const uint8_t* buf, size_t size,
                 const ndn::SignatureSha256WithRsa& sig,
                 const ndn::Data& innerData,
-                const OnValidated& onValidated, 
+                const OnValidated& onValidated,
                 const OnValidationFailed& onValidationFailed);
 
 private:

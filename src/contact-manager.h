@@ -19,9 +19,9 @@
 #include "profile.h"
 #include "endorse-info.pb.h"
 #include "endorse-collection.pb.h"
-#include <ndn-cpp-dev/face.hpp>
-#include <ndn-cpp-dev/security/key-chain.hpp>
-#include <ndn-cpp-dev/security/validator.hpp>
+#include <ndn-cxx/face.hpp>
+#include <ndn-cxx/security/key-chain.hpp>
+#include <ndn-cxx/security/validator.hpp>
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #endif
@@ -70,22 +70,22 @@ private:
   prepareEndorseInfo(const ndn::Name& identity);
 
   // PROFILE: self-endorse-certificate
-  void 
-  onDnsSelfEndorseCertValidated(const ndn::shared_ptr<const ndn::Data>& selfEndorseCertificate, 
+  void
+  onDnsSelfEndorseCertValidated(const ndn::shared_ptr<const ndn::Data>& selfEndorseCertificate,
                                 const ndn::Name& identity);
 
   void
-  onDnsSelfEndorseCertValidationFailed(const ndn::shared_ptr<const ndn::Data>& selfEndorseCertificate, 
+  onDnsSelfEndorseCertValidationFailed(const ndn::shared_ptr<const ndn::Data>& selfEndorseCertificate,
                                        const std::string& failInfo,
                                        const ndn::Name& identity);
 
   void
   onDnsSelfEndorseCertTimeoutNotify(const ndn::Interest& interest,
                                     const ndn::Name& identity);
- 
+
   // ENDORSED: endorse-collection
   void
-  onDnsCollectEndorseValidated(const ndn::shared_ptr<const ndn::Data>& data, 
+  onDnsCollectEndorseValidated(const ndn::shared_ptr<const ndn::Data>& data,
                                const ndn::Name& identity);
 
   void
@@ -95,19 +95,19 @@ private:
 
   void
   onDnsCollectEndorseTimeoutNotify(const ndn::Interest& interest,
-                                   const ndn::Name& identity);  
+                                   const ndn::Name& identity);
 
   // PROFILE-CERT: endorse-certificate
   void
   onEndorseCertificateInternal(const ndn::Interest& interest,
-                               ndn::Data& data, 
-                               const ndn::Name& identity, 
+                               ndn::Data& data,
+                               const ndn::Name& identity,
                                int certIndex,
                                std::string hash);
 
   void
   onEndorseCertificateInternalTimeout(const ndn::Interest& interest,
-                                      const ndn::Name& identity, 
+                                      const ndn::Name& identity,
                                       int certIndex);
 
   // Collect endorsement
@@ -133,7 +133,7 @@ private:
   // Identity certificate
   void
   onIdentityCertValidated(const ndn::shared_ptr<const ndn::Data>& data);
-  
+
   void
   onIdentityCertValidationFailed(const ndn::shared_ptr<const ndn::Data>& data,
                                  const std::string& failInfo);
@@ -152,7 +152,7 @@ private:
   publishSelfEndorseCertificateInDNS(const EndorseCertificate& selfEndorseCertificate);
 
   // Publish endorse certificate
-  ndn::shared_ptr<EndorseCertificate> 
+  ndn::shared_ptr<EndorseCertificate>
   generateEndorseCertificate(const ndn::Name& identity);
 
   void
@@ -167,13 +167,13 @@ private:
                int retry = 1);
 
   void
-  onTargetData(const ndn::Interest& interest, 
+  onTargetData(const ndn::Interest& interest,
                const ndn::Data& data,
                const ndn::OnDataValidated& onValidated,
                const ndn::OnDataValidationFailed& onValidationFailed);
 
   void
-  onTargetTimeout(const ndn::Interest& interest, 
+  onTargetTimeout(const ndn::Interest& interest,
                   int retry,
                   const ndn::OnDataValidated& onValidated,
                   const ndn::OnDataValidationFailed& onValidationFailed,
@@ -182,7 +182,7 @@ private:
   // DNS listener
   void
   onDnsInterest(const ndn::Name& prefix, const ndn::Interest& interest);
-  
+
   void
   onDnsRegisterFailed(const ndn::Name& prefix, const std::string& failInfo);
 
@@ -195,7 +195,7 @@ signals:
 
   void
   idCertNameListReady(const QStringList& certNameList);
-  
+
   void
   nameListReady(const QStringList& certNameList);
 
@@ -209,9 +209,9 @@ signals:
   contactIdListReady(const QStringList& idList);
 
   void
-  contactInfoReady(const QString& identity, 
-                   const QString& name, 
-                   const QString& institute, 
+  contactInfoReady(const QString& identity,
+                   const QString& name,
+                   const QString& institute,
                    bool isIntro);
 
   void
@@ -223,7 +223,7 @@ public slots:
 
   void
   onFetchContactInfo(const QString& identity);
-  
+
   void
   onAddFetchedContact(const QString& identity);
 
@@ -244,7 +244,7 @@ public slots:
 
   void
   onWaitForContactInfo(const QString& identity);
-  
+
   void
   onRemoveContact(const QString& identity);
 

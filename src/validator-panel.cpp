@@ -27,25 +27,25 @@ ValidatorPanel::ValidatorPanel(int stepLimit /* = 10 */,
                                const shared_ptr<CertificateCache> certificateCache/* = DEFAULT_CERT_CACHE */)
   : m_stepLimit(stepLimit)
   , m_certificateCache(certificateCache)
-{  
-  m_endorseeRule = make_shared<SecRuleRelative>("^([^<DNS>]*)<DNS><>*<ENDORSEE><>$", 
-                                                "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$", 
+{
+  m_endorseeRule = make_shared<SecRuleRelative>("^([^<DNS>]*)<DNS><>*<ENDORSEE><>$",
+                                                "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$",
                                                 "==", "\\1", "\\1\\2", true);
 }
 
 
 
 void
-ValidatorPanel::checkPolicy (const Data& data, 
-                             int stepCount, 
-                             const OnDataValidated& onValidated, 
+ValidatorPanel::checkPolicy (const Data& data,
+                             int stepCount,
+                             const OnDataValidated& onValidated,
                              const OnDataValidationFailed& onValidationFailed,
                              std::vector<shared_ptr<ValidationRequest> >& nextSteps)
 {
   if(m_stepLimit == stepCount)
     {
       _LOG_ERROR("Reach the maximum steps of verification!");
-      onValidationFailed(data.shared_from_this(), 
+      onValidationFailed(data.shared_from_this(),
                          "Reach maximum validation steps: " + data.getName().toUri());
       return;
     }
@@ -71,7 +71,7 @@ ValidatorPanel::checkPolicy (const Data& data,
     }
   catch(SignatureSha256WithRsa::Error &e)
     {
-      return onValidationFailed(data.shared_from_this(), 
+      return onValidationFailed(data.shared_from_this(),
                                 "Not SignatureSha256WithRsa signature: " + data.getName().toUri());
     }
   catch(KeyLocator::Error &e)

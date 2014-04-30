@@ -36,11 +36,11 @@ public:
 signals:
   void
   startChatroom(const QString& chatroomName, bool secured);
-    
+
 private slots:
   void
   onOkClicked();
-  
+
   void
   onCancelClicked();
 

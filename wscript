@@ -9,14 +9,14 @@ def options(opt):
     opt.add_option('--with-log4cxx',action='store_true',default=False,dest='log4cxx',help='''Enable log4cxx''')
     opt.add_option('--with-tests', action='store_true',default=False,dest='with_tests',help='''build unit tests''')
     opt.add_option('--without-security', action='store_false',default=True,dest='with_security',help='''Enable security''')
-    
+
     opt.load('compiler_c compiler_cxx qt4')
 
     if Utils.unversioned_sys_platform () != "darwin":
         opt.load('gnu_dirs');
 
     opt.load('boost protoc', tooldir=['waf-tools'])
-    
+
 def configure(conf):
     conf.load("compiler_c compiler_cxx boost protoc qt4")
 
@@ -42,13 +42,13 @@ def configure(conf):
         flags = ['-O3', '-g', '-Wno-tautological-compare', '-Wno-unused-function', '-Wno-deprecated-declarations']
         conf.add_supported_cxxflags (cxxflags = flags)
 
-    conf.check_cfg(package='libndn-cpp-dev', args=['--cflags', '--libs'], uselib_store='NDN_CPP', mandatory=True)
-    
-    
+    conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'], uselib_store='NDN_CXX', mandatory=True)
+
+
     if conf.options.log4cxx:
         conf.check_cfg(package='liblog4cxx', args=['--cflags', '--libs'], uselib_store='LOG4CXX', mandatory=True)
         conf.define ("HAVE_LOG4CXX", 1)
-        
+
     conf.check_cfg (package='ChronoSync', args=['ChronoSync >= 0.1', '--cflags', '--libs'], uselib_store='SYNC', mandatory=True)
 
     conf.check_boost(lib='system random thread filesystem unit_test_framework')
@@ -62,7 +62,7 @@ def configure(conf):
         conf.define('WITH_SECURITY', 1)
 
     conf.write_config_header('src/config.h')
-		
+
 def build (bld):
     qt = bld (
         target = "ChronoChat",
@@ -71,7 +71,7 @@ def build (bld):
         defines = "WAF",
         source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', '*.qrc', 'logging.cc', 'src/*.proto']),
         includes = "src .",
-        use = "QTCORE QTGUI QTWIDGETS QTSQL NDN_CPP BOOST LOG4CXX SYNC",
+        use = "QTCORE QTGUI QTWIDGETS QTSQL NDN_CXX BOOST LOG4CXX SYNC",
         )
 
     # Unit tests
@@ -91,10 +91,10 @@ def build (bld):
             bld(features=['cxx', 'cxxprogram'],
                 target = '%s' % (str(app.change_ext('','.cc'))),
                 source = app,
-                use = 'NDN_CPP',
+                use = 'NDN_CXX',
                 install_path = None,
             )
-      
+
       # Tmp disable
     if Utils.unversioned_sys_platform () == "darwin":
         app_plist = '''<?xml version="1.0" encoding="UTF-8"?>

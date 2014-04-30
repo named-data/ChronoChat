@@ -12,7 +12,7 @@
 #define TRUST_TREE_NODE_H
 
 #include <vector>
-#include <ndn-cpp-dev/name.hpp>
+#include <ndn-cxx/name.hpp>
 
 class TrustTreeNode;
 
@@ -31,7 +31,7 @@ public:
     , m_level(-1)
     , m_visited(false)
   {}
-  
+
   ~TrustTreeNode()
   {}
 

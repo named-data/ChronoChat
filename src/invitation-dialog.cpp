@@ -8,18 +8,17 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-
 #include "invitation-dialog.h"
 #include "ui_invitation-dialog.h"
 
 using namespace ndn;
 
-InvitationDialog::InvitationDialog(QWidget *parent) 
+InvitationDialog::InvitationDialog(QWidget *parent)
   : QDialog(parent)
   , ui(new Ui::InvitationDialog)
 {
     ui->setupUi(this);
-    
+
     connect(ui->okButton, SIGNAL(clicked()),
             this, SLOT(onOkClicked()));
     connect(ui->cancelButton, SIGNAL(clicked()),
@@ -44,17 +43,17 @@ InvitationDialog::setInvitation(const std::string& alias,
 
 void
 InvitationDialog::onOkClicked()
-{ 
-  emit invitationResponded(m_invitationInterest, true); 
+{
+  emit invitationResponded(m_invitationInterest, true);
   this->close();
 
   ui->msgLabel->clear();
   m_invitationInterest.clear();
 }
-  
+
 void
 InvitationDialog::onCancelClicked()
-{ 
+{
   emit invitationResponded(m_invitationInterest, false);
   this->close();
 

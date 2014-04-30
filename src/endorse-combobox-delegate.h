@@ -14,7 +14,7 @@
 #include <QItemDelegate>
 #include <string>
 #include <vector>
- 
+
 class EndorseComboBoxDelegate : public QItemDelegate
 {
   Q_OBJECT
@@ -23,25 +23,25 @@ public:
 
   // virtual
   // ~ComboBoxDelegate() {}
- 
+
   QWidget*
   createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const;
 
-  void 
+  void
   setEditorData(QWidget *editor, const QModelIndex &index) const;
-  
-  void 
+
+  void
   setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const;
-  
+
   void
   updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const;
-  
+
   void
   paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
- 
+
 private:
   std::vector<std::string> m_items;
- 
+
 };
 
 #endif

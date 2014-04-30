@@ -13,9 +13,7 @@
 
 #include "profile.h"
 #include <vector>
-#include <ndn-cpp-dev/security/identity-certificate.hpp>
-
-
+#include <ndn-cxx/security/identity-certificate.hpp>
 
 namespace chronos{
 

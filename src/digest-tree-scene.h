@@ -69,12 +69,12 @@ private:
 
 private:
   Roster m_roster;
-  QGraphicsTextItem *m_rootDigest; 
+  QGraphicsTextItem *m_rootDigest;
   DisplayUserPtr previouslyUpdatedUser;
   QString m_currentPrefix;
 };
 
-class User 
+class User
 {
 public:
   User():m_received(time(NULL)) {}
@@ -100,7 +100,7 @@ private:
   time_t m_received;
 };
 
-class DisplayUser : public User 
+class DisplayUser : public User
 {
 public:
   DisplayUser():m_seqTextItem(NULL), m_nickTextItem(NULL), m_rimRectItem(NULL) {}

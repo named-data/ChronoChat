@@ -11,27 +11,27 @@
 #include "start-chat-dialog.h"
 #include "ui_start-chat-dialog.h"
 
-StartChatDialog::StartChatDialog(QWidget *parent) 
+StartChatDialog::StartChatDialog(QWidget *parent)
   : QDialog(parent)
   , ui(new Ui::StartChatDialog)
 {
     ui->setupUi(this);
 
     connect(ui->okButton, SIGNAL(clicked()),
-	    this, SLOT(onOkClicked()));
+            this, SLOT(onOkClicked()));
     connect(ui->cancelButton, SIGNAL(clicked()),
-	    this, SLOT(onCancelClicked()));
+            this, SLOT(onCancelClicked()));
 }
 
 StartChatDialog::~StartChatDialog()
-{ 
-  delete ui; 
+{
+  delete ui;
 }
 
 void
 StartChatDialog::setChatroom(const std::string& chatroom)
-{ 
-  ui->chatroomInput->setText(QString::fromStdString(chatroom)); 
+{
+  ui->chatroomInput->setText(QString::fromStdString(chatroom));
 }
 
 void
@@ -45,8 +45,8 @@ StartChatDialog::onOkClicked()
 
 void
 StartChatDialog::onCancelClicked()
-{ 
-  this->close(); 
+{
+  this->close();
 }
 
 #if WAF

@@ -12,8 +12,8 @@
 #define CHRONOS_PROFILE_H
 
 #include "config.h"
-#include <ndn-cpp-dev/name.hpp>
-#include <ndn-cpp-dev/security/identity-certificate.hpp>
+#include <ndn-cxx/name.hpp>
+#include <ndn-cxx/security/identity-certificate.hpp>
 #include <map>
 #include <string>
 #include "profile.pb.h"
@@ -35,16 +35,16 @@ public:
   Profile(const ndn::Name& identityName,
           const std::string& name,
           const std::string& institution);
-  
+
   Profile(const Profile& profile);
-  
+
   ~Profile() {}
 
   std::string&
   operator [] (const std::string& profileKey)
   { return m_entries[profileKey]; }
 
-  std::string 
+  std::string
   get (const std::string& profileKey) const
   {
     std::map<std::string, std::string>::const_iterator it = m_entries.find(profileKey);

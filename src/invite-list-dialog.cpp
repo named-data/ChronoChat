@@ -11,7 +11,7 @@
 #include "invite-list-dialog.h"
 #include "ui_invite-list-dialog.h"
 
-InviteListDialog::InviteListDialog(QWidget *parent) 
+InviteListDialog::InviteListDialog(QWidget *parent)
   :QDialog(parent)
   , ui(new Ui::InviteListDialog)
   , m_contactListModel(new QStringListModel)
@@ -21,9 +21,9 @@ InviteListDialog::InviteListDialog(QWidget *parent)
   ui->contactListView->setModel(m_contactListModel);
 
   connect(ui->inviteButton, SIGNAL(clicked()),
-	  this, SLOT(onInviteClicked()));
+          this, SLOT(onInviteClicked()));
   connect(ui->cancelButton, SIGNAL(clicked()),
-	  this, SLOT(onCancelClicked()));
+          this, SLOT(onCancelClicked()));
 }
 
 InviteListDialog::~InviteListDialog()
@@ -34,7 +34,7 @@ InviteListDialog::~InviteListDialog()
 
 void
 InviteListDialog::setInviteLabel(std::string label)
-{ 
+{
   std::string msg("invite to chatroom:\n");
   msg += label;
   ui->inviteLabel->setText(QString::fromStdString(msg));

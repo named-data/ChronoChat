@@ -19,7 +19,7 @@
 using namespace ndn;
 using namespace chronos;
 
-BrowseContactDialog::BrowseContactDialog(QWidget *parent) 
+BrowseContactDialog::BrowseContactDialog(QWidget *parent)
   : QDialog(parent)
   , ui(new Ui::BrowseContactDialog)
   , m_contactListModel(new QStringListModel)
@@ -36,9 +36,9 @@ BrowseContactDialog::BrowseContactDialog(QWidget *parent)
   connect(ui->ContactList->selectionModel(), SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
           this, SLOT(onSelectionChanged(const QItemSelection &, const QItemSelection &)));
   connect(ui->AddButton, SIGNAL(clicked()),
-	  this, SLOT(onAddClicked()));
+          this, SLOT(onAddClicked()));
   connect(ui->DirectAddButton, SIGNAL(clicked()),
-	  this, SLOT(onDirectAddClicked()));
+          this, SLOT(onDirectAddClicked()));
 }
 
 BrowseContactDialog::~BrowseContactDialog()
@@ -113,19 +113,19 @@ BrowseContactDialog::onIdCertReady(const IdentityCertificate& idCert)
 
   ui->InfoTable->horizontalHeader()->show();
   ui->InfoTable->setColumnCount(2);
-  
+
   Profile::const_iterator proIt = profile.begin();
   Profile::const_iterator proEnd = profile.end();
   int rowCount = 0;
 
   for(; proIt != proEnd; proIt++, rowCount++)
     {
-      ui->InfoTable->insertRow(rowCount);  
+      ui->InfoTable->insertRow(rowCount);
       QTableWidgetItem* type = new QTableWidgetItem(QString::fromStdString(proIt->first));
       ui->InfoTable->setItem(rowCount, 0, type);
-      
+
       QTableWidgetItem* value = new QTableWidgetItem(QString::fromStdString(proIt->second));
-      ui->InfoTable->setItem(rowCount, 1, value);	  
+      ui->InfoTable->setItem(rowCount, 1, value);
     }
 }
 

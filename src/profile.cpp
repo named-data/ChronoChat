@@ -29,7 +29,7 @@ Profile::Profile(const IdentityCertificate& identityCertificate)
   Name keyName = IdentityCertificate::certificateNameToPublicKeyName(identityCertificate.getName());
 
   m_entries[std::string("IDENTITY")] = keyName.getPrefix(-1).toUri();
-  
+
   const std::vector<CertificateSubjectDescription>& subList = identityCertificate.getSubjectDescriptionList();
   std::vector<CertificateSubjectDescription>::const_iterator it = subList.begin();
   for(; it != subList.end(); it++)
@@ -59,8 +59,8 @@ Profile::Profile(const Name& identityName)
 }
 
 Profile::Profile(const Name& identityName,
-		 const std::string& name,
-		 const std::string& institution)
+                 const std::string& name,
+                 const std::string& institution)
 {
   m_entries["IDENTITY"] = identityName.toUri();
   m_entries["name"] = name;
@@ -82,7 +82,7 @@ Profile::encode(std::ostream& os) const
 void
 Profile::decode(std::istream& is)
 {
-  Chronos::ProfileMsg profileMsg;    
+  Chronos::ProfileMsg profileMsg;
   profileMsg.ParseFromIstream(&is);
   profileMsg >> (*this);
 }
@@ -108,7 +108,7 @@ operator >> (Chronos::ProfileMsg& profileMsg, Profile& profile)
       const Chronos::ProfileMsg::ProfileEntry& profileEntry = profileMsg.entry(i);
       profile[profileEntry.oid()] = profileEntry.data();
     }
-  
+
   return profileMsg;
 }
 

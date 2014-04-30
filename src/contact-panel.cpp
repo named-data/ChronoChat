@@ -24,7 +24,7 @@
 
 INIT_LOGGER("ContactPanel");
 
-ContactPanel::ContactPanel(QWidget *parent) 
+ContactPanel::ContactPanel(QWidget *parent)
   : QDialog(parent)
   , ui(new Ui::ContactPanel)
   , m_setAliasDialog(new SetAliasDialog)
@@ -158,9 +158,9 @@ ContactPanel::onContactIdListReady(const QStringList& idList)
 }
 
 void
-ContactPanel::onContactInfoReady(const QString& identity, 
-                                 const QString& name, 
-                                 const QString& institute, 
+ContactPanel::onContactInfoReady(const QString& identity,
+                                 const QString& name,
+                                 const QString& institute,
                                  bool isIntro)
 {
   ui->NameData->setText(name);
@@ -181,7 +181,7 @@ ContactPanel::onContactInfoReady(const QString& identity,
     {
       ui->isIntroducer->setChecked(true);
       ui->addScope->setEnabled(true);
-      ui->deleteScope->setEnabled(true);     
+      ui->deleteScope->setEnabled(true);
       ui->trustScopeList->setEnabled(true);
     }
   else
@@ -317,10 +317,10 @@ ContactPanel::onDeleteScopeClicked()
   QItemSelectionModel* selectionModel = ui->trustScopeList->selectionModel();
   QModelIndexList indexList = selectionModel->selectedIndexes();
 
-  int i = indexList.size() - 1;  
+  int i = indexList.size() - 1;
   for(; i >= 0; i--)
     m_trustScopeModel->removeRow(indexList[i].row());
-    
+
   m_trustScopeModel->submitAll();
 }
 

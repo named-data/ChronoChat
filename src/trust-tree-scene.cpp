@@ -23,7 +23,7 @@
 static const double Pi = 3.14159265358979323846264338327950288419717;
 
 TrustTreeScene::TrustTreeScene(QWidget *parent)
-  : QGraphicsScene(parent) 
+  : QGraphicsScene(parent)
 {}
 
 void
@@ -53,22 +53,22 @@ TrustTreeScene::plotEdge(const TrustTreeNodeList& nodeList, int nodeSize)
       TrustTreeNodeList& introducees = (*it)->getIntroducees();
       TrustTreeNodeList::iterator eeIt  = introducees.begin();
       TrustTreeNodeList::iterator eeEnd = introducees.end();
-      
+
       for(; eeIt != eeEnd; eeIt++)
         {
           if((*it)->level() >= (*eeIt)->level())
             continue;
-          
+
           double x1 = (*it)->x;
           double y1 = (*it)->y;
           double x2 = (*eeIt)->x;
           double y2 = (*eeIt)->y;
-          
+
           QPointF src(x1 + nodeSize/2, y1 + nodeSize/2);
           QPointF dest(x2 + nodeSize/2, y2 + nodeSize/2);
           QLineF line(src, dest);
           double angle = ::acos(line.dx() / line.length());
-          
+
           double arrowSize = 10;
           QPointF endP0 = src + QPointF((nodeSize/2) * line.dx() / line.dy(), nodeSize/2);
           QPointF sourceArrowP0 = dest + QPointF((-nodeSize/2) * line.dx() / line.dy(), -nodeSize/2);

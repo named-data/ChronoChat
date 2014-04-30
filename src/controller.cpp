@@ -17,7 +17,7 @@
 #ifndef Q_MOC_RUN
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
-#include <ndn-cpp-dev/util/random.hpp>
+#include <ndn-cxx/util/random.hpp>
 #include <cryptopp/sha.h>
 #include <cryptopp/hex.h>
 #include <cryptopp/files.h>
@@ -45,7 +45,7 @@ static const uint8_t ROUTING_PREFIX_SEPARATOR[2] = {0xF0, 0x2E};
 
 // constructor & destructor
 Controller::Controller(shared_ptr<Face> face,
-		       QWidget* parent)
+                       QWidget* parent)
   : QDialog(parent)
   , m_face(face)
   , m_invitationListenerId(0)
@@ -160,7 +160,7 @@ Controller::Controller(shared_ptr<Face> face,
 
   onUpdateLocalPrefixAction();
 }
-  
+
 Controller::~Controller()
 {
   saveConf();
@@ -204,7 +204,7 @@ void
 Controller::initialize()
 {
   loadConf();
-  
+
   m_keyChain.createIdentity(m_identity);
 
   openDB();
@@ -219,7 +219,7 @@ Controller::setInvitationListener()
 {
   if(m_invitationListenerId != 0)
     m_face->unsetInterestFilter(m_invitationListenerId);
-  
+
   Name invitationPrefix;
   Name routingPrefix = getInvitationRoutingPrefix();
   size_t offset = 0;
@@ -230,7 +230,7 @@ Controller::setInvitationListener()
     }
   invitationPrefix.append(m_identity).append("CHRONOCHAT-INVITATION");
 
-  m_invitationListenerId = m_face->setInterestFilter(invitationPrefix, 
+  m_invitationListenerId = m_face->setInterestFilter(invitationPrefix,
                                                      bind(&Controller::onInvitationInterestWrapper, this, _1, _2, offset),
                                                      bind(&Controller::onInvitationRegisterFailed, this, _1, _2));
 }
@@ -260,12 +260,12 @@ Controller::loadConf()
       // TODO: change below to system default;
       m_identity.append("chronochat-tmp-identity")
         .append(getRandomString());
-      
+
       m_nick = m_identity.get(-1).toUri();
     }
 }
 
-void 
+void
 Controller::saveConf()
 {
   namespace fs = boost::filesystem;
@@ -346,7 +346,7 @@ Controller::updateMenu()
 {
   QMenu* menu = new QMenu(this);
   QMenu* closeMenu = 0;
-  
+
   menu->addAction(m_startChatroom);
   menu->addSeparator();
   menu->addAction(m_settingsAction);
@@ -384,7 +384,7 @@ Controller::updateMenu()
   }
   menu->addSeparator();
   menu->addAction(m_quitAction);
-  
+
   m_trayIcon->setContextMenu(menu);
   delete m_trayIconMenu;
   m_trayIconMenu = menu;
@@ -450,7 +450,7 @@ Controller::getRandomString()
     using namespace CryptoPP;
     StringSource(reinterpret_cast<uint8_t*>(&r), 4, true,
                  new HexEncoder(new FileSink(ss), false));
-    
+
   }
   // for(int i = 0; i < 8; i++)
   //   {
@@ -512,7 +512,7 @@ Controller::onIdentityUpdated(const QString& identity)
   setInvitationListener();
 
   emit closeDBModule();
-  
+
   QTimer::singleShot(500, this, SLOT(onIdentityUpdatedContinued()));
 
 }
@@ -524,7 +524,7 @@ Controller::onIdentityUpdatedContinued()
   // _LOG_DEBUG("connection name: " << connection.toStdString());
   QSqlDatabase::removeDatabase(connection);
   m_db.close();
-  
+
   openDB();
 
   emit identityUpdated(QString(m_identity.toUri().c_str()));
@@ -613,9 +613,9 @@ Controller::onUpdateLocalPrefixAction()
   interest.setInterestLifetime(time::milliseconds(1000));
   interest.setMustBeFresh(true);
 
-  m_face->expressInterest(interest, 
-                          bind(&Controller::onLocalPrefix, this, _1, _2), 
-                          bind(&Controller::onLocalPrefixTimeout, this, _1));  
+  m_face->expressInterest(interest,
+                          bind(&Controller::onLocalPrefix, this, _1, _2),
+                          bind(&Controller::onLocalPrefixTimeout, this, _1));
 }
 
 void
@@ -679,7 +679,7 @@ Controller::onStartChatroom(const QString& chatroomName, bool secured)
   shared_ptr<IdentityCertificate> idCert = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
   ChatDialog* chatDialog = new ChatDialog(&m_contactManager, m_face, *idCert, chatroomPrefix, m_localPrefix, m_nick, secured);
 
-  addChatDialog(chatroomName, chatDialog);  
+  addChatDialog(chatroomName, chatDialog);
   chatDialog->show();
 }
 
@@ -709,7 +709,7 @@ Controller::onInvitationResponded(const Name& invitationName, bool accepted)
       response.setFreshnessPeriod(time::milliseconds(1000));
     }
   m_keyChain.signByIdentity(response, m_identity);
-  
+
   // Check if we need a wrapper
   Name invitationRoutingPrefix = getInvitationRoutingPrefix();
   if(invitationRoutingPrefix.isPrefixOf(m_identity))
@@ -724,7 +724,7 @@ Controller::onInvitationResponded(const Name& invitationName, bool accepted)
         .append(response.getName());
 
       _LOG_DEBUG("onInvitationResponded: prepare reply " << wrappedName);
-      
+
       Data wrappedData(wrappedName);
       wrappedData.setContent(response.wireEncode());
       wrappedData.setFreshnessPeriod(time::milliseconds(1000));
@@ -756,8 +756,8 @@ Controller::onInvitationResponded(const Name& invitationName, bool accepted)
 void
 Controller::onShowChatMessage(const QString& chatroomName, const QString& from, const QString& data)
 {
-  m_trayIcon->showMessage(QString("Chatroom %1 has a new message").arg(chatroomName), 
-                          QString("<%1>: %2").arg(from).arg(data), 
+  m_trayIcon->showMessage(QString("Chatroom %1 has a new message").arg(chatroomName),
+                          QString("<%1>: %2").arg(from).arg(data),
                           QSystemTrayIcon::Information, 20000);
   m_trayIcon->setIcon(QIcon(":/images/note.png"));
 }
@@ -786,10 +786,10 @@ Controller::onRemoveChatDialog(const QString& chatroomName)
         delete chatAction;
       if(closeAction)
         delete closeAction;
-      
+
       m_chatActionList.erase(chatroomName.toStdString());
       m_closeActionList.erase(chatroomName.toStdString());
-      
+
       updateMenu();
     }
 }
@@ -801,7 +801,7 @@ Controller::onWarning(const QString& msg)
 }
 
 void
-Controller::onError(const QString& msg) 
+Controller::onError(const QString& msg)
 {
   QMessageBox::critical(this, tr("ChronoChat"), msg, QMessageBox::Ok);
   exit(1);

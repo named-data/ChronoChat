@@ -28,12 +28,12 @@ class InviteListDialog : public QDialog
 public:
   explicit
   InviteListDialog(QWidget *parent = 0);
-  
+
   ~InviteListDialog();
 
   void
   setInviteLabel(std::string label);
-  
+
 signals:
   void
   sendInvitation(const QString&);
@@ -46,7 +46,7 @@ public slots:
   onContactIdListReady(const QStringList& idList);
 
 private slots:
-  void 
+  void
   onInviteClicked();
 
   void
