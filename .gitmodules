@@ -1,4 +1,4 @@
 [submodule "ChronoSync"]
 	path = ChronoSync
-	url = https://github.com/named-data/ChronoSync.git
-	branch = dev
+	url = https://github.com/bruinfish/ChronoSync.git
+	branch = security
