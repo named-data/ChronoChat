@@ -16,19 +16,13 @@ Note that after you click to close ChronoChat, it will keep running on your syst
 
 ### Compilation steps for OSX
 
-1. Install MacPorts, if not yet installed (http://www.macports.org/) and configure NDN ports repository (https://github.com/named-data/ccnx/wiki/Using-ccnx-with-macports).  If your Macports are installed in `/opt/local`, add the following line at the end of `/opt/local/etc/macports/sources.conf` before the default port repository:
+1. Install MacPorts, if not yet installed (http://www.macports.org/), configure [NDN ports repository](http://named-data.net/doc/NFD/current/FAQ.html#how-to-start-using-ndn-macports-repository-on-osx) and install NFD if you don't have it yet.
 
-        rsync://macports.named-data.net/macports/
+        sudo port install nfd
+        sudo nfd-start
 
-2. Update port definitions and install (+load) required packages
+2. Install ChronoChat dependencies
 
-        $ sudo port selfupdate
-
-        # Install and CCNx
-        sudo port install ccnx
-        sudo port load ccnx
-
-        # Install ChronoChat dependencies
         sudo port install pkgconfig protobuf-cpp boost qt4-mac
 
 3. Fetch source code with submodules
@@ -46,9 +40,6 @@ If you already cloned repository, you can update submodules this way:
         ./waf
         sudo ./waf install
 
-Note, you may need to add ``--ndnx=<DIR>`` or ``--openssl=<DIR>`` flags to ``./waf configure`` 
-if NDNx and/or openssl cannot be found.
-
 5. Configure and build ChronoChat
 
         cd ..
@@ -57,27 +48,17 @@ if NDNx and/or openssl cannot be found.
 
 Congratulations! build/ChronoChat.app is ready to use (on a Mac).
 
-### Compilation steps for Ubuntu 12.04
+### Compilation steps for Ubuntu 12.04, 13.10, 14.04
 
-1. Install dependencies 
+1. Configure [NDN PPA repository](http://named-data.net/doc/NFD/current/FAQ.html#how-to-start-using-ndn-ppa-repository-on-ubuntu-linux) and install NFD if you don't have it yet.
 
-        # General dependencies (build tools and dependencies for CCNx)
-        sudo apt-get install git libpcap-dev libxml2-dev make libssl-dev libexpat-dev g++ pkg-config
+        sudo apt-get install nfd
 
-        # ChronoSync/ChronoChat dependencies
+2. Install ChronoChat dependencies
+
         sudo apt-get install libprotobuf-dev protobuf-compiler libevent-dev
         sudo apt-get install libboost1.48-all-dev
         sudo apt-get install qt4-dev-tools
-
-**NOTE** Only 1.48 version of boost libraries should be installed from packages.  Since Ubuntu 12.04 ships with two versions, please make sure that 1.46 is not present, otherwise result is not guaranteed.
-
-2. Download and install NDN fork of CCNx software
-
-        git clone git://github.com/named-data/ccnx
-        cd ccnx
-        ./configure
-        make
-        sudo make install
 
 3. Fetch source code with submodules
 
@@ -95,9 +76,6 @@ If you already cloned repository, you can update submodules this way:
         sudo ./waf install
         sudo ldconfig
 
-Note, you may need to add ``--ndnx=<DIR>`` or ``--openssl=<DIR>`` flags to ``./waf configure`` 
-if NDNx and/or openssl cannot be found.
-
 5. Configure and build ChronoChat
 
         cd ..
@@ -105,5 +83,3 @@ if NDNx and/or openssl cannot be found.
         ./waf
 
 Congratulations! build/ChronoChat is ready to use.  Do not forget to start ccnd and configure FIB before using ChronoChat.
-
-
