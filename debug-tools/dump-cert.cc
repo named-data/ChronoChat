@@ -5,12 +5,13 @@
  * See COPYING for copyright and distribution information.
  */
 
-#include <ndn-cpp-dev/security/key-chain.hpp>
-#include <ndn-cpp-dev/face.hpp>
+#include "common.hpp"
+#include <ndn-cxx/security/key-chain.hpp>
+#include <ndn-cxx/face.hpp>
 
 using namespace ndn;
 
-int 
+int
 main()
 {
   Name root("/ndn");
@@ -19,23 +20,21 @@ main()
   Name bob("/ndn/test/bob");
   Name cathy("/ndn/test/cathy");
 
-  KeyChainImpl<SecPublicInfoSqlite3, SecTpmFile> keyChain;
+  KeyChain keyChain("sqlite3", "file");
 
-  if(!keyChain.doesIdentityExist(root)
-     || !keyChain.doesIdentityExist(test)
-     || !keyChain.doesIdentityExist(alice)
-     || !keyChain.doesIdentityExist(bob)
-     || !keyChain.doesIdentityExist(cathy))
+  if (!keyChain.doesIdentityExist(root) ||
+      !keyChain.doesIdentityExist(test) ||
+      !keyChain.doesIdentityExist(alice) ||
+      !keyChain.doesIdentityExist(bob) ||
+      !keyChain.doesIdentityExist(cathy))
     return 1;
 
-  shared_ptr<boost::asio::io_service> ioService = make_shared<boost::asio::io_service>();
-  shared_ptr<Face> face = shared_ptr<Face>(new Face(ioService));
-  // shared_ptr<Face> face = make_shared<Face>();
-  
-  face->put(*keyChain.getCertificate(keyChain.getDefaultCertificateNameForIdentity(test)));
-  face->put(*keyChain.getCertificate(keyChain.getDefaultCertificateNameForIdentity(alice)));
-  face->put(*keyChain.getCertificate(keyChain.getDefaultCertificateNameForIdentity(bob)));
-  face->put(*keyChain.getCertificate(keyChain.getDefaultCertificateNameForIdentity(cathy)));
+  Face face;
 
-  ioService->run();
+  face.put(*keyChain.getCertificate(keyChain.getDefaultCertificateNameForIdentity(test)));
+  face.put(*keyChain.getCertificate(keyChain.getDefaultCertificateNameForIdentity(alice)));
+  face.put(*keyChain.getCertificate(keyChain.getDefaultCertificateNameForIdentity(bob)));
+  face.put(*keyChain.getCertificate(keyChain.getDefaultCertificateNameForIdentity(cathy)));
+
+  face.getIoService().run();
 }

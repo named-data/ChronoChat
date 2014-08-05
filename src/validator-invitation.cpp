@@ -8,20 +8,28 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "validator-invitation.h"
-#include "invitation.h"
+#include "validator-invitation.hpp"
+#include "invitation.hpp"
 
 #include "logging.h"
 
 using namespace ndn;
 
-INIT_LOGGER("ValidatorInvitation");
+namespace chronos {
 
-namespace chronos{
+using std::vector;
 
-using ndn::shared_ptr;
+using ndn::CertificateCache;
+using ndn::SecRuleRelative;
+using ndn::OnDataValidated;
+using ndn::OnDataValidationFailed;
+using ndn::OnInterestValidated;
+using ndn::OnInterestValidationFailed;
+using ndn::ValidationRequest;
+using ndn::IdentityCertificate;
 
-const shared_ptr<CertificateCache> ValidatorInvitation::DefaultCertificateCache = shared_ptr<CertificateCache>();
+const shared_ptr<CertificateCache> ValidatorInvitation::DefaultCertificateCache =
+  shared_ptr<CertificateCache>();
 
 ValidatorInvitation::ValidatorInvitation()
   : Validator()
@@ -34,38 +42,54 @@ ValidatorInvitation::ValidatorInvitation()
 }
 
 void
+ValidatorInvitation::addTrustAnchor(const Name& keyName, const ndn::PublicKey& key)
+{
+  m_trustAnchors[keyName] = key;
+}
+
+void
+ValidatorInvitation::removeTrustAnchor(const Name& keyName)
+{
+  m_trustAnchors.erase(keyName);
+}
+
+void
+ValidatorInvitation::cleanTrustAnchor()
+{
+  m_trustAnchors.clear();
+}
+
+void
 ValidatorInvitation::checkPolicy (const Data& data,
                                   int stepCount,
                                   const OnDataValidated& onValidated,
                                   const OnDataValidationFailed& onValidationFailed,
-                                  std::vector<shared_ptr<ValidationRequest> >& nextSteps)
+                                  vector<shared_ptr<ValidationRequest> >& nextSteps)
 {
-  try
-    {
-      SignatureSha256WithRsa sig(data.getSignature());
-      const Name & keyLocatorName = sig.getKeyLocator().getName();
+  const Signature& signature = data.getSignature();
 
-      if(!m_invitationReplyRule.satisfy(data.getName(), keyLocatorName))
-        return onValidationFailed(data.shared_from_this(),
-                                  "Does not comply with the invitation rule: "
-                                  + data.getName().toUri() + " signed by: "
-                                  + keyLocatorName.toUri());
+  if (signature.getKeyLocator().getType() != KeyLocator::KeyLocator_Name)
+    return onValidationFailed(data.shared_from_this(),
+                              "Key Locator is not a name: " + data.getName().toUri());
 
-      Data innerData;
-      innerData.wireDecode(data.getContent().blockFromValue());
+  const Name & keyLocatorName = signature.getKeyLocator().getName();
 
-      return internalCheck(data.wireEncode().value(),
-                           data.wireEncode().value_size() - data.getSignature().getValue().size(),
-                           sig,
-                           innerData,
-                           bind(onValidated, data.shared_from_this()),
-                           bind(onValidationFailed, data.shared_from_this(), _1));
-    }
-   catch(SignatureSha256WithRsa::Error &e)
-     {
-       return onValidationFailed(data.shared_from_this(),
-                                 "Not SignatureSha256WithRsa signature: " + data.getName().toUri());
-     }
+  if (!m_invitationReplyRule.satisfy(data.getName(), keyLocatorName))
+    return onValidationFailed(data.shared_from_this(),
+                              "Does not comply with the invitation rule: " +
+                              data.getName().toUri() + " signed by: " +
+                              keyLocatorName.toUri());
+
+  Data innerData;
+  innerData.wireDecode(data.getContent().blockFromValue());
+
+  return internalCheck(data.wireEncode().value(),
+                       data.wireEncode().value_size() - data.getSignature().getValue().size(),
+                       signature,
+                       keyLocatorName,
+                       innerData,
+                       bind(onValidated, data.shared_from_this()),
+                       bind(onValidationFailed, data.shared_from_this(), _1));
 }
 
 void
@@ -73,74 +97,65 @@ ValidatorInvitation::checkPolicy (const Interest& interest,
                                   int stepCount,
                                   const OnInterestValidated& onValidated,
                                   const OnInterestValidationFailed& onValidationFailed,
-                                  std::vector<shared_ptr<ValidationRequest> >& nextSteps)
+                                  vector<shared_ptr<ValidationRequest> >& nextSteps)
 {
-  try
-    {
-      Name interestName  = interest.getName();
+  const Name& interestName  = interest.getName();
 
-      if(!m_invitationInterestRule.match(interestName))
-        return onValidationFailed(interest.shared_from_this(),
-                                  "Invalid interest name: " +  interest.getName().toUri());
+  if (!m_invitationInterestRule.match(interestName))
+    return onValidationFailed(interest.shared_from_this(),
+                              "Invalid interest name: " +  interest.getName().toUri());
 
-      Name signedName = interestName.getPrefix(-1);
-      Buffer signedBlob = Buffer(signedName.wireEncode().value(), signedName.wireEncode().value_size());
+  Name signedName = interestName.getPrefix(-1);
+  Buffer signedBlob = Buffer(signedName.wireEncode().value(),
+                             signedName.wireEncode().value_size());
 
-      Block signatureBlock = interestName.get(Invitation::SIGNATURE).blockFromValue();
-      Block signatureInfo = interestName.get(Invitation::KEY_LOCATOR).blockFromValue();
-      Signature signature(signatureInfo, signatureBlock);
-      SignatureSha256WithRsa sig(signature);
+  Block signatureBlock = interestName.get(Invitation::SIGNATURE).blockFromValue();
+  Block signatureInfo = interestName.get(Invitation::KEY_LOCATOR).blockFromValue();
+  Signature signature(signatureInfo, signatureBlock);
 
-      Data innerData;
-      innerData.wireDecode(interestName.get(Invitation::INVITER_CERT).blockFromValue());
+  if (signature.getKeyLocator().getType() != KeyLocator::KeyLocator_Name)
+    return onValidationFailed(interest.shared_from_this(),
+                              "KeyLocator is not a name: " + interest.getName().toUri());
 
-      return internalCheck(signedBlob.buf(),
-                           signedBlob.size(),
-                           sig,
-                           innerData,
-                           bind(onValidated, interest.shared_from_this()),
-                           bind(onValidationFailed, interest.shared_from_this(), _1));
-    }
-  catch(SignatureSha256WithRsa::Error& e)
-    {
-      return onValidationFailed(interest.shared_from_this(),
-                                "Not SignatureSha256WithRsa signature: " + interest.getName().toUri());
-    }
+  const Name & keyLocatorName = signature.getKeyLocator().getName();
+
+  Data innerData;
+  innerData.wireDecode(interestName.get(Invitation::INVITER_CERT).blockFromValue());
+
+  return internalCheck(signedBlob.buf(), signedBlob.size(),
+                       signature,
+                       keyLocatorName,
+                       innerData,
+                       bind(onValidated, interest.shared_from_this()),
+                       bind(onValidationFailed, interest.shared_from_this(), _1));
 }
 
 void
 ValidatorInvitation::internalCheck(const uint8_t* buf, size_t size,
-                                   const SignatureSha256WithRsa& sig,
+                                   const Signature& signature,
+                                   const Name& keyLocatorName,
                                    const Data& innerData,
                                    const OnValidated& onValidated,
                                    const OnValidationFailed& onValidationFailed)
 {
-  try
-    {
-      const Name & keyLocatorName = sig.getKeyLocator().getName();
-      Name signingKeyName = IdentityCertificate::certificateNameToPublicKeyName(keyLocatorName);
+  Name signingKeyName = IdentityCertificate::certificateNameToPublicKeyName(keyLocatorName);
 
-      if(m_trustAnchors.find(signingKeyName) == m_trustAnchors.end())
-        return onValidationFailed("Cannot reach any trust anchor");
+  TrustAnchors::const_iterator keyIt = m_trustAnchors.find(signingKeyName);
+  if (keyIt == m_trustAnchors.end())
+    return onValidationFailed("Cannot reach any trust anchor");
 
-      if(!Validator::verifySignature(buf, size, sig, m_trustAnchors[signingKeyName]))
-        return onValidationFailed("Cannot verify outer signature");
+  if (!Validator::verifySignature(buf, size, signature, keyIt->second))
+    return onValidationFailed("Cannot verify outer signature");
 
-      // Temporarily disabled, we should get it back when we create a specific key for the chatroom.
-      // if(!Validator::verifySignature(innerData, m_trustAnchors[signingKeyName]))
-      //   return onValidationFailed("Cannot verify inner signature");
+  // Temporarily disabled, we should get it back when we create a specific key for the chatroom.
+  // if(!Validator::verifySignature(innerData, m_trustAnchors[signingKeyName]))
+  //   return onValidationFailed("Cannot verify inner signature");
 
-      if(!m_innerKeyRegex.match(innerData.getName())
-          || m_innerKeyRegex.expand() != signingKeyName.getPrefix(-1))
-         return onValidationFailed("Inner certificate does not comply with the rule");
+  if (!m_innerKeyRegex.match(innerData.getName()) ||
+      m_innerKeyRegex.expand() != signingKeyName.getPrefix(-1))
+    return onValidationFailed("Inner certificate does not comply with the rule");
 
-      return onValidated();
-    }
-  catch(KeyLocator::Error& e)
-    {
-      return onValidationFailed("Key Locator is not a name");
-    }
+  return onValidated();
 }
 
-
-}//chronos
+} // namespace chronos

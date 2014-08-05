@@ -8,19 +8,17 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "invitation.h"
+#include "invitation.hpp"
 
-#include <ndn-cxx/security/identity-certificate.hpp>
 #include <ndn-cxx/security/signature-sha256-with-rsa.hpp>
 
 #include "logging.h"
 
-using namespace ndn;
-
-INIT_LOGGER("Invitation");
-
-
 namespace chronos{
+
+using std::string;
+
+using ndn::IdentityCertificate;
 
 const size_t  Invitation::NAME_SIZE_MIN         = 7;
 const ssize_t Invitation::SIGNATURE             = -1;
@@ -36,22 +34,22 @@ Invitation::Invitation(const Name& interestName)
 {
   size_t nameSize = interestName.size();
 
-  if(nameSize < NAME_SIZE_MIN)
+  if (nameSize < NAME_SIZE_MIN)
     throw Error("Wrong Invitation Name: Wrong length");
 
-  if(interestName.get(CHRONOCHAT_INVITATION).toEscapedString() != "CHRONOCHAT-INVITATION")
+  if (interestName.get(CHRONOCHAT_INVITATION).toUri() != "CHRONOCHAT-INVITATION")
     throw Error("Wrong Invitation Name: Wrong application tags");
 
   m_interestName = interestName.getPrefix(KEY_LOCATOR);
   m_timestamp = interestName.get(TIMESTAMP).toNumber();
   m_inviterCertificate.wireDecode(interestName.get(INVITER_CERT).blockFromValue());
   m_inviterRoutingPrefix.wireDecode(interestName.get(INVITER_PREFIX).blockFromValue());
-  m_chatroom = interestName.get(CHATROOM).toEscapedString();
+  m_chatroom = interestName.get(CHATROOM).toUri();
   m_inviteeNameSpace = interestName.getPrefix(CHRONOCHAT_INVITATION);
 }
 
 Invitation::Invitation(const Name& inviteeNameSpace,
-                       const std::string& chatroom,
+                       const string& chatroom,
                        const Name& inviterRoutingPrefix,
                        const IdentityCertificate& inviterCertificate)
   : m_inviteeNameSpace(inviteeNameSpace)
@@ -78,4 +76,4 @@ Invitation::Invitation(const Invitation& invitation)
 {
 }
 
-}//chronos
+} // namespace chronos

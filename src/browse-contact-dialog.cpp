@@ -9,15 +9,17 @@
  */
 
 
-#include "browse-contact-dialog.h"
+#include "browse-contact-dialog.hpp"
 #include "ui_browse-contact-dialog.h"
 
 #ifndef Q_MOC_RUN
-#include "profile.h"
+#include "profile.hpp"
 #endif
 
-using namespace ndn;
-using namespace chronos;
+
+namespace chronos {
+
+using ndn::IdentityCertificate;
 
 BrowseContactDialog::BrowseContactDialog(QWidget *parent)
   : QDialog(parent)
@@ -33,8 +35,10 @@ BrowseContactDialog::BrowseContactDialog(QWidget *parent)
 
   ui->ContactList->setModel(m_contactListModel);
 
-  connect(ui->ContactList->selectionModel(), SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
-          this, SLOT(onSelectionChanged(const QItemSelection &, const QItemSelection &)));
+  connect(ui->ContactList->selectionModel(),
+          SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
+          this,
+          SLOT(onSelectionChanged(const QItemSelection &, const QItemSelection &)));
   connect(ui->AddButton, SIGNAL(clicked()),
           this, SLOT(onAddClicked()));
   connect(ui->DirectAddButton, SIGNAL(clicked()),
@@ -62,8 +66,8 @@ BrowseContactDialog::onAddClicked()
 {
   QItemSelectionModel* selectionModel = ui->ContactList->selectionModel();
   QModelIndexList selectedList = selectionModel->selectedIndexes();
-  QModelIndexList::iterator it = selectedList.begin();
-  for(; it != selectedList.end(); it++)
+
+  for (QModelIndexList::iterator it = selectedList.begin(); it != selectedList.end(); it++)
     emit addContact(m_contactNameList[it->row()]);
 
   this->close();
@@ -80,7 +84,7 @@ void
 BrowseContactDialog::closeEvent(QCloseEvent *e)
 {
   ui->InfoTable->clear();
-  for(int i = ui->InfoTable->rowCount() - 1; i >= 0 ; i--)
+  for (int i = ui->InfoTable->rowCount() - 1; i >= 0 ; i--)
       ui->InfoTable->removeRow(i);
   ui->InfoTable->horizontalHeader()->hide();
 
@@ -108,26 +112,26 @@ BrowseContactDialog::onIdCertReady(const IdentityCertificate& idCert)
 
   ui->InfoTable->clear();
 
-  for(int i = ui->InfoTable->rowCount() - 1; i >= 0 ; i--)
+  for (int i = ui->InfoTable->rowCount() - 1; i >= 0 ; i--)
     ui->InfoTable->removeRow(i);
 
   ui->InfoTable->horizontalHeader()->show();
   ui->InfoTable->setColumnCount(2);
 
-  Profile::const_iterator proIt = profile.begin();
-  Profile::const_iterator proEnd = profile.end();
+
   int rowCount = 0;
+  for (Profile::const_iterator proIt = profile.begin();
+       proIt != profile.end(); proIt++, rowCount++) {
+    ui->InfoTable->insertRow(rowCount);
+    QTableWidgetItem* type = new QTableWidgetItem(QString::fromStdString(proIt->first));
+    ui->InfoTable->setItem(rowCount, 0, type);
 
-  for(; proIt != proEnd; proIt++, rowCount++)
-    {
-      ui->InfoTable->insertRow(rowCount);
-      QTableWidgetItem* type = new QTableWidgetItem(QString::fromStdString(proIt->first));
-      ui->InfoTable->setItem(rowCount, 0, type);
-
-      QTableWidgetItem* value = new QTableWidgetItem(QString::fromStdString(proIt->second));
-      ui->InfoTable->setItem(rowCount, 1, value);
-    }
+    QTableWidgetItem* value = new QTableWidgetItem(QString::fromStdString(proIt->second));
+    ui->InfoTable->setItem(rowCount, 1, value);
+  }
 }
+
+} // namespace chronos
 
 #if WAF
 #include "browse-contact-dialog.moc"

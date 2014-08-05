@@ -8,23 +8,26 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "validator-panel.h"
+#include "validator-panel.hpp"
 
 #include "logging.h"
 
-using namespace std;
-using namespace ndn;
+namespace chronos {
 
-INIT_LOGGER("ValidatorPanel");
+using std::vector;
 
-namespace chronos{
+using ndn::CertificateCache;
+using ndn::SecRuleRelative;
+using ndn::OnDataValidated;
+using ndn::OnDataValidationFailed;
+using ndn::ValidationRequest;
+using ndn::IdentityCertificate;
 
-using ndn::shared_ptr;
+const shared_ptr<CertificateCache> ValidatorPanel::DEFAULT_CERT_CACHE =
+  shared_ptr<CertificateCache>();
 
-const shared_ptr<CertificateCache> ValidatorPanel::DEFAULT_CERT_CACHE = shared_ptr<CertificateCache>();
-
-ValidatorPanel::ValidatorPanel(int stepLimit /* = 10 */,
-                               const shared_ptr<CertificateCache> certificateCache/* = DEFAULT_CERT_CACHE */)
+ValidatorPanel::ValidatorPanel(int stepLimit,
+                               const shared_ptr<CertificateCache> certificateCache)
   : m_stepLimit(stepLimit)
   , m_certificateCache(certificateCache)
 {
@@ -33,52 +36,54 @@ ValidatorPanel::ValidatorPanel(int stepLimit /* = 10 */,
                                                 "==", "\\1", "\\1\\2", true);
 }
 
+void
+ValidatorPanel::addTrustAnchor(const EndorseCertificate& cert)
+{
+  m_trustAnchors[cert.getPublicKeyName()] = cert.getPublicKeyInfo();
+}
 
+void
+ValidatorPanel::removeTrustAnchor(const Name& keyName)
+{
+  m_trustAnchors.erase(keyName);
+}
 
 void
 ValidatorPanel::checkPolicy (const Data& data,
                              int stepCount,
                              const OnDataValidated& onValidated,
                              const OnDataValidationFailed& onValidationFailed,
-                             std::vector<shared_ptr<ValidationRequest> >& nextSteps)
+                             vector<shared_ptr<ValidationRequest> >& nextSteps)
 {
-  if(m_stepLimit == stepCount)
-    {
-      _LOG_ERROR("Reach the maximum steps of verification!");
+  if (m_stepLimit == stepCount) {
+    onValidationFailed(data.shared_from_this(),
+                       "Reach maximum validation steps: " + data.getName().toUri());
+    return;
+  }
+
+  const KeyLocator& keyLocator = data.getSignature().getKeyLocator();
+
+  if (keyLocator.getType() != KeyLocator::KeyLocator_Name)
+    return onValidationFailed(data.shared_from_this(),
+                              "Key Locator is not a name: " + data.getName().toUri());
+
+  const Name& keyLocatorName = keyLocator.getName();
+
+  if (m_endorseeRule->satisfy(data.getName(), keyLocatorName)) {
+    Name keyName = IdentityCertificate::certificateNameToPublicKeyName(keyLocatorName);
+
+    if (m_trustAnchors.end() != m_trustAnchors.find(keyName) &&
+        Validator::verifySignature(data, data.getSignature(), m_trustAnchors[keyName]))
+      onValidated(data.shared_from_this());
+    else
       onValidationFailed(data.shared_from_this(),
-                         "Reach maximum validation steps: " + data.getName().toUri());
-      return;
-    }
+                         "Cannot verify signature:" + data.getName().toUri());
+  }
+  else
+    onValidationFailed(data.shared_from_this(),
+                       "Does not satisfy rule: " + data.getName().toUri());
 
-  try
-    {
-      SignatureSha256WithRsa sig(data.getSignature());
-      const Name& keyLocatorName = sig.getKeyLocator().getName();
-
-      if(m_endorseeRule->satisfy(data.getName(), keyLocatorName))
-        {
-          Name keyName = IdentityCertificate::certificateNameToPublicKeyName(keyLocatorName);
-
-          if(m_trustAnchors.end() != m_trustAnchors.find(keyName) && Validator::verifySignature(data, sig, m_trustAnchors[keyName]))
-            onValidated(data.shared_from_this());
-          else
-            onValidationFailed(data.shared_from_this(), "Cannot verify signature:" + data.getName().toUri());
-        }
-      else
-        onValidationFailed(data.shared_from_this(), "Does not satisfy rule: " + data.getName().toUri());
-
-      return;
-    }
-  catch(SignatureSha256WithRsa::Error &e)
-    {
-      return onValidationFailed(data.shared_from_this(),
-                                "Not SignatureSha256WithRsa signature: " + data.getName().toUri());
-    }
-  catch(KeyLocator::Error &e)
-    {
-      return onValidationFailed(data.shared_from_this(),
-                                "Key Locator is not a name: " + data.getName().toUri());
-    }
+  return;
 }
 
-}//chronos
+} // namespace chronos

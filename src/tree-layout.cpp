@@ -10,23 +10,25 @@
  *         Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "tree-layout.h"
-
+#include "tree-layout.hpp"
 #include <iostream>
 
+namespace chronos {
+
+using std::vector;
+using std::map;
+
 void
-OneLevelTreeLayout::setOneLevelLayout(std::vector<Coordinate> &childNodesCo)
+OneLevelTreeLayout::setOneLevelLayout(vector<Coordinate>& childNodesCo)
 {
   if (childNodesCo.empty())
-  {
     return;
-  }
+
   double y = getLevelDistance();
   double sd = getSiblingDistance();
   int n = childNodesCo.size();
   double x = - (n - 1) * sd / 2;
-  for (int i = 0; i < n; i++)
-  {
+  for (int i = 0; i < n; i++) {
     childNodesCo[i].x = x;
     childNodesCo[i].y = y;
     x += sd;
@@ -36,36 +38,30 @@ OneLevelTreeLayout::setOneLevelLayout(std::vector<Coordinate> &childNodesCo)
 void
 MultipleLevelTreeLayout::setMultipleLevelTreeLayout(TrustTreeNodeList& nodeList)
 {
-  if(nodeList.empty())
+  if (nodeList.empty())
     return;
 
   double ld = getLevelDistance();
   double sd = getSiblingDistance();
 
-  std::map<int, double> layerSpan;
+  map<int, double> layerSpan;
 
-  TrustTreeNodeList::iterator it  = nodeList.begin();
-  TrustTreeNodeList::iterator end = nodeList.end();
-  for(; it != end; it++)
-    {
-      int layer = (*it)->level();
-      (*it)->y = layer * ld;
-      (*it)->x = layerSpan[layer];
-      layerSpan[layer] += sd;
-    }
+  for (TrustTreeNodeList::iterator it = nodeList.begin(); it != nodeList.end(); it++) {
+    int layer = (*it)->level();
+    (*it)->y = layer * ld;
+    (*it)->x = layerSpan[layer];
+    layerSpan[layer] += sd;
+  }
 
-  std::map<int, double>::iterator layerIt  = layerSpan.begin();
-  std::map<int, double>::iterator layerEnd = layerSpan.end();
-  for(; layerIt != layerEnd; layerIt++)
-    {
-      double shift = (layerIt->second - sd) / 2;
-      layerIt->second = shift;
-    }
+  for (map<int, double>::iterator layerIt = layerSpan.begin();
+       layerIt != layerSpan.end(); layerIt++) {
+    double shift = (layerIt->second - sd) / 2;
+    layerIt->second = shift;
+  }
 
-  it  = nodeList.begin();
-  end = nodeList.end();
-  for(; it != end; it++)
-    {
-      (*it)->x -= layerSpan[(*it)->level()];
-    }
+  for (TrustTreeNodeList::iterator it = nodeList.begin(); it != nodeList.end(); it++) {
+    (*it)->x -= layerSpan[(*it)->level()];
+  }
 }
+
+} // namespace chronos

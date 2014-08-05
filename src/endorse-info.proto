@@ -1,4 +1,4 @@
-package chronos;
+package Chronos;
 
 message EndorseInfo
 {

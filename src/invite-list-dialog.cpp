@@ -8,10 +8,12 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "invite-list-dialog.h"
+#include "invite-list-dialog.hpp"
 #include "ui_invite-list-dialog.h"
 
-InviteListDialog::InviteListDialog(QWidget *parent)
+namespace chronos {
+
+InviteListDialog::InviteListDialog(QWidget* parent)
   :QDialog(parent)
   , ui(new Ui::InviteListDialog)
   , m_contactListModel(new QStringListModel)
@@ -46,14 +48,13 @@ InviteListDialog::onInviteClicked()
   QModelIndexList selected = ui->contactListView->selectionModel()->selectedIndexes();
   QString alias = m_contactListModel->data(selected.first(), Qt::DisplayRole).toString();
 
-  for(int i = 0; i < m_contactAliasList.size(); i++) // TODO:: could be optimized without using for loop.
-    {
-      if(alias == m_contactAliasList[i])
-        {
-          emit sendInvitation(m_contactIdList[i]);
-          break;
-        }
+  // TODO:: could be optimized without using for loop.
+  for (int i = 0; i < m_contactAliasList.size(); i++) {
+    if (alias == m_contactAliasList[i]) {
+      emit sendInvitation(m_contactIdList[i]);
+      break;
     }
+  }
 
   this->close();
 }
@@ -76,6 +77,8 @@ InviteListDialog::onContactIdListReady(const QStringList& idList)
 {
   m_contactIdList = idList;
 }
+
+} // namespace chronos
 
 #if WAF
 #include "invite-list-dialog.moc"

@@ -5,23 +5,23 @@
  * See COPYING for copyright and distribution information.
  */
 
-#include <ndn-cpp-dev/security/key-chain.hpp>
-#include <ndn-cpp-dev/face.hpp>
+#include "common.hpp"
+#include <ndn-cxx/security/key-chain.hpp>
+#include <ndn-cxx/face.hpp>
 
 using namespace ndn;
 
-int 
+int
 main()
 {
   Name root("/ndn");
 
-  KeyChainImpl<SecPublicInfoSqlite3, SecTpmFile> keyChain;
+  KeyChain keyChain("sqlite3", "file");
 
   if(!keyChain.doesIdentityExist(root))
     return 1;
 
-  shared_ptr<boost::asio::io_service> ioService = make_shared<boost::asio::io_service>();
-  shared_ptr<Face> face = shared_ptr<Face>(new Face(ioService));
+  Face face;
 
   Name name("/local/ndn/prefix");
   name.appendVersion().appendSegment(0);
@@ -30,8 +30,8 @@ main()
   std::string prefix("/ndn/test");
   data.setContent(reinterpret_cast<const uint8_t*>(prefix.c_str()), prefix.size());
   keyChain.signByIdentity(data, root);
-  
-  face->put(data);
 
-  ioService->run();
+  face.put(data);
+
+  face.getIoService().run();
 }

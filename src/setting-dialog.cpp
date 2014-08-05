@@ -8,10 +8,12 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "setting-dialog.h"
+#include "setting-dialog.hpp"
 #include "ui_setting-dialog.h"
 
-SettingDialog::SettingDialog(QWidget *parent)
+namespace chronos {
+
+SettingDialog::SettingDialog(QWidget* parent)
   : QDialog(parent)
   , ui(new Ui::SettingDialog)
 {
@@ -68,6 +70,7 @@ SettingDialog::onCancelClicked()
   this->close();
 }
 
+} // namespace chronos
 
 #if WAF
 #include "setting-dialog.moc"

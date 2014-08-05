@@ -5,25 +5,25 @@
  * See COPYING for copyright and distribution information.
  */
 
-#include <ndn-cpp-dev/security/key-chain.hpp>
+#include <ndn-cxx/security/key-chain.hpp>
 
 using namespace ndn;
 
-int 
+int
 main()
 {
-  KeyChainImpl<SecPublicInfoSqlite3, SecTpmFile> keyChain;
+  KeyChain keyChain("sqlite3", "file");
   std::vector<CertificateSubjectDescription> subjectDescription;
 
   Name root("/ndn");
   Name rootCertName = keyChain.createIdentity(root);
 
   Name test("/ndn/test");
-  Name testKeyName = keyChain.generateRSAKeyPairAsDefault(test, true);
-  shared_ptr<IdentityCertificate> testCert = 
-    keyChain.prepareUnsignedIdentityCertificate(testKeyName, root, 
+  Name testKeyName = keyChain.generateRsaKeyPairAsDefault(test, true);
+  shared_ptr<IdentityCertificate> testCert =
+    keyChain.prepareUnsignedIdentityCertificate(testKeyName, root,
                                                 time::system_clock::now(),
-                                                time::system_clock::now() + time::days(7300), 
+                                                time::system_clock::now() + time::days(7300),
                                                 subjectDescription);
   keyChain.signByIdentity(*testCert, root);
   keyChain.addCertificateAsIdentityDefault(*testCert);
@@ -31,11 +31,11 @@ main()
   Name alice("/ndn/test/alice");
   if(!keyChain.doesIdentityExist(alice))
     {
-      Name aliceKeyName = keyChain.generateRSAKeyPairAsDefault(alice, true);
-      shared_ptr<IdentityCertificate> aliceCert = 
-	keyChain.prepareUnsignedIdentityCertificate(aliceKeyName, test, 
+      Name aliceKeyName = keyChain.generateRsaKeyPairAsDefault(alice, true);
+      shared_ptr<IdentityCertificate> aliceCert =
+        keyChain.prepareUnsignedIdentityCertificate(aliceKeyName, test,
                                                     time::system_clock::now(),
-                                                    time::system_clock::now() + time::days(7300), 
+                                                    time::system_clock::now() + time::days(7300),
                                                     subjectDescription);
       keyChain.signByIdentity(*aliceCert, test);
       keyChain.addCertificateAsIdentityDefault(*aliceCert);
@@ -44,9 +44,12 @@ main()
   Name bob("/ndn/test/bob");
   if(!keyChain.doesIdentityExist(bob))
     {
-      Name bobKeyName = keyChain.generateRSAKeyPairAsDefault(bob, true);
-      shared_ptr<IdentityCertificate> bobCert = 
-	keyChain.prepareUnsignedIdentityCertificate(bobKeyName, test, getNow(), getNow() + 630720000, subjectDescription);
+      Name bobKeyName = keyChain.generateRsaKeyPairAsDefault(bob, true);
+      shared_ptr<IdentityCertificate> bobCert =
+        keyChain.prepareUnsignedIdentityCertificate(bobKeyName, test,
+                                                    time::system_clock::now(),
+                                                    time::system_clock::now() + time::days(7300),
+                                                    subjectDescription);
       keyChain.signByIdentity(*bobCert, test);
       keyChain.addCertificateAsIdentityDefault(*bobCert);
     }
@@ -54,9 +57,12 @@ main()
   Name cathy("/ndn/test/cathy");
   if(!keyChain.doesIdentityExist(cathy))
     {
-      Name cathyKeyName = keyChain.generateRSAKeyPairAsDefault(cathy, true);
-      shared_ptr<IdentityCertificate> cathyCert = 
-	keyChain.prepareUnsignedIdentityCertificate(cathyKeyName, test, getNow(), getNow() + 630720000, subjectDescription);
+      Name cathyKeyName = keyChain.generateRsaKeyPairAsDefault(cathy, true);
+      shared_ptr<IdentityCertificate> cathyCert =
+        keyChain.prepareUnsignedIdentityCertificate(cathyKeyName, test,
+                                                    time::system_clock::now(),
+                                                    time::system_clock::now() + time::days(7300),
+                                                    subjectDescription);
       keyChain.signByIdentity(*cathyCert, test);
       keyChain.addCertificateAsIdentityDefault(*cathyCert);
     }

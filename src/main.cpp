@@ -11,29 +11,26 @@
 #include <QApplication>
 // #include <QSystemTrayIcon>
 
-#include "controller.h"
+#include "controller.hpp"
 #include "logging.h"
 #include <ndn-cxx/face.hpp>
 #include <boost/thread/thread.hpp>
 
-INIT_LOGGER("MAIN");
-
-using namespace ndn;
-using ndn::shared_ptr;
-
 class NewApp : public QApplication
 {
 public:
-  NewApp(int & argc, char ** argv)
+  NewApp(int& argc, char** argv)
     : QApplication(argc, argv)
-  { }
+  {
+  }
 
-  bool notify(QObject * receiver, QEvent * event)
+  bool
+  notify(QObject* receiver, QEvent* event)
   {
     try {
         return QApplication::notify(receiver, event);
     }
-    catch(std::exception& e){
+    catch (std::exception& e) {
       std::cerr << "Exception thrown:" << e.what() << std::endl;
       return false;
     }
@@ -41,11 +38,13 @@ public:
   }
 };
 
-void runIO(shared_ptr<boost::asio::io_service> ioService)
+void
+runIO(boost::asio::io_service& ioService)
 {
-  try{
-    ioService->run();
-  }catch(std::runtime_error& e){
+  try {
+    ioService.run();
+  }
+  catch (std::runtime_error& e) {
     std::cerr << e.what() << std::endl;
   }
 }
@@ -54,12 +53,12 @@ int main(int argc, char *argv[])
 {
   NewApp app(argc, argv);
 
-  shared_ptr<Face> face = make_shared<Face>();
+  ndn::shared_ptr<ndn::Face> face = ndn::make_shared<ndn::Face>();
   chronos::Controller controller(face);
 
   app.setQuitOnLastWindowClosed(false);
 
-  boost::thread (runIO, face->ioService());
+  boost::thread(runIO, boost::ref(face->getIoService()));
 
   return app.exec();
 }

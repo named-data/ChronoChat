@@ -8,23 +8,23 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "trust-tree-scene.h"
+#include "trust-tree-scene.hpp"
 
 #include <QtGui>
 
 #ifndef Q_MOC_RUN
-#include <vector>
-#include <iostream>
 #include <assert.h>
-#include <boost/lexical_cast.hpp>
 #include <memory>
 #endif
 
+namespace chronos {
+
 static const double Pi = 3.14159265358979323846264338327950288419717;
 
-TrustTreeScene::TrustTreeScene(QWidget *parent)
+TrustTreeScene::TrustTreeScene(QWidget* parent)
   : QGraphicsScene(parent)
-{}
+{
+}
 
 void
 TrustTreeScene::plotTrustTree(TrustTreeNodeList& nodeList)
@@ -32,9 +32,10 @@ TrustTreeScene::plotTrustTree(TrustTreeNodeList& nodeList)
   clear();
 
   int nodeSize = 40;
-  int siblingDistance = 100, levelDistance = 100;
+  int siblingDistance = 100;
+  int levelDistance = 100;
 
-  boost::shared_ptr<MultipleLevelTreeLayout> layout(new MultipleLevelTreeLayout());
+  shared_ptr<MultipleLevelTreeLayout> layout(new MultipleLevelTreeLayout());
   layout->setSiblingDistance(siblingDistance);
   layout->setLevelDistance(levelDistance);
   layout->setMultipleLevelTreeLayout(nodeList);
@@ -46,41 +47,37 @@ TrustTreeScene::plotTrustTree(TrustTreeNodeList& nodeList)
 void
 TrustTreeScene::plotEdge(const TrustTreeNodeList& nodeList, int nodeSize)
 {
-  TrustTreeNodeList::const_iterator it  = nodeList.begin();
-  TrustTreeNodeList::const_iterator end = nodeList.end();
-  for(; it != end; it++)
-    {
-      TrustTreeNodeList& introducees = (*it)->getIntroducees();
-      TrustTreeNodeList::iterator eeIt  = introducees.begin();
-      TrustTreeNodeList::iterator eeEnd = introducees.end();
+  for (TrustTreeNodeList::const_iterator it = nodeList.begin(); it != nodeList.end(); it++) {
+    TrustTreeNodeList& introducees = (*it)->getIntroducees();
+    for (TrustTreeNodeList::iterator eeIt = introducees.begin();
+         eeIt != introducees.end(); eeIt++) {
+      if ((*it)->level() >= (*eeIt)->level())
+        continue;
 
-      for(; eeIt != eeEnd; eeIt++)
-        {
-          if((*it)->level() >= (*eeIt)->level())
-            continue;
+      double x1 = (*it)->x;
+      double y1 = (*it)->y;
+      double x2 = (*eeIt)->x;
+      double y2 = (*eeIt)->y;
 
-          double x1 = (*it)->x;
-          double y1 = (*it)->y;
-          double x2 = (*eeIt)->x;
-          double y2 = (*eeIt)->y;
+      QPointF src(x1 + nodeSize/2, y1 + nodeSize/2);
+      QPointF dest(x2 + nodeSize/2, y2 + nodeSize/2);
+      QLineF line(src, dest);
+      double angle = ::acos(line.dx() / line.length());
 
-          QPointF src(x1 + nodeSize/2, y1 + nodeSize/2);
-          QPointF dest(x2 + nodeSize/2, y2 + nodeSize/2);
-          QLineF line(src, dest);
-          double angle = ::acos(line.dx() / line.length());
+      double arrowSize = 10;
+      QPointF endP0 = src + QPointF((nodeSize/2) * line.dx() / line.dy(), nodeSize/2);
+      QPointF sourceArrowP0 = dest + QPointF((-nodeSize/2) * line.dx() / line.dy(),
+                                             -nodeSize/2);
+      QPointF sourceArrowP1 = sourceArrowP0 + QPointF(-cos(angle - Pi / 6) * arrowSize,
+                                                      -sin(angle - Pi / 6) * arrowSize);
+      QPointF sourceArrowP2 = sourceArrowP0 + QPointF(-cos(angle + Pi / 6) * arrowSize,
+                                                      -sin(angle + Pi / 6) * arrowSize);
 
-          double arrowSize = 10;
-          QPointF endP0 = src + QPointF((nodeSize/2) * line.dx() / line.dy(), nodeSize/2);
-          QPointF sourceArrowP0 = dest + QPointF((-nodeSize/2) * line.dx() / line.dy(), -nodeSize/2);
-          QPointF sourceArrowP1 = sourceArrowP0 + QPointF(-cos(angle - Pi / 6) * arrowSize,
-                                                          -sin(angle - Pi / 6) * arrowSize);
-          QPointF sourceArrowP2 = sourceArrowP0 + QPointF(-cos(angle + Pi / 6) * arrowSize,
-                                                          -sin(angle + Pi / 6) * arrowSize);
-
-          addLine(QLineF(sourceArrowP0, endP0), QPen(Qt::black));
-          addPolygon(QPolygonF() << sourceArrowP0 << sourceArrowP1 << sourceArrowP2, QPen(Qt::black), QBrush(Qt::black));
-        }
+      addLine(QLineF(sourceArrowP0, endP0), QPen(Qt::black));
+      addPolygon(QPolygonF() << sourceArrowP0 << sourceArrowP1 << sourceArrowP2,
+                 QPen(Qt::black), QBrush(Qt::black));
     }
+  }
 }
 
 void
@@ -89,10 +86,7 @@ TrustTreeScene::plotNode(const TrustTreeNodeList& nodeList, int nodeSize)
   int rim = 3;
 
   // plot nodes
-  TrustTreeNodeList::const_iterator it  = nodeList.begin();
-  TrustTreeNodeList::const_iterator end = nodeList.end();
-  for(; it != end; it++)
-  {
+  for (TrustTreeNodeList::const_iterator it = nodeList.begin(); it != nodeList.end(); it++) {
     double x = (*it)->x;
     double y = (*it)->y;
     QRectF boundingRect(x, y, nodeSize, nodeSize);
@@ -108,8 +102,9 @@ TrustTreeScene::plotNode(const TrustTreeNodeList& nodeList, int nodeSize)
     nickItem->setFont(QFont("Cursive", 8, QFont::Bold));
     nickItem->setPos(x - nodeSize / 2 + 10, y + nodeSize + 5);
   }
-
 }
+
+} //namespace chronos
 
 #if WAF
 #include "trust-tree-scene.moc"

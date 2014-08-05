@@ -8,7 +8,7 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "profile-editor.h"
+#include "profile-editor.hpp"
 #include "ui_profile-editor.h"
 #include <QtSql/QSqlRecord>
 #include <QtSql/QSqlField>
@@ -18,7 +18,9 @@
 #include "logging.h"
 #endif
 
-INIT_LOGGER("ProfileEditor")
+// INIT_LOGGER("ProfileEditor")
+
+namespace chronos {
 
 ProfileEditor::ProfileEditor(QWidget *parent)
   : QDialog(parent)
@@ -44,12 +46,11 @@ ProfileEditor::~ProfileEditor()
 void
 ProfileEditor::onCloseDBModule()
 {
-  _LOG_DEBUG("close db module");
-  if(m_tableModel)
-    {
-      delete m_tableModel;
-      _LOG_DEBUG("tableModel closed");
-    }
+  // _LOG_DEBUG("close db module");
+  if (m_tableModel) {
+    delete m_tableModel;
+    // _LOG_DEBUG("tableModel closed");
+  }
 }
 
 void
@@ -85,8 +86,7 @@ ProfileEditor::onDeleteClicked()
   QItemSelectionModel* selectionModel = ui->profileTable->selectionModel();
   QModelIndexList indexList = selectionModel->selectedIndexes();
 
-  int i = indexList.size() - 1;
-  for(; i >= 0; i--)
+  for (int i = indexList.size() - 1; i >= 0; i--)
     m_tableModel->removeRow(indexList[i].row());
 
   m_tableModel->submitAll();
@@ -99,6 +99,8 @@ ProfileEditor::onOkClicked()
   emit updateProfile();
   this->hide();
 }
+
+} // namespace chronos
 
 #if WAF
 #include "profile-editor.moc"

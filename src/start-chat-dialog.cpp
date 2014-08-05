@@ -8,8 +8,10 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "start-chat-dialog.h"
+#include "start-chat-dialog.hpp"
 #include "ui_start-chat-dialog.h"
+
+namespace chronos {
 
 StartChatDialog::StartChatDialog(QWidget *parent)
   : QDialog(parent)
@@ -48,6 +50,8 @@ StartChatDialog::onCancelClicked()
 {
   this->close();
 }
+
+} // namespace chronos
 
 #if WAF
 #include "start-chat-dialog.moc"

@@ -8,11 +8,12 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "set-alias-dialog.h"
+#include "set-alias-dialog.hpp"
 #include "ui_set-alias-dialog.h"
 
+namespace chronos {
 
-SetAliasDialog::SetAliasDialog(QWidget *parent)
+SetAliasDialog::SetAliasDialog(QWidget* parent)
   : QDialog(parent)
   , ui(new Ui::SetAliasDialog)
 {
@@ -51,6 +52,7 @@ SetAliasDialog::setTargetIdentity(const QString& targetIdentity, const QString& 
   ui->aliasInput->setText(alias);
 }
 
+} // namespace chronos
 
 #if WAF
 #include "set-alias-dialog.moc"

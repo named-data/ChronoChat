@@ -8,12 +8,12 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "invitation-dialog.h"
+#include "invitation-dialog.hpp"
 #include "ui_invitation-dialog.h"
 
-using namespace ndn;
+namespace chronos {
 
-InvitationDialog::InvitationDialog(QWidget *parent)
+InvitationDialog::InvitationDialog(QWidget* parent)
   : QDialog(parent)
   , ui(new Ui::InvitationDialog)
 {
@@ -60,6 +60,8 @@ InvitationDialog::onCancelClicked()
   ui->msgLabel->clear();
   m_invitationInterest.clear();
 }
+
+} // namespace chronos
 
 #if WAF
 #include "invitation-dialog.moc"

@@ -8,7 +8,7 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "contact-panel.h"
+#include "contact-panel.hpp"
 #include "ui_contact-panel.h"
 
 #include <QMenu>
@@ -22,7 +22,9 @@
 #include "logging.h"
 #endif
 
-INIT_LOGGER("ContactPanel");
+// INIT_LOGGER("ContactPanel");
+
+namespace chronos {
 
 ContactPanel::ContactPanel(QWidget *parent)
   : QDialog(parent)
@@ -38,8 +40,10 @@ ContactPanel::ContactPanel(QWidget *parent)
   m_menuAlias  = new QAction("Set Alias", this);
   m_menuDelete = new QAction("Delete", this);
 
-  connect(ui->ContactList->selectionModel(), SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
-          this, SLOT(onSelectionChanged(const QItemSelection &, const QItemSelection &)));
+  connect(ui->ContactList->selectionModel(),
+          SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
+          this,
+          SLOT(onSelectionChanged(const QItemSelection &, const QItemSelection &)));
   connect(ui->ContactList, SIGNAL(customContextMenuRequested(const QPoint&)),
           this, SLOT(onContextMenuRequested(const QPoint&)));
   connect(ui->isIntroducer, SIGNAL(stateChanged(int)),
@@ -58,9 +62,12 @@ ContactPanel::ContactPanel(QWidget *parent)
 
 ContactPanel::~ContactPanel()
 {
-  if(m_contactListModel) delete m_contactListModel;
-  if(m_trustScopeModel)  delete m_trustScopeModel;
-  if(m_endorseDataModel) delete m_endorseDataModel;
+  if (m_contactListModel)
+    delete m_contactListModel;
+  if (m_trustScopeModel)
+    delete m_trustScopeModel;
+  if (m_endorseDataModel)
+    delete m_endorseDataModel;
 
   delete m_setAliasDialog;
   delete m_endorseComboBoxDelegate;
@@ -122,17 +129,15 @@ ContactPanel::resetPanel()
 void
 ContactPanel::onCloseDBModule()
 {
-  _LOG_DEBUG("close db module");
-  if(m_trustScopeModel)
-    {
-      delete m_trustScopeModel;
-      _LOG_DEBUG("trustScopeModel closed");
-    }
-  if(m_endorseDataModel)
-    {
-      delete m_endorseDataModel;
-      _LOG_DEBUG("endorseDataModel closed");
-    }
+  // _LOG_DEBUG("close db module");
+  if (m_trustScopeModel) {
+    delete m_trustScopeModel;
+    // _LOG_DEBUG("trustScopeModel closed");
+  }
+  if (m_endorseDataModel) {
+    delete m_endorseDataModel;
+    // _LOG_DEBUG("endorseDataModel closed");
+  }
 }
 
 void
@@ -177,20 +182,18 @@ ContactPanel::onContactInfoReady(const QString& identity,
   ui->trustScopeList->setColumnHidden(1, true);
   ui->trustScopeList->show();
 
-  if(isIntro)
-    {
-      ui->isIntroducer->setChecked(true);
-      ui->addScope->setEnabled(true);
-      ui->deleteScope->setEnabled(true);
-      ui->trustScopeList->setEnabled(true);
-    }
-  else
-    {
-      ui->isIntroducer->setChecked(false);
-      ui->addScope->setEnabled(false);
-      ui->deleteScope->setEnabled(false);
-      ui->trustScopeList->setEnabled(false);
-    }
+  if (isIntro) {
+    ui->isIntroducer->setChecked(true);
+    ui->addScope->setEnabled(true);
+    ui->deleteScope->setEnabled(true);
+    ui->trustScopeList->setEnabled(true);
+  }
+  else {
+    ui->isIntroducer->setChecked(false);
+    ui->addScope->setEnabled(false);
+    ui->deleteScope->setEnabled(false);
+    ui->trustScopeList->setEnabled(false);
+  }
 
   QString filter2 = QString("profile_identity = '%1'").arg(identity);
   m_endorseDataModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
@@ -215,21 +218,18 @@ ContactPanel::onSelectionChanged(const QItemSelection &selected,
   QString alias = m_contactListModel->data(items.first(), Qt::DisplayRole).toString();
 
   bool contactFound = false;
-  for(int i = 0; i < m_contactAliasList.size(); i++)
-    {
-      if(alias == m_contactAliasList[i])
-        {
-          contactFound = true;
-          m_currentSelectedContact = m_contactIdList[i];
-          break;
-        }
+  for (int i = 0; i < m_contactAliasList.size(); i++) {
+    if (alias == m_contactAliasList[i]) {
+      contactFound = true;
+      m_currentSelectedContact = m_contactIdList[i];
+      break;
     }
+  }
 
-  if(!contactFound)
-    {
-      emit warning("This should not happen: ContactPanel::updateSelection #1");
-      return;
-    }
+  if (!contactFound) {
+    emit warning("This should not happen: ContactPanel::updateSelection #1");
+    return;
+  }
 
   emit waitForContactInfo(m_currentSelectedContact);
 }
@@ -253,13 +253,12 @@ ContactPanel::onContextMenuRequested(const QPoint& pos)
 void
 ContactPanel::onSetAliasDialogRequested()
 {
-  for(int i = 0; i < m_contactIdList.size(); i++)
-    if(m_contactIdList[i] == m_currentSelectedContact)
-      {
-        m_setAliasDialog->setTargetIdentity(m_currentSelectedContact, m_contactAliasList[i]);
-        m_setAliasDialog->show();
-        return;
-      }
+  for (int i = 0; i < m_contactIdList.size(); i++)
+    if (m_contactIdList[i] == m_currentSelectedContact) {
+      m_setAliasDialog->setTargetIdentity(m_currentSelectedContact, m_contactAliasList[i]);
+      m_setAliasDialog->show();
+      return;
+    }
 }
 
 void
@@ -267,36 +266,32 @@ ContactPanel::onContactDeletionRequested()
 {
   QItemSelectionModel* selectionModel = ui->ContactList->selectionModel();
   QModelIndexList selectedList = selectionModel->selectedIndexes();
-  QModelIndexList::iterator it = selectedList.begin();
-  for(; it != selectedList.end(); it++)
-    {
-      QString alias =  m_contactListModel->data(*it, Qt::DisplayRole).toString();
-      for(int i = 0; i < m_contactAliasList.size(); i++)
-        if(m_contactAliasList[i] == alias)
-          {
-            emit removeContact(m_contactIdList[i]);
-            return;
-          }
-    }
+
+  for (QModelIndexList::iterator it = selectedList.begin(); it != selectedList.end(); it++) {
+    QString alias =  m_contactListModel->data(*it, Qt::DisplayRole).toString();
+    for (int i = 0; i < m_contactAliasList.size(); i++)
+      if (m_contactAliasList[i] == alias) {
+        emit removeContact(m_contactIdList[i]);
+        return;
+      }
+  }
 }
 
 void
 ContactPanel::onIsIntroducerChanged(int state)
 {
-  if(state == Qt::Checked)
-    {
-      ui->addScope->setEnabled(true);
-      ui->deleteScope->setEnabled(true);
-      ui->trustScopeList->setEnabled(true);
-      emit updateIsIntroducer(m_currentSelectedContact, true);
-    }
-  else
-    {
-      ui->addScope->setEnabled(false);
-      ui->deleteScope->setEnabled(false);
-      ui->trustScopeList->setEnabled(false);
-      emit updateIsIntroducer(m_currentSelectedContact, false);
-    }
+  if (state == Qt::Checked) {
+    ui->addScope->setEnabled(true);
+    ui->deleteScope->setEnabled(true);
+    ui->trustScopeList->setEnabled(true);
+    emit updateIsIntroducer(m_currentSelectedContact, true);
+  }
+  else {
+    ui->addScope->setEnabled(false);
+    ui->deleteScope->setEnabled(false);
+    ui->trustScopeList->setEnabled(false);
+    emit updateIsIntroducer(m_currentSelectedContact, false);
+  }
 }
 
 void
@@ -317,8 +312,7 @@ ContactPanel::onDeleteScopeClicked()
   QItemSelectionModel* selectionModel = ui->trustScopeList->selectionModel();
   QModelIndexList indexList = selectionModel->selectedIndexes();
 
-  int i = indexList.size() - 1;
-  for(; i >= 0; i--)
+  for (int i = indexList.size() - 1; i >= 0; i--)
     m_trustScopeModel->removeRow(indexList[i].row());
 
   m_trustScopeModel->submitAll();
@@ -342,6 +336,8 @@ ContactPanel::onAliasChanged(const QString& identity, const QString& alias)
 {
   emit updateAlias(identity, alias);
 }
+
+} // namespace chronos
 
 #if WAF
 #include "contact-panel.moc"

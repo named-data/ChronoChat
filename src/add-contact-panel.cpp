@@ -8,11 +8,13 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#include "add-contact-panel.h"
+#include "add-contact-panel.hpp"
 #include "ui_add-contact-panel.h"
 
 #ifndef Q_MOC_RUN
 #endif
+
+namespace chronos {
 
 AddContactPanel::AddContactPanel(QWidget *parent)
   : QDialog(parent)
@@ -57,7 +59,7 @@ void
 AddContactPanel::onSearchClicked()
 {
   // ui->infoView->clear();
-  for(int i = ui->infoView->rowCount() - 1; i >= 0 ; i--)
+  for (int i = ui->infoView->rowCount() - 1; i >= 0 ; i--)
     ui->infoView->removeRow(i);
 
   m_searchIdentity = ui->contactInput->text();
@@ -72,23 +74,27 @@ AddContactPanel::onAddClicked()
 }
 
 void
-AddContactPanel::onContactEndorseInfoReady(const chronos::EndorseInfo& endorseInfo)
+AddContactPanel::onContactEndorseInfoReady(const Chronos::EndorseInfo& endorseInfo)
 {
   int entrySize = endorseInfo.endorsement_size();
 
-  for(int rowCount = 0; rowCount < entrySize; rowCount++)
-    {
-      ui->infoView->insertRow(rowCount);
-      QTableWidgetItem* type = new QTableWidgetItem(QString::fromStdString(endorseInfo.endorsement(rowCount).type()));
-      ui->infoView->setItem(rowCount, 0, type);
+  for (int rowCount = 0; rowCount < entrySize; rowCount++) {
+    ui->infoView->insertRow(rowCount);
+    QTableWidgetItem* type =
+      new QTableWidgetItem(QString::fromStdString(endorseInfo.endorsement(rowCount).type()));
+    ui->infoView->setItem(rowCount, 0, type);
 
-      QTableWidgetItem* value = new QTableWidgetItem(QString::fromStdString(endorseInfo.endorsement(rowCount).value()));
-      ui->infoView->setItem(rowCount, 1, value);
+    QTableWidgetItem* value =
+      new QTableWidgetItem(QString::fromStdString(endorseInfo.endorsement(rowCount).value()));
+    ui->infoView->setItem(rowCount, 1, value);
 
-      QTableWidgetItem* endorse = new QTableWidgetItem(QString::fromStdString(endorseInfo.endorsement(rowCount).endorse()));
-      ui->infoView->setItem(rowCount, 2, endorse);
-    }
+    QTableWidgetItem* endorse =
+      new QTableWidgetItem(QString::fromStdString(endorseInfo.endorsement(rowCount).endorse()));
+    ui->infoView->setItem(rowCount, 2, endorse);
+  }
 }
+
+} // namespace chronos
 
 
 #if WAF

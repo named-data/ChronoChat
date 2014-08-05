@@ -9,7 +9,7 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "digest-tree-scene.h"
+#include "digest-tree-scene.hpp"
 
 #include <QtGui>
 
@@ -20,6 +20,8 @@
 #include <boost/lexical_cast.hpp>
 #include <memory>
 #endif
+
+namespace chronos {
 
 static const double Pi = 3.14159265358979323846264338327950288419717;
 
@@ -36,38 +38,32 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
 {
   int n = v.size();
   bool rePlot = false;
-  for (int i = 0; i < n; i++)
-  {
+  for (int i = 0; i < n; i++) {
     QString routablePrefix(v[i].prefix.c_str());
     QString prefix = trimRoutablePrefix(routablePrefix);
 
     Roster_iterator it = m_roster.find(prefix);
-    if (it == m_roster.end())
-    {
+    if (it == m_roster.end()) {
       // std::cout << "processUpdate v[" << i << "]: " << prefix.toStdString() << std::endl;
       rePlot = true;
       DisplayUserPtr p(new DisplayUser());
-      time_t tempTime = time(NULL) - FRESHNESS + 1;
+      time_t tempTime = ::time(NULL) - FRESHNESS + 1;
       p->setReceived(tempTime);
       p->setPrefix(prefix);
       p->setSeq(v[i].high);
       m_roster.insert(p->getPrefix(), p);
     }
-    else
-    {
+    else {
       it.value()->setSeq(v[i].high);
     }
   }
 
-  if (rePlot)
-  {
+  if (rePlot) {
     plot(digest);
     QTimer::singleShot(2100, this, SLOT(emitReplot()));
   }
-  else
-  {
-    for (int i = 0; i < n; i++)
-    {
+  else {
+    for (int i = 0; i < n; i++) {
       QString routablePrefix(v[i].prefix.c_str());
       QString prefix = trimRoutablePrefix(routablePrefix);
 
@@ -80,7 +76,8 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
         item->setPlainText(s.c_str());
         QRectF textBR = item->boundingRect();
         QRectF rectBR = rectItem->boundingRect();
-        item->setPos(rectBR.x() + (rectBR.width() - textBR.width())/2, rectBR.y() + (rectBR.height() - textBR.height())/2);
+        item->setPos(rectBR.x() + (rectBR.width() - textBR.width())/2,
+                     rectBR.y() + (rectBR.height() - textBR.height())/2);
       }
     }
     m_rootDigest->setPlainText(digest);
@@ -98,12 +95,10 @@ DigestTreeScene::getRosterList()
 {
   QStringList rosterList;
   RosterIterator it(m_roster);
-  while(it.hasNext())
-  {
+  while (it.hasNext()) {
     it.next();
     DisplayUserPtr p = it.value();
-    if (p != DisplayUserNullPtr)
-    {
+    if (p != DisplayUserNullPtr) {
       rosterList << "- " + p->getNick();
     }
   }
@@ -116,33 +111,31 @@ DigestTreeScene::msgReceived(QString routablePrefix, QString nick)
   QString prefix = trimRoutablePrefix(routablePrefix);
   Roster_iterator it = m_roster.find(prefix);
   // std::cout << "msgReceived prefix: " << prefix.toStdString() << std::endl;
-  if (it != m_roster.end())
-    {
-      // std::cout << "Updating for prefix = " << prefix.toStdString() << " nick = " << nick.toStdString() << std::endl;
-      DisplayUserPtr p = it.value();
-      p->setReceived(time(NULL));
-      if (nick != p->getNick())
-        {
-          // std::cout << "old nick = " << p->getNick().toStdString() << std::endl;
-          p->setNick(nick);
-          QGraphicsTextItem *nickItem = p->getNickTextItem();
-          QGraphicsRectItem *nickRectItem = p->getNickRectItem();
-          nickItem->setPlainText(p->getNick());
-          QRectF rectBR = nickRectItem->boundingRect();
-          QRectF nickBR = nickItem->boundingRect();
-          nickItem->setPos(rectBR.x() + (rectBR.width() - nickBR.width())/2, rectBR.y() + 5);
-          emit rosterChanged(QStringList());
-        }
-
-      reDrawNode(p, Qt::red);
-
-      if (previouslyUpdatedUser != DisplayUserNullPtr && previouslyUpdatedUser != p)
-        {
-          reDrawNode(previouslyUpdatedUser, Qt::darkBlue);
-        }
-
-      previouslyUpdatedUser = p;
+  if (it != m_roster.end()) {
+    // std::cout << "Updating for prefix = " << prefix.toStdString() <<
+    // " nick = " << nick.toStdString() << std::endl;
+    DisplayUserPtr p = it.value();
+    p->setReceived(::time(NULL));
+    if (nick != p->getNick()) {
+      // std::cout << "old nick = " << p->getNick().toStdString() << std::endl;
+      p->setNick(nick);
+      QGraphicsTextItem *nickItem = p->getNickTextItem();
+      QGraphicsRectItem *nickRectItem = p->getNickRectItem();
+      nickItem->setPlainText(p->getNick());
+      QRectF rectBR = nickRectItem->boundingRect();
+      QRectF nickBR = nickItem->boundingRect();
+      nickItem->setPos(rectBR.x() + (rectBR.width() - nickBR.width())/2, rectBR.y() + 5);
+      emit rosterChanged(QStringList());
     }
+
+    reDrawNode(p, Qt::red);
+
+    if (previouslyUpdatedUser != DisplayUserNullPtr && previouslyUpdatedUser != p) {
+      reDrawNode(previouslyUpdatedUser, Qt::darkBlue);
+    }
+
+    previouslyUpdatedUser = p;
+  }
 }
 
 void
@@ -163,7 +156,7 @@ void
 DigestTreeScene::plot(QString digest)
 {
 #ifdef _DEBUG
-  std::cout << "Plotting at time: " << time(NULL) << std::endl;
+  std::cout << "Plotting at time: " << ::time(NULL) << std::endl;
 #endif
   clear();
 
@@ -177,14 +170,11 @@ DigestTreeScene::plot(QString digest)
   // do some cleaning, get rid of stale member info
   Roster_iterator it = m_roster.begin();
   QStringList staleUserList;
-  while (it != m_roster.end())
-  {
+  while (it != m_roster.end()) {
     DisplayUserPtr p = it.value();
-    if (p != DisplayUserNullPtr)
-    {
-      time_t now = time(NULL);
-      if (now - p->getReceived() >= FRESHNESS)
-      {
+    if (p != DisplayUserNullPtr) {
+      time_t now = ::time(NULL);
+      if (now - p->getReceived() >= FRESHNESS) {
 #ifdef _DEBUG
         std::cout << "Removing user: " << p->getNick().toStdString() << std::endl;
         std::cout << "now - last = " << now - p->getReceived() << std::endl;
@@ -193,10 +183,9 @@ DigestTreeScene::plot(QString digest)
         p = DisplayUserNullPtr;
         it = m_roster.erase(it);
       }
-      else
-      {
-        if (!m_currentPrefix.startsWith("/private/local") && p->getPrefix().startsWith("/private/local"))
-        {
+      else {
+        if (!m_currentPrefix.startsWith("/private/local") &&
+            p->getPrefix().startsWith("/private/local")) {
 #ifdef _DEBUG
           std::cout << "erasing: " << p->getPrefix().toStdString() << std::endl;
 #endif
@@ -208,8 +197,7 @@ DigestTreeScene::plot(QString digest)
         ++it;
       }
     }
-    else
-    {
+    else {
       it = m_roster.erase(it);
     }
   }
@@ -243,19 +231,22 @@ DigestTreeScene::plotEdge(const std::vector<TreeLayout::Coordinate> &childNodesC
     double angle = ::acos(line.dx() / line.length());
 
     double arrowSize = 10;
-    QPointF sourceArrowP0 = src + QPointF((nodeSize/2 + 10) * line.dx() / line.length(),  (nodeSize/2 +10) * line.dy() / line.length());
+    QPointF sourceArrowP0 = src + QPointF((nodeSize/2 + 10) * line.dx() / line.length(),
+                                          (nodeSize/2 +10) * line.dy() / line.length());
     QPointF sourceArrowP1 = sourceArrowP0 + QPointF(cos(angle + Pi / 3 - Pi/2) * arrowSize,
                                                     sin(angle + Pi / 3 - Pi/2) * arrowSize);
     QPointF sourceArrowP2 = sourceArrowP0 + QPointF(cos(angle + Pi - Pi / 3 - Pi/2) * arrowSize,
-                                                         sin(angle + Pi - Pi / 3 - Pi/2) * arrowSize);
+                                                    sin(angle + Pi - Pi / 3 - Pi/2) * arrowSize);
 
     addLine(QLineF(sourceArrowP0, dest), QPen(Qt::black));
-    addPolygon(QPolygonF() << sourceArrowP0<< sourceArrowP1 << sourceArrowP2, QPen(Qt::black), QBrush(Qt::black));
+    addPolygon(QPolygonF() << sourceArrowP0<< sourceArrowP1 <<
+               sourceArrowP2, QPen(Qt::black), QBrush(Qt::black));
   }
 }
 
 void
-DigestTreeScene::plotNode(const std::vector<TreeLayout::Coordinate> &childNodesCo, QString digest, int nodeSize)
+DigestTreeScene::plotNode(const std::vector<TreeLayout::Coordinate>& childNodesCo,
+                          QString digest, int nodeSize)
 {
   RosterIterator it(m_roster);
   int n = childNodesCo.size();
@@ -273,20 +264,16 @@ DigestTreeScene::plotNode(const std::vector<TreeLayout::Coordinate> &childNodesC
   QRectF digestBoundingRect = digestItem->boundingRect();
   digestItem->setDefaultTextColor(Qt::black);
   digestItem->setFont(QFont("Cursive", 12, QFont::Bold));
-  digestItem->setPos(- 4.5 * nodeSize + (12 * nodeSize - digestBoundingRect.width()) / 2, - nodeSize + 5);
+  digestItem->setPos(- 4.5 * nodeSize + (12 * nodeSize - digestBoundingRect.width()) / 2,
+                     - nodeSize + 5);
   m_rootDigest = digestItem;
 
   // plot child nodes
-  for (int i = 0; i < n; i++)
-  {
+  for (int i = 0; i < n; i++) {
     if (it.hasNext())
-    {
       it.next();
-    }
     else
-    {
       abort();
-    }
 
     double x = childNodesCo[i].x;
     double y = childNodesCo[i].y;
@@ -296,14 +283,17 @@ DigestTreeScene::plotNode(const std::vector<TreeLayout::Coordinate> &childNodesC
     QGraphicsRectItem *rectItem = addRect(boundingRect, QPen(Qt::black), QBrush(Qt::darkBlue));
     p->setRimRectItem(rectItem);
 
-    QGraphicsRectItem *innerRectItem = addRect(innerBoundingRect, QPen(Qt::black), QBrush(Qt::lightGray));
+    QGraphicsRectItem *innerRectItem = addRect(innerBoundingRect,
+                                               QPen(Qt::black),
+                                               QBrush(Qt::lightGray));
     p->setInnerRectItem(innerRectItem);
 
     std::string s = boost::lexical_cast<std::string>(p->getSeqNo().getSeq());
     QGraphicsTextItem *seqItem = addText(s.c_str());
     seqItem->setFont(QFont("Cursive", 12, QFont::Bold));
     QRectF seqBoundingRect = seqItem->boundingRect();
-    seqItem->setPos(x + nodeSize / 2 - seqBoundingRect.width() / 2, y + nodeSize / 2 - seqBoundingRect.height() / 2);
+    seqItem->setPos(x + nodeSize / 2 - seqBoundingRect.width() / 2,
+                    y + nodeSize / 2 - seqBoundingRect.height() / 2);
     p->setSeqTextItem(seqItem);
 
     QRectF textRect(x - nodeSize / 2, y + nodeSize, 2 * nodeSize, 30);
@@ -331,7 +321,8 @@ DigestTreeScene::reDrawNode(DisplayUserPtr p, QColor rimColor)
     seqTextItem->setPlainText(s.c_str());
     QRectF textBR = seqTextItem->boundingRect();
     QRectF innerBR = innerItem->boundingRect();
-    seqTextItem->setPos(innerBR.x() + (innerBR.width() - textBR.width())/2, innerBR.y() + (innerBR.height() - textBR.height())/2);
+    seqTextItem->setPos(innerBR.x() + (innerBR.width() - textBR.width())/2,
+                        innerBR.y() + (innerBR.height() - textBR.height())/2);
 }
 
 QString
@@ -340,26 +331,21 @@ DigestTreeScene::trimRoutablePrefix(QString prefix)
   bool encaped = false;
   ndn::Name prefixName(prefix.toStdString());
 
-  ndn::Name::const_iterator it  = prefixName.begin();
-  ndn::Name::const_iterator end = prefixName.end();
   size_t offset = 0;
-
-  for(; it != end; it++, offset++)
-    {
-      if(it->toEscapedString() == "%F0.")
-        {
-          encaped = true;
-          break;
-        }
+  for (ndn::Name::const_iterator it  = prefixName.begin(); it != prefixName.end(); it++, offset++) {
+    if (it->toUri() == "%F0.") {
+      encaped = true;
+      break;
     }
+  }
 
-  if(!encaped)
+  if (!encaped)
     return prefix;
   else
-    {
-      return QString(prefixName.getSubName(offset+1).toUri().c_str());
-    }
+    return QString(prefixName.getSubName(offset+1).toUri().c_str());
 }
+
+} // namespace chronos
 
 #if WAF
 #include "digest-tree-scene.moc"
