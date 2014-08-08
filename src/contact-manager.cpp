@@ -49,7 +49,6 @@ using ndn::OnDataValidationFailed;
 using ndn::OnInterestValidated;
 using ndn::OnInterestValidationFailed;
 
-static const uint8_t DNS_RP_SEPARATOR[2] = {0xF0, 0x2E}; // %F0.
 
 ContactManager::ContactManager(shared_ptr<Face> face,
                                QObject* parent)
@@ -917,5 +916,5 @@ ContactManager::onUpdateEndorseCertificate(const QString& identity)
 
 #if WAF
 #include "contact-manager.moc"
-#include "contact-manager.cpp.moc"
+// #include "contact-manager.cpp.moc"
 #endif

@@ -65,5 +65,5 @@ InvitationDialog::onCancelClicked()
 
 #if WAF
 #include "invitation-dialog.moc"
-#include "invitation-dialog.cpp.moc"
+// #include "invitation-dialog.cpp.moc"
 #endif

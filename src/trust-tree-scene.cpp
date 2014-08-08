@@ -97,7 +97,6 @@ TrustTreeScene::plotNode(const TrustTreeNodeList& nodeList, int nodeSize)
     QRectF textRect(x - nodeSize / 2, y + nodeSize, 2 * nodeSize, 30);
     addRect(textRect, QPen(Qt::darkCyan), QBrush(Qt::darkCyan));
     QGraphicsTextItem *nickItem = addText(QString::fromStdString((*it)->name().toUri()));
-    QRectF textBoundingRect = nickItem->boundingRect();
     nickItem->setDefaultTextColor(Qt::white);
     nickItem->setFont(QFont("Cursive", 8, QFont::Bold));
     nickItem->setPos(x - nodeSize / 2 + 10, y + nodeSize + 5);
@@ -108,5 +107,5 @@ TrustTreeScene::plotNode(const TrustTreeNodeList& nodeList, int nodeSize)
 
 #if WAF
 #include "trust-tree-scene.moc"
-#include "trust-tree-scene.cpp.moc"
+// #include "trust-tree-scene.cpp.moc"
 #endif

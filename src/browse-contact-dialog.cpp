@@ -135,5 +135,5 @@ BrowseContactDialog::onIdCertReady(const IdentityCertificate& idCert)
 
 #if WAF
 #include "browse-contact-dialog.moc"
-#include "browse-contact-dialog.cpp.moc"
+// #include "browse-contact-dialog.cpp.moc"
 #endif

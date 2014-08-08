@@ -200,8 +200,10 @@ Controller::openDB()
     .append(QDir::separator())
     .append(getDBName().c_str());
   m_db.setDatabaseName(path);
-  bool ok = m_db.open();
 
+  m_db.open();
+
+  // bool ok = m_db.open();
   // _LOG_DEBUG("DB opened: " << std::boolalpha << ok );
 }
 
@@ -829,5 +831,5 @@ Controller::onInvitationInterest(const Name& prefix,
 
 #if WAF
 #include "controller.moc"
-#include "controller.cpp.moc"
+// #include "controller.cpp.moc"
 #endif

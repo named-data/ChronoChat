@@ -349,5 +349,5 @@ DigestTreeScene::trimRoutablePrefix(QString prefix)
 
 #if WAF
 #include "digest-tree-scene.moc"
-#include "digest-tree-scene.cpp.moc"
+// #include "digest-tree-scene.cpp.moc"
 #endif

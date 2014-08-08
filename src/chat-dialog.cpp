@@ -1298,5 +1298,5 @@ ChatDialog::onIntroCertTimeout(const Interest& interest, int retry, const QStrin
 
 #if WAF
 #include "chat-dialog.moc"
-#include "chat-dialog.cpp.moc"
+// #include "chat-dialog.cpp.moc"
 #endif

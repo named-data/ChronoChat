@@ -341,5 +341,5 @@ ContactPanel::onAliasChanged(const QString& identity, const QString& alias)
 
 #if WAF
 #include "contact-panel.moc"
-#include "contact-panel.cpp.moc"
+// #include "contact-panel.cpp.moc"
 #endif

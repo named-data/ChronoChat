@@ -251,7 +251,7 @@ ContactStorage::addSelfEndorseCertificate(const EndorseCertificate& newEndorseCe
                      -1, &stmt, 0);
   sqlite3_bind_string(stmt, 1, m_identity.toUri(), SQLITE_TRANSIENT);
   sqlite3_bind_block(stmt, 2, newEndorseCertificate.wireEncode(), SQLITE_TRANSIENT);
-  int res = sqlite3_step(stmt);
+  sqlite3_step(stmt);
 
   sqlite3_finalize(stmt);
 }
@@ -286,9 +286,8 @@ ContactStorage::updateCollectEndorse(const EndorseCertificate& endorseCertificat
                      -1, &stmt, 0);
   sqlite3_bind_string(stmt, 1, endorserName.toUri(), SQLITE_TRANSIENT);
   sqlite3_bind_string(stmt, 2, certName.toUri(), SQLITE_TRANSIENT);
-  const Block &block = endorseCertificate.wireEncode();
   sqlite3_bind_block(stmt, 3, endorseCertificate.wireEncode(), SQLITE_TRANSIENT);
-  int res = sqlite3_step(stmt);
+  sqlite3_step(stmt);
   sqlite3_finalize(stmt);
   return;
 }
@@ -343,17 +342,17 @@ ContactStorage::removeContact(const Name& identityName)
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(m_db, "DELETE FROM Contact WHERE contact_namespace=?", -1, &stmt, 0);
   sqlite3_bind_string(stmt, 1, identity, SQLITE_TRANSIENT);
-  int res = sqlite3_step(stmt);
+  sqlite3_step(stmt);
   sqlite3_finalize(stmt);
 
   sqlite3_prepare_v2(m_db, "DELETE FROM ContactProfile WHERE profile_identity=?", -1, &stmt, 0);
   sqlite3_bind_string(stmt, 1, identity, SQLITE_TRANSIENT);
-  res = sqlite3_step(stmt);
+  sqlite3_step(stmt);
   sqlite3_finalize(stmt);
 
   sqlite3_prepare_v2(m_db, "DELETE FROM TrustScope WHERE contact_namespace=?", -1, &stmt, 0);
   sqlite3_bind_string(stmt, 1, identity, SQLITE_TRANSIENT);
-  res = sqlite3_step(stmt);
+  sqlite3_step(stmt);
   sqlite3_finalize(stmt);
 }
 
@@ -486,7 +485,7 @@ ContactStorage::updateIsIntroducer(const Name& identity, bool isIntroducer)
                      -1, &stmt, 0);
   sqlite3_bind_int(stmt, 1, (isIntroducer ? 1 : 0));
   sqlite3_bind_string(stmt, 2, identity.toUri(), SQLITE_TRANSIENT);
-  int res = sqlite3_step(stmt);
+  sqlite3_step(stmt);
   sqlite3_finalize(stmt);
   return;
 }
@@ -499,7 +498,7 @@ ContactStorage::updateAlias(const Name& identity, const string& alias)
                      -1, &stmt, 0);
   sqlite3_bind_string(stmt, 1, alias, SQLITE_TRANSIENT);
   sqlite3_bind_string(stmt, 2, identity.toUri(), SQLITE_TRANSIENT);
-  int res = sqlite3_step(stmt);
+  sqlite3_step(stmt);
   sqlite3_finalize(stmt);
   return;
 }
@@ -559,7 +558,7 @@ ContactStorage::updateDnsData(const Block& data, const string& name,
   sqlite3_bind_string(stmt, 2, type, SQLITE_TRANSIENT);
   sqlite3_bind_block(stmt, 3, data, SQLITE_TRANSIENT);
   sqlite3_bind_string(stmt, 4, dataName, SQLITE_TRANSIENT);
-  int res = sqlite3_step(stmt);
+  sqlite3_step(stmt);
 
   sqlite3_finalize(stmt);
 }

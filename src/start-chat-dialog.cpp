@@ -55,5 +55,5 @@ StartChatDialog::onCancelClicked()
 
 #if WAF
 #include "start-chat-dialog.moc"
-#include "start-chat-dialog.cpp.moc"
+// #include "start-chat-dialog.cpp.moc"
 #endif

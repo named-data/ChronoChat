@@ -80,5 +80,5 @@ EndorseComboBoxDelegate::paint(QPainter* painter,
 
 #if WAF
 #include "endorse-combobox-delegate.moc"
-#include "endorse-combobox-delegate.cpp.moc"
+// #include "endorse-combobox-delegate.cpp.moc"
 #endif

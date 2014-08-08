@@ -99,5 +99,5 @@ AddContactPanel::onContactEndorseInfoReady(const Chronos::EndorseInfo& endorseIn
 
 #if WAF
 #include "add-contact-panel.moc"
-#include "add-contact-panel.cpp.moc"
+// #include "add-contact-panel.cpp.moc"
 #endif

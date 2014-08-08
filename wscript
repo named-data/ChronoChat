@@ -66,7 +66,7 @@ def build (bld):
     qt = bld (
         target = "ChronoChat",
         features = feature_list,
-        defines = "WAF",
+        defines = "WAF=1",
         source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', '*.qrc', 'logging.cc', 'src/*.proto']),
         includes = "src .",
         use = "QTCORE QTGUI QTWIDGETS QTSQL NDN_CXX BOOST LOG4CXX SYNC",

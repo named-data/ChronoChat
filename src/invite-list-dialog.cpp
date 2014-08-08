@@ -82,5 +82,5 @@ InviteListDialog::onContactIdListReady(const QStringList& idList)
 
 #if WAF
 #include "invite-list-dialog.moc"
-#include "invite-list-dialog.cpp.moc"
+// #include "invite-list-dialog.cpp.moc"
 #endif

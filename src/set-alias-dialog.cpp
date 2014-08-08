@@ -56,5 +56,5 @@ SetAliasDialog::setTargetIdentity(const QString& targetIdentity, const QString& 
 
 #if WAF
 #include "set-alias-dialog.moc"
-#include "set-alias-dialog.cpp.moc"
+// #include "set-alias-dialog.cpp.moc"
 #endif
