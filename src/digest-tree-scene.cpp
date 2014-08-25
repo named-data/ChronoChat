@@ -47,7 +47,7 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
       // std::cout << "processUpdate v[" << i << "]: " << prefix.toStdString() << std::endl;
       rePlot = true;
       DisplayUserPtr p(new DisplayUser());
-      time_t tempTime = ::time(NULL) - FRESHNESS + 1;
+      time_t tempTime = ::time(0) + 1;
       p->setReceived(tempTime);
       p->setPrefix(prefix);
       p->setSeq(v[i].high);
@@ -115,7 +115,7 @@ DigestTreeScene::msgReceived(QString routablePrefix, QString nick)
     // std::cout << "Updating for prefix = " << prefix.toStdString() <<
     // " nick = " << nick.toStdString() << std::endl;
     DisplayUserPtr p = it.value();
-    p->setReceived(::time(NULL));
+    p->setReceived(::time(0) + 1);
     if (nick != p->getNick()) {
       // std::cout << "old nick = " << p->getNick().toStdString() << std::endl;
       p->setNick(nick);

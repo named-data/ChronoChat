@@ -79,7 +79,7 @@ private: // private methods
   onLocalPrefixTimeout(const Interest& interest);
 
   void
-  onInvitationInterestWrapper(const Name& prefix, const Interest& interest,
+  onInvitationInterestWrapper(const ndn::Name& prefix, const ndn::Interest& interest,
                               size_t routingPrefixOffset);
 
   void
@@ -182,7 +182,8 @@ private slots:
   onError(const QString& msg);
 
   void
-  onInvitationInterest(const Name& prefix, const Interest& interest, size_t routingPrefixOffset);
+  onInvitationInterest(const ndn::Name& prefix, const ndn::Interest& interest,
+                       size_t routingPrefixOffset);
 
 private: // private member
   typedef std::map<std::string, QAction*> ChatActionList;

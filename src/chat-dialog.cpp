@@ -78,6 +78,8 @@ ChatDialog::ChatDialog(ContactManager* contactManager,
   , m_sock(NULL)
   , m_session(static_cast<uint64_t>(time::toUnixTimestamp(time::system_clock::now()).count()))
   , m_inviteListDialog(new InviteListDialog)
+  //ymj
+  //, m_trustModel(withSecurity)
 {
   qRegisterMetaType<std::vector<Sync::MissingDataInfo> >("std::vector<Sync::MissingDataInfo>");
   qRegisterMetaType<ndn::shared_ptr<const ndn::Data> >("ndn.DataPtr");
@@ -155,7 +157,11 @@ ChatDialog::ChatDialog(ContactManager* contactManager,
             m_inviteListDialog, SLOT(onContactAliasListReady(const QStringList&)));
     connect(m_contactManager, SIGNAL(contactIdListReady(const QStringList&)),
             m_inviteListDialog, SLOT(onContactIdListReady(const QStringList&)));
+
+    m_trustModel = ChatroomInfo::TRUST_MODEL_WEBOFTRUST;
   }
+  else
+    m_trustModel = ChatroomInfo::TRUST_MODEL_NONE;
 
   initializeSync();
 }
@@ -180,7 +186,7 @@ ChatDialog::~ChatDialog()
 void
 ChatDialog::addSyncAnchor(const Invitation& invitation)
 {
-  // _LOG_DEBUG("Add sync anchor from invation");
+  // _LOG_DEBUG("Add sync anchor from invitation");
   // Add inviter certificate as trust anchor.
   m_sock->addParticipant(invitation.getInviterCertificate());
   plotTrustTree();
@@ -228,7 +234,7 @@ ChatDialog::closeEvent(QCloseEvent *e)
                               "system tray. To close the chatroom, "
                               "choose <b>Close chatroom</b> in the "
                               "context memu of the system tray entry."));
-  hide();
+  hide();//ymj
   e->ignore();
 }
 
@@ -282,6 +288,7 @@ ChatDialog::updatePrefix()
 
   if (m_certListPrefixId)
     m_face->unsetInterestFilter(m_certListPrefixId);
+
   m_certListPrefixId = m_face->setInterestFilter(m_certListPrefix,
                                                  bind(&ChatDialog::onCertListInterest,
                                                       this, _1, _2),
@@ -522,7 +529,7 @@ ChatDialog::introCertTimeoutWrapper(const Interest& interest, int retry, const Q
 }
 
 void
-ChatDialog::onCertListInterest(const Name& prefix, const Interest& interest)
+ChatDialog::onCertListInterest(const ndn::Name& prefix, const ndn::Interest& interest)
 {
   vector<Name> certNameList;
   m_sock->getIntroCertNames(certNameList);
@@ -545,7 +552,7 @@ ChatDialog::onCertListInterest(const Name& prefix, const Interest& interest)
 }
 
 void
-ChatDialog::onCertListRegisterFailed(const Name& prefix, const string& msg)
+ChatDialog::onCertListRegisterFailed(const ndn::Name& prefix, const std::string& msg)
 {
   // _LOG_DEBUG("ChatDialog::onCertListRegisterFailed failed: " + msg);
 }
@@ -567,7 +574,7 @@ ChatDialog::onCertSingleInterest(const Name& prefix, const Interest& interest)
 }
 
 void
-ChatDialog::onCertSingleRegisterFailed(const Name& prefix, const string& msg)
+ChatDialog::onCertSingleRegisterFailed(const Name& prefix, const std::string& msg)
 {
   // _LOG_DEBUG("ChatDialog::onCertListRegisterFailed failed: " + msg);
 }
@@ -719,7 +726,7 @@ ChatDialog::formChatMessage(const QString &text, SyncDemo::ChatMessage &msg) {
   msg.set_to(m_chatroomName);
   msg.set_data(text.toStdString());
   int32_t seconds =
-    static_cast<int32_t>(time::toUnixTimestamp(time::system_clock::now()).count()/1000000000);
+    static_cast<int32_t>(time::toUnixTimestamp(time::system_clock::now()).count()/1000);
   msg.set_timestamp(seconds);
   msg.set_type(SyncDemo::ChatMessage::CHAT);
 }
@@ -731,7 +738,7 @@ ChatDialog::formControlMessage(SyncDemo::ChatMessage &msg,
   msg.set_from(m_nick);
   msg.set_to(m_chatroomName);
   int32_t seconds =
-    static_cast<int32_t>(time::toUnixTimestamp(time::system_clock::now()).count()/1000000000);
+    static_cast<int32_t>(time::toUnixTimestamp(time::system_clock::now()).count()/1000);
   msg.set_timestamp(seconds);
   msg.set_type(type);
 }
@@ -924,6 +931,26 @@ ChatDialog::plotTrustTree()
   }
 }
 
+shared_ptr<ChatroomInfo>
+ChatDialog::getChatroomInfo() const
+{
+  shared_ptr<ChatroomInfo> chatroom = make_shared<ChatroomInfo>();
+  chatroom->setName(Name::Component(m_chatroomName));
+
+  Roster roster = m_scene->getRosterFull();
+  Roster_iterator it = roster.begin();
+
+  for(it = roster.begin(); it != roster.end(); ++it )
+  {
+    Name participant = Name(it.key().toStdString()).getPrefix(-3);
+    chatroom->addParticipant(participant);
+  }
+
+  chatroom->setTrustModel(m_trustModel);
+  return chatroom;
+}
+
+
 // public slots:
 void
 ChatDialog::onLocalPrefixUpdated(const QString& localPrefix)
@@ -1052,7 +1079,7 @@ ChatDialog::onTrustTreeButtonPressed()
 }
 
 void
-ChatDialog::onProcessData(const shared_ptr<const Data>& data, bool show, bool isHistory)
+ChatDialog::onProcessData(const ndn::shared_ptr<const ndn::Data>& data, bool show, bool isHistory)
 {
   SyncDemo::ChatMessage msg;
   bool corrupted = false;
@@ -1064,6 +1091,9 @@ ChatDialog::onProcessData(const shared_ptr<const Data>& data, bool show, bool is
     msg.set_type(SyncDemo::ChatMessage::OTHER);
     corrupted = true;
   }
+
+  //std::cout << "onProcessData: " << show << std::endl;
+  //std::cout << "onProcessData: " << corrupted << std::endl;
 
   // display msg received from network
   // we have to do so; this function is called by ccnd thread
@@ -1153,6 +1183,8 @@ ChatDialog::onRosterChanged(QStringList staleUserList)
     appendMessage(msg);
   }
   plotTrustTree();
+
+  emit rosterChanged(*getChatroomInfo());
 }
 
 void
@@ -1180,7 +1212,7 @@ void
 ChatDialog::sendHello()
 {
   int64_t now = time::toUnixTimestamp(time::system_clock::now()).count();
-  int elapsed = (now - m_lastMsgTime) / 1000000000;
+  int elapsed = (now - m_lastMsgTime) / 1000;
   if (elapsed >= m_randomizedInterval / 1000) {
     SyncDemo::ChatMessage msg;
     formControlMessage(msg, SyncDemo::ChatMessage::HELLO);
@@ -1262,7 +1294,7 @@ ChatDialog::onReply(const Interest& interest,
 }
 
 void
-ChatDialog::onReplyTimeout(const Interest& interest,
+ChatDialog::onReplyTimeout(const ndn::Interest& interest,
                            size_t routablePrefixOffset)
 {
   Name interestName;
@@ -1279,7 +1311,7 @@ ChatDialog::onReplyTimeout(const Interest& interest,
 }
 
 void
-ChatDialog::onIntroCert(const Interest& interest, const shared_ptr<const Data>& data)
+ChatDialog::onIntroCert(const ndn::Interest& interest, const ndn::shared_ptr<const ndn::Data>& data)
 {
   Data innerData;
   innerData.wireDecode(data->getContent().blockFromValue());
@@ -1289,12 +1321,13 @@ ChatDialog::onIntroCert(const Interest& interest, const shared_ptr<const Data>& 
 }
 
 void
-ChatDialog::onIntroCertTimeout(const Interest& interest, int retry, const QString& msg)
+ChatDialog::onIntroCertTimeout(const ndn::Interest& interest, int retry, const QString& msg)
 {
   // _LOG_DEBUG("onIntroCertTimeout: " << msg.toStdString());
 }
 
 } // namespace chronos
+
 
 #if WAF
 #include "chat-dialog.moc"

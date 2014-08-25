@@ -34,15 +34,16 @@ namespace chronos {
 class User;
 class DisplayUser;
 typedef boost::shared_ptr<DisplayUser> DisplayUserPtr;
+typedef QMap<QString, DisplayUserPtr> Roster;
+typedef QMap<QString, DisplayUserPtr>::iterator Roster_iterator;
+typedef QMapIterator<QString, DisplayUserPtr> RosterIterator;
+
 static DisplayUserPtr DisplayUserNullPtr;
+
 
 class DigestTreeScene : public QGraphicsScene
 {
   Q_OBJECT
-
-typedef QMap<QString, DisplayUserPtr> Roster;
-typedef QMap<QString, DisplayUserPtr>::iterator Roster_iterator;
-typedef QMapIterator<QString, DisplayUserPtr> RosterIterator;
 
 public:
   DigestTreeScene(QWidget *parent = 0);

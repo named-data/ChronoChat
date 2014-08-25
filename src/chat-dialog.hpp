@@ -9,8 +9,8 @@
  *         Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_CHAT_DIALOG_HPP
-#define CHRONOS_CHAT_DIALOG_HPP
+#ifndef CHRONOCHAT_CHAT_DIALOG_HPP
+#define CHRONOCHAT_CHAT_DIALOG_HPP
 
 #include <QDialog>
 #include <QTextTable>
@@ -36,6 +36,7 @@
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/thread.hpp>
+#include "chatroom-info.hpp"
 #endif
 
 #include "invite-list-dialog.hpp"
@@ -81,7 +82,10 @@ public:
   void
   processRemoveWrapper(const std::string& prefix);
 
-protected:
+  //ymj
+  shared_ptr<ChatroomInfo>
+  getChatroomInfo() const;
+
   void
   closeEvent(QCloseEvent* e);
 
@@ -116,12 +120,12 @@ private:
                       size_t routablePrefixOffset);
 
   void
-  onReplyValidated(const shared_ptr<const Data>& data,
+  onReplyValidated(const ndn::shared_ptr<const ndn::Data>& data,
                    size_t inviteeRoutablePrefixOffset,
                    bool isIntroduce);
 
   void
-  onReplyValidationFailed(const shared_ptr<const Data>& data,
+  onReplyValidationFailed(const ndn::shared_ptr<const ndn::Data>& data,
                           const std::string& failureInfo);
 
   void
@@ -147,10 +151,10 @@ private:
   introCertTimeoutWrapper(const Interest& interest, int retry, const QString& msg);
 
   void
-  onCertListInterest(const Name& prefix, const Interest& interest);
+  onCertListInterest(const ndn::Name& prefix, const ndn::Interest& interest);
 
   void
-  onCertListRegisterFailed(const Name& prefix, const std::string& msg);
+  onCertListRegisterFailed(const ndn::Name& prefix, const std::string& msg);
 
   void
   onCertSingleInterest(const Name& prefix, const Interest& interest);
@@ -206,7 +210,8 @@ private:
 
 signals:
   void
-  processData(const shared_ptr<const Data>& data, bool show, bool isHistory);
+  processData(const ndn::shared_ptr<const ndn::Data>& data,
+              bool show, bool isHistory);
 
   void
   processTreeUpdate(const std::vector<Sync::MissingDataInfo>);
@@ -224,20 +229,23 @@ signals:
   resetIcon();
 
   void
-  reply(const Interest& interest, const shared_ptr<const Data>& data,
+  reply(const ndn::Interest& interest, const ndn::shared_ptr<const ndn::Data>& data,
         size_t routablePrefixOffset, bool isIntroducer);
 
   void
-  replyTimeout(const Interest& interest, size_t routablePrefixOffset);
+  replyTimeout(const ndn::Interest& interest, size_t routablePrefixOffset);
 
   void
-  introCert(const Interest& interest, const shared_ptr<const Data>& data);
+  introCert(const ndn::Interest& interest, const ndn::shared_ptr<const ndn::Data>& data);
 
   void
-  introCertTimeout(const Interest& interest, int retry, const QString& msg);
+  introCertTimeout(const ndn::Interest& interest, int retry, const QString& msg);
 
   void
   waitForContactList();
+
+  void
+  rosterChanged(const chronos::ChatroomInfo& info);
 
 public slots:
   void
@@ -257,7 +265,7 @@ private slots:
   onTrustTreeButtonPressed();
 
   void
-  onProcessData(const shared_ptr<const Data>& data, bool show, bool isHistory);
+  onProcessData(const ndn::shared_ptr<const ndn::Data>& data, bool show, bool isHistory);
 
   void
   onProcessTreeUpdate(const std::vector<Sync::MissingDataInfo>&);
@@ -290,17 +298,17 @@ private slots:
   onSendInvitation(QString invitee);
 
   void
-  onReply(const Interest& interest, const shared_ptr<const Data>& data,
+  onReply(const ndn::Interest& interest, const ndn::shared_ptr<const ndn::Data>& data,
           size_t routablePrefixOffset, bool isIntroducer);
 
   void
-  onReplyTimeout(const Interest& interest, size_t routablePrefixOffset);
+  onReplyTimeout(const ndn::Interest& interest, size_t routablePrefixOffset);
 
   void
-  onIntroCert(const Interest& interest, const shared_ptr<const Data>& data);
+  onIntroCert(const ndn::Interest& interest, const ndn::shared_ptr<const ndn::Data>& data);
 
   void
-  onIntroCertTimeout(const Interest& interest, int retry, const QString& msg);
+  onIntroCertTimeout(const ndn::Interest& interest, int retry, const QString& msg);
 
 private:
   Ui::ChatDialog *ui;
@@ -345,8 +353,11 @@ private:
   boost::recursive_mutex m_sceneMutex;
   QList<QString> m_zombieList;
   int m_zombieIndex;
+
+  //ymj
+  ChatroomInfo::TrustModel m_trustModel;
 };
 
 } // namespace chronos
 
-#endif // CHRONOS_CHAT_DIALOG_HPP
+#endif // CHRONOCHAT_CHAT_DIALOG_HPP
