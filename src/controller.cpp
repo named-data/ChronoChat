@@ -419,12 +419,37 @@ Controller::updateMenu()
 void
 Controller::onLocalPrefix(const Interest& interest, Data& data)
 {
-  QString localPrefixStr = QString::fromUtf8
-    (reinterpret_cast<const char*>(data.getContent().value()), data.getContent().value_size())
-    .trimmed();
+  QString localPrefixStr("/private/local");
+  Name prefix;
 
-  Name localPrefix(localPrefixStr.toStdString());
-  if (m_localPrefix.empty() || m_localPrefix != localPrefix) {
+  Block contentBlock = data.getContent();
+  try {
+    contentBlock.parse();
+
+    for (Block::element_const_iterator it = contentBlock.elements_begin();
+         it != contentBlock.elements_end(); it++) {
+      Name candidate;
+      candidate.wireDecode(*it);
+      if (candidate.isPrefixOf(m_identity)) {
+        prefix = candidate;
+        break;
+      }
+    }
+
+    if (prefix.empty()) {
+      if (contentBlock.elements_begin() != contentBlock.elements_end())
+        prefix.wireDecode(*contentBlock.elements_begin());
+      else
+        prefix = Name("/private/local");
+    }
+
+    localPrefixStr = QString::fromStdString(prefix.toUri());
+  }
+  catch (Block::Error& e) {
+    prefix = Name("/private/local");
+  }
+
+  if (m_localPrefix.empty() || m_localPrefix != prefix) {
     emit localPrefixUpdated(localPrefixStr);
   }
 }
@@ -657,7 +682,7 @@ void
 Controller::onUpdateLocalPrefixAction()
 {
   // Name interestName();
-  Interest interest("/local/ndn/prefix");
+  Interest interest("/localhop/ndn-autoconf/routable-prefixes");
   interest.setInterestLifetime(time::milliseconds(1000));
   interest.setMustBeFresh(true);
 
