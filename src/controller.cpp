@@ -13,6 +13,7 @@
 #include <QDir>
 #include <QTimer>
 #include "controller.hpp"
+//#include "chatroom-discovery.h"
 
 #ifndef Q_MOC_RUN
 #include <boost/filesystem.hpp>
@@ -31,6 +32,7 @@ Q_DECLARE_METATYPE(ndn::IdentityCertificate)
 Q_DECLARE_METATYPE(Chronos::EndorseInfo)
 Q_DECLARE_METATYPE(ndn::Interest)
 Q_DECLARE_METATYPE(size_t)
+Q_DECLARE_METATYPE(chronos::ChatroomInfo)
 
 namespace chronos {
 
@@ -50,6 +52,8 @@ Controller::Controller(shared_ptr<Face> face,
   , m_face(face)
   , m_invitationListenerId(0)
   , m_contactManager(m_face)
+  , m_discoveryLogic(m_face,
+                     bind(&Controller::updateDiscoveryList, this, _1, _2))
   , m_settingDialog(new SettingDialog)
   , m_startChatDialog(new StartChatDialog)
   , m_profileEditor(new ProfileEditor)
@@ -57,12 +61,14 @@ Controller::Controller(shared_ptr<Face> face,
   , m_contactPanel(new ContactPanel)
   , m_browseContactDialog(new BrowseContactDialog)
   , m_addContactPanel(new AddContactPanel)
+  , m_chatroomDiscoveryDialog(new ChatroomDiscoveryDialog)
 {
   qRegisterMetaType<ndn::Name>("ndn.Name");
   qRegisterMetaType<ndn::IdentityCertificate>("ndn.IdentityCertificate");
   qRegisterMetaType<Chronos::EndorseInfo>("Chronos.EndorseInfo");
   qRegisterMetaType<ndn::Interest>("ndn.Interest");
   qRegisterMetaType<size_t>("size_t");
+  qRegisterMetaType<chronos::ChatroomInfo>("chronos.Chatroom");
 
   connect(this, SIGNAL(localPrefixUpdated(const QString&)),
           this, SLOT(onLocalPrefixUpdated(const QString&)));
@@ -156,6 +162,14 @@ Controller::Controller(shared_ptr<Face> face,
           m_contactPanel, SLOT(onContactInfoReady(const QString&, const QString&,
                                                   const QString&, bool)));
 
+  // Connection to DiscoveryDialog
+  connect(this,
+          SIGNAL(discoverChatroomChanged(const chronos::ChatroomInfo&, bool)),
+          m_chatroomDiscoveryDialog,
+          SLOT(onDiscoverChatroomChanged(const chronos::ChatroomInfo&, bool)));
+  connect(m_chatroomDiscoveryDialog, SIGNAL(startChatroom(const QString&, bool)),
+          this, SLOT(onStartChatroom(const QString&, bool)));
+
   initialize();
 
   createTrayIcon();
@@ -219,6 +233,8 @@ Controller::initialize()
   emit identityUpdated(QString(m_identity.toUri().c_str()));
 
   setInvitationListener();
+
+  m_discoveryLogic.sendDiscoveryInterest();
 }
 
 void
@@ -295,6 +311,9 @@ Controller::createActions()
   m_startChatroom = new QAction(tr("Start new chat"), this);
   connect(m_startChatroom, SIGNAL(triggered()), this, SLOT(onStartChatAction()));
 
+  m_discoveryAction = new QAction(tr("Ongoing Chatrooms"), this);
+  connect(m_discoveryAction, SIGNAL(triggered()), this, SLOT(onDiscoveryAction()));
+
   m_settingsAction = new QAction(tr("Settings"), this);
   connect(m_settingsAction, SIGNAL(triggered()), this, SLOT(onSettingsAction()));
 
@@ -315,6 +334,7 @@ Controller::createActions()
 
   m_quitAction = new QAction(tr("Quit"), this);
   connect(m_quitAction, SIGNAL(triggered()), this, SLOT(onQuitAction()));
+
 }
 
 void
@@ -324,6 +344,8 @@ Controller::createTrayIcon()
 
   m_trayIconMenu = new QMenu(this);
   m_trayIconMenu->addAction(m_startChatroom);
+  m_trayIconMenu->addAction(m_discoveryAction);
+
   m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_settingsAction);
   m_trayIconMenu->addAction(m_editProfileAction);
@@ -354,6 +376,8 @@ Controller::updateMenu()
   QMenu* closeMenu = 0;
 
   menu->addAction(m_startChatroom);
+  menu->addAction(m_discoveryAction);
+
   menu->addSeparator();
   menu->addAction(m_settingsAction);
   menu->addAction(m_editProfileAction);
@@ -400,8 +424,9 @@ Controller::onLocalPrefix(const Interest& interest, Data& data)
     .trimmed();
 
   Name localPrefix(localPrefixStr.toStdString());
-  if (m_localPrefix.empty() || m_localPrefix != localPrefix)
+  if (m_localPrefix.empty() || m_localPrefix != localPrefix) {
     emit localPrefixUpdated(localPrefixStr);
+  }
 }
 
 void
@@ -410,8 +435,9 @@ Controller::onLocalPrefixTimeout(const Interest& interest)
   QString localPrefixStr("/private/local");
 
   Name localPrefix(localPrefixStr.toStdString());
-  if (m_localPrefix.empty() || m_localPrefix != localPrefix)
+  if (m_localPrefix.empty() || m_localPrefix != localPrefix) {
     emit localPrefixUpdated(localPrefixStr);
+  }
 }
 
 void
@@ -481,18 +507,22 @@ void
 Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
 {
   m_chatDialogList[chatroomName.toStdString()] = chatDialog;
+  m_discoveryLogic.addLocalChatroom(*chatDialog->getChatroomInfo());
   connect(chatDialog, SIGNAL(closeChatDialog(const QString&)),
           this, SLOT(onRemoveChatDialog(const QString&)));
   connect(chatDialog, SIGNAL(showChatMessage(const QString&, const QString&, const QString&)),
           this, SLOT(onShowChatMessage(const QString&, const QString&, const QString&)));
   connect(chatDialog, SIGNAL(resetIcon()),
           this, SLOT(onResetIcon()));
+  connect(chatDialog, SIGNAL(rosterChanged(const chronos::ChatroomInfo&)),
+          this, SLOT(onRosterChanged(const chronos::ChatroomInfo&)));
   connect(this, SIGNAL(localPrefixUpdated(const QString&)),
           chatDialog, SLOT(onLocalPrefixUpdated(const QString&)));
 
   QAction* chatAction = new QAction(chatroomName, this);
   m_chatActionList[chatroomName.toStdString()] = chatAction;
-  connect(chatAction, SIGNAL(triggered()), chatDialog, SLOT(raise()));
+  connect(chatAction, SIGNAL(triggered()),
+          chatDialog, SLOT(raise()));//ymj
 
   QAction* closeAction = new QAction(chatroomName, this);
   m_closeActionList[chatroomName.toStdString()] = closeAction;
@@ -501,7 +531,12 @@ Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
   updateMenu();
 }
 
-// private slots:
+void
+Controller::updateDiscoveryList(const ChatroomInfo& info, bool isAdd)
+{
+  emit discoverChatroomChanged(info, isAdd);
+}
+
 void
 Controller::onIdentityUpdated(const QString& identity)
 {
@@ -569,6 +604,17 @@ Controller::onStartChatAction()
   m_startChatDialog->show();
   m_startChatDialog->raise();
 }
+
+void
+Controller::onDiscoveryAction()
+{
+  m_discoveryLogic.sendDiscoveryInterest();
+
+  m_chatroomDiscoveryDialog->updateChatroomList();
+  m_chatroomDiscoveryDialog->show();
+  m_chatroomDiscoveryDialog->raise();
+}
+
 
 void
 Controller::onSettingsAction()
@@ -675,16 +721,22 @@ Controller::onStartChatroom(const QString& chatroomName, bool secured)
     return;
   }
 
-  // TODO: We should create a chatroom specific key/cert (which should be created in the first half of this method, but let's use the default one for now.
-  shared_ptr<IdentityCertificate> idCert = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
-  ChatDialog* chatDialog = new ChatDialog(&m_contactManager, m_face, *idCert, chatroomPrefix, m_localPrefix, m_nick, secured);
+  // TODO: We should create a chatroom specific key/cert
+  //(which should be created in the first half of this method
+  //, but let's use the default one for now.
+  // std::cout << "start chat room localprefix: " << m_localPrefix.toUri() << std::endl;
+  shared_ptr<IdentityCertificate> idCert
+    = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
+  ChatDialog* chatDialog
+    = new ChatDialog(&m_contactManager, m_face, *idCert, chatroomPrefix
+                     , m_localPrefix, m_nick, secured);
 
   addChatDialog(chatroomName, chatDialog);
   chatDialog->show();
 }
 
 void
-Controller::onInvitationResponded(const Name& invitationName, bool accepted)
+Controller::onInvitationResponded(const ndn::Name& invitationName, bool accepted)
 {
   Data response;
   shared_ptr<IdentityCertificate> chatroomCert;
@@ -696,8 +748,10 @@ Controller::onInvitationResponded(const Name& invitationName, bool accepted)
 
     response.setName(responseName);
 
-    // We should create a particular certificate for this chatroom, but let's use default one for now.
-    chatroomCert = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
+    // We should create a particular certificate for this chatroom,
+    //but let's use default one for now.
+    chatroomCert
+      = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
 
     response.setContent(chatroomCert->wireEncode());
     response.setFreshnessPeriod(time::milliseconds(1000));
@@ -738,9 +792,14 @@ Controller::onInvitationResponded(const Name& invitationName, bool accepted)
       .append("ChronoChat")
       .append(invitation.getChatroom());
 
-    //We should create a chatroom specific key/cert (which should be created in the first half of this method, but let's use the default one for now.
-    shared_ptr<IdentityCertificate> idCert = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
-    ChatDialog* chatDialog = new ChatDialog(&m_contactManager, m_face, *idCert, chatroomPrefix, m_localPrefix, m_nick, true);
+    //We should create a chatroom specific key/cert
+    //(which should be created in the first half of this method,
+    //but let's use the default one for now.
+    shared_ptr<IdentityCertificate> idCert
+      = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
+    ChatDialog* chatDialog
+      = new ChatDialog(&m_contactManager, m_face, *idCert,
+                       chatroomPrefix, m_localPrefix, m_nick, true);
     chatDialog->addSyncAnchor(invitation);
 
     addChatDialog(QString::fromStdString(invitation.getChatroom()), chatDialog);
@@ -773,6 +832,7 @@ Controller::onRemoveChatDialog(const QString& chatroomName)
     if (deletedChat)
       delete deletedChat;
     m_chatDialogList.erase(it);
+    m_discoveryLogic.removeLocalChatroom(Name::Component(chatroomName.toStdString()));
 
     QAction* chatAction = m_chatActionList[chatroomName.toStdString()];
     QAction* closeAction = m_closeActionList[chatroomName.toStdString()];
@@ -802,8 +862,8 @@ Controller::onError(const QString& msg)
 }
 
 void
-Controller::onInvitationInterest(const Name& prefix,
-                                 const Interest& interest,
+Controller::onInvitationInterest(const ndn::Name& prefix,
+                                 const ndn::Interest& interest,
                                  size_t routingPrefixOffset)
 {
   // _LOG_DEBUG("onInvitationInterest: " << interest.getName());
@@ -825,6 +885,12 @@ Controller::onInvitationInterest(const Name& prefix,
   OnInterestValidationFailed onValidationFailed = bind(&Controller::onInvitationValidationFailed,
                                                        this, _1, _2);
   m_validator.validate(*invitationInterest, onValidated, onValidationFailed);
+}
+
+void
+Controller::onRosterChanged(const chronos::ChatroomInfo& info)
+{
+  m_discoveryLogic.addLocalChatroom(info);
 }
 
 } // namespace chronos

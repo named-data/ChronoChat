@@ -24,10 +24,12 @@
 #include "browse-contact-dialog.hpp"
 #include "add-contact-panel.hpp"
 #include "chat-dialog.hpp"
+#include "chatroom-discovery-dialog.hpp"
 
 #ifndef Q_MOC_RUN
 #include "common.hpp"
 #include "contact-manager.hpp"
+#include "chatroom-discovery-logic.hpp"
 #include "validator-invitation.hpp"
 #include <ndn-cxx/security/key-chain.hpp>
 #endif
@@ -101,6 +103,9 @@ private: // private methods
   void
   addChatDialog(const QString& chatroomName, ChatDialog* chatDialog);
 
+  void
+  updateDiscoveryList(const chronos::ChatroomInfo& chatroomName, bool isAdd);
+
 signals:
   void
   closeDBModule();
@@ -115,7 +120,11 @@ signals:
   refreshBrowseContact();
 
   void
-  invitationInterest(const Name& prefix, const Interest& interest, size_t routingPrefixOffset);
+  invitationInterest(const ndn::Name& prefix, const ndn::Interest& interest,
+                     size_t routingPrefixOffset);
+
+  void
+  discoverChatroomChanged(const chronos::ChatroomInfo& chatroomInfo, bool isAdd);
 
 private slots:
   void
@@ -135,6 +144,9 @@ private slots:
 
   void
   onStartChatAction();
+
+  void
+  onDiscoveryAction();
 
   void
   onSettingsAction();
@@ -164,7 +176,7 @@ private slots:
   onStartChatroom(const QString& chatroom, bool secured);
 
   void
-  onInvitationResponded(const Name& invitationName, bool accepted);
+  onInvitationResponded(const ndn::Name& invitationName, bool accepted);
 
   void
   onShowChatMessage(const QString& chatroomName, const QString& from, const QString& data);
@@ -185,6 +197,9 @@ private slots:
   onInvitationInterest(const ndn::Name& prefix, const ndn::Interest& interest,
                        size_t routingPrefixOffset);
 
+  void
+  onRosterChanged(const chronos::ChatroomInfo& info);
+
 private: // private member
   typedef std::map<std::string, QAction*> ChatActionList;
   typedef std::map<std::string, ChatDialog*> ChatDialogList;
@@ -197,8 +212,12 @@ private: // private member
   // Contact Manager
   ContactManager m_contactManager;
 
+  // Chatroom discovery
+  ChatroomDiscoveryLogic m_discoveryLogic;
+
   // Tray
   QAction*         m_startChatroom;
+  QAction*         m_discoveryAction;
   QAction*         m_minimizeAction;
   QAction*         m_settingsAction;
   QAction*         m_editProfileAction;
@@ -221,6 +240,7 @@ private: // private member
   BrowseContactDialog* m_browseContactDialog;
   AddContactPanel*     m_addContactPanel;
   ChatDialogList       m_chatDialogList;
+  ChatroomDiscoveryDialog* m_chatroomDiscoveryDialog;
 
   // Conf
   Name m_identity;
