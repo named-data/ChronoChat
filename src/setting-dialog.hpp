@@ -42,9 +42,15 @@ signals:
   void
   nickUpdated(const QString& nick);
 
+  void
+  prefixUpdated(const QString& prefix);
+
 public slots:
   void
   onIdentityUpdated(const QString& identity);
+
+  void
+  onLocalPrefixUpdated(const QString& prefix);
 
 private slots:
   void
@@ -57,6 +63,7 @@ private:
   Ui::SettingDialog* ui;
   QString m_identity;
   QString m_nick;
+  QString m_prefix;
 };
 
 } // namespace chronos

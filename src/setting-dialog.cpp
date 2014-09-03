@@ -45,21 +45,32 @@ SettingDialog::onIdentityUpdated(const QString& identity)
 }
 
 void
+SettingDialog::onLocalPrefixUpdated(const QString& prefix)
+{
+  m_prefix = prefix;
+  ui->prefixLine->setText(m_prefix);
+}
+
+void
 SettingDialog::onSaveClicked()
 {
   QString identity = ui->identityLine->text();
   QString nick = ui->nickLine->text();
+  QString prefix = ui->prefixLine->text();
 
-  if(identity != m_identity)
-    {
-      m_identity = identity;
-      emit identityUpdated(identity);
-    }
-  if(nick != m_nick)
-    {
-      m_nick = nick;
-      emit nickUpdated(nick);
-    }
+  if(identity != m_identity) {
+    m_identity = identity;
+    emit identityUpdated(identity);
+  }
+  if(nick != m_nick) {
+    m_nick = nick;
+    emit nickUpdated(nick);
+  }
+  if (prefix != m_prefix) {
+    m_prefix = prefix;
+    emit prefixUpdated(prefix);
+  }
+
 
   this->close();
 }

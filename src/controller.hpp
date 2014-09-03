@@ -114,6 +114,9 @@ signals:
   localPrefixUpdated(const QString& localPrefix);
 
   void
+  localPrefixConfigured(const QString& prefix);
+
+  void
   identityUpdated(const QString& identity);
 
   void
@@ -141,6 +144,9 @@ private slots:
 
   void
   onLocalPrefixUpdated(const QString& localPrefix);
+
+  void
+  onLocalPrefixConfigured(const QString& prefix);
 
   void
   onStartChatAction();
@@ -207,6 +213,7 @@ private: // private member
   // Communication
   shared_ptr<ndn::Face> m_face;
   Name m_localPrefix;
+  bool m_localPrefixDetected;
   const ndn::RegisteredPrefixId* m_invitationListenerId;
 
   // Contact Manager

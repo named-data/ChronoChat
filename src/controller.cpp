@@ -50,6 +50,7 @@ Controller::Controller(shared_ptr<Face> face,
                        QWidget* parent)
   : QDialog(parent)
   , m_face(face)
+  , m_localPrefixDetected(false)
   , m_invitationListenerId(0)
   , m_contactManager(m_face)
   , m_discoveryLogic(m_face,
@@ -94,6 +95,10 @@ Controller::Controller(shared_ptr<Face> face,
           this, SLOT(onIdentityUpdated(const QString&)));
   connect(m_settingDialog, SIGNAL(nickUpdated(const QString&)),
           this, SLOT(onNickUpdated(const QString&)));
+  connect(this, SIGNAL(localPrefixUpdated(const QString&)),
+          m_settingDialog, SLOT(onLocalPrefixUpdated(const QString&)));
+  connect(m_settingDialog, SIGNAL(prefixUpdated(const QString&)),
+          this, SLOT(onLocalPrefixConfigured(const QString&)));
 
   // Connection to ProfileEditor
   connect(this, SIGNAL(closeDBModule()),
@@ -543,6 +548,8 @@ Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
           this, SLOT(onRosterChanged(const chronos::ChatroomInfo&)));
   connect(this, SIGNAL(localPrefixUpdated(const QString&)),
           chatDialog, SLOT(onLocalPrefixUpdated(const QString&)));
+  connect(this, SIGNAL(localPrefixConfigured(const QString&)),
+          chatDialog, SLOT(onLocalPrefixUpdated(const QString&)));
 
   QAction* chatAction = new QAction(chatroomName, this);
   m_chatActionList[chatroomName.toStdString()] = chatAction;
@@ -617,7 +624,23 @@ Controller::onNickUpdated(const QString& nick)
 void
 Controller::onLocalPrefixUpdated(const QString& localPrefix)
 {
+  QString privateLocalPrefix("/private/local");
+
   m_localPrefix = Name(localPrefix.toStdString());
+
+  if (privateLocalPrefix != localPrefix)
+    m_localPrefixDetected = true;
+  else
+    m_localPrefixDetected = false;
+}
+
+void
+Controller::onLocalPrefixConfigured(const QString& prefix)
+{
+  if (!m_localPrefixDetected) {
+    m_localPrefix = Name(prefix.toStdString());
+    emit localPrefixConfigured(prefix);
+  }
 }
 
 void
