@@ -249,6 +249,9 @@ signals:
 
 public slots:
   void
+  onShow();
+
+  void
   onLocalPrefixUpdated(const QString& localPrefix);
 
   void

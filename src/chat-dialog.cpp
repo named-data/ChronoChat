@@ -240,7 +240,7 @@ ChatDialog::closeEvent(QCloseEvent *e)
                               "system tray. To close the chatroom, "
                               "choose <b>Close chatroom</b> in the "
                               "context memu of the system tray entry."));
-  hide();//ymj
+  hide();
   e->ignore();
 }
 
@@ -1015,6 +1015,14 @@ ChatDialog::onLocalPrefixUpdated(const QString& localPrefix)
       initializeSync();
 
   fitView();
+}
+
+void
+ChatDialog::onShow()
+{
+  this->show();
+  this->raise();
+  this->activateWindow();
 }
 
 void
