@@ -7,9 +7,7 @@ import os
 
 def options(opt):
 
-    opt.load(['compiler_c', 'compiler_cxx', 'qt4'])
-    if Utils.unversioned_sys_platform () != "darwin":
-        opt.load('gnu_dirs');
+    opt.load(['compiler_c', 'compiler_cxx', 'qt4', 'gnu_dirs'])
 
     opt.load(['default-compiler-flags', 'boost', 'protoc',
               'doxygen', 'sphinx_build'],
@@ -25,10 +23,8 @@ def options(opt):
 
 def configure(conf):
     conf.load(['compiler_c', 'compiler_cxx', 'qt4',
-               'default-compiler-flags', 'boost', 'protoc',
+               'default-compiler-flags', 'boost', 'protoc', 'gnu_dirs',
                'doxygen', 'sphinx_build'])
-    if Utils.unversioned_sys_platform () != "darwin":
-        opt.load('gnu_dirs');
 
     conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'],
                    uselib_store='NDN_CXX', mandatory=True)
