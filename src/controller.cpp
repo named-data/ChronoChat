@@ -738,7 +738,7 @@ Controller::onStartChatroom(const QString& chatroomName, bool secured)
 void
 Controller::onInvitationResponded(const ndn::Name& invitationName, bool accepted)
 {
-  Data response;
+  shared_ptr<Data> response = make_shared<Data>();
   shared_ptr<IdentityCertificate> chatroomCert;
 
   // generate reply;
@@ -746,41 +746,41 @@ Controller::onInvitationResponded(const ndn::Name& invitationName, bool accepted
     Name responseName = invitationName;
     responseName.append(m_localPrefix.wireEncode());
 
-    response.setName(responseName);
+    response->setName(responseName);
 
     // We should create a particular certificate for this chatroom,
     //but let's use default one for now.
     chatroomCert
       = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
 
-    response.setContent(chatroomCert->wireEncode());
-    response.setFreshnessPeriod(time::milliseconds(1000));
+    response->setContent(chatroomCert->wireEncode());
+    response->setFreshnessPeriod(time::milliseconds(1000));
   }
   else {
-    response.setName(invitationName);
-    response.setFreshnessPeriod(time::milliseconds(1000));
+    response->setName(invitationName);
+    response->setFreshnessPeriod(time::milliseconds(1000));
   }
 
-  m_keyChain.signByIdentity(response, m_identity);
+  m_keyChain.signByIdentity(*response, m_identity);
 
   // Check if we need a wrapper
   Name invitationRoutingPrefix = getInvitationRoutingPrefix();
   if (invitationRoutingPrefix.isPrefixOf(m_identity))
-    m_face->put(response);
+    m_face->put(*response);
   else {
     Name wrappedName;
     wrappedName.append(invitationRoutingPrefix)
       .append(ROUTING_PREFIX_SEPARATOR, 2)
-      .append(response.getName());
+      .append(response->getName());
 
     // _LOG_DEBUG("onInvitationResponded: prepare reply " << wrappedName);
 
-    Data wrappedData(wrappedName);
-    wrappedData.setContent(response.wireEncode());
-    wrappedData.setFreshnessPeriod(time::milliseconds(1000));
+    shared_ptr<Data> wrappedData = make_shared<Data>(wrappedName);
+    wrappedData->setContent(response->wireEncode());
+    wrappedData->setFreshnessPeriod(time::milliseconds(1000));
 
-    m_keyChain.signByIdentity(wrappedData, m_identity);
-    m_face->put(wrappedData);
+    m_keyChain.signByIdentity(*wrappedData, m_identity);
+    m_face->put(*wrappedData);
   }
 
   // create chatroom

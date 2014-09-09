@@ -544,11 +544,11 @@ ChatDialog::onCertListInterest(const ndn::Name& prefix, const ndn::Interest& int
   OBufferStream os;
   msg.SerializeToOstream(&os);
 
-  Data data(interest.getName());
-  data.setContent(os.buf());
-  m_keyChain.sign(data, m_myCertificate.getName());
+  shared_ptr<Data> data = make_shared<Data>(interest.getName());
+  data->setContent(os.buf());
+  m_keyChain.sign(*data, m_myCertificate.getName());
 
-  m_face->put(data);
+  m_face->put(*data);
 }
 
 void
@@ -563,10 +563,11 @@ ChatDialog::onCertSingleInterest(const Name& prefix, const Interest& interest)
   try {
     Name certName = interest.getName().getSubName(prefix.size());
     const Sync::IntroCertificate& introCert = m_sock->getIntroCertificate(certName);
-    Data data(interest.getName());
-    data.setContent(introCert.wireEncode());
-    m_keyChain.sign(data,  m_myCertificate.getName());
-    m_face->put(data);
+
+    shared_ptr<Data> data = make_shared<Data>(interest.getName());
+    data->setContent(introCert.wireEncode());
+    m_keyChain.sign(*data,  m_myCertificate.getName());
+    m_face->put(*data);
   }
   catch(Sync::SyncSocket::Error& e) {
     return;

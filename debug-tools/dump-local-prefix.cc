@@ -26,12 +26,12 @@ main()
   Name name("/local/ndn/prefix");
   name.appendVersion().appendSegment(0);
 
-  Data data(name);
+  shared_ptr<Data> data = make_shared<Data>(name);
   std::string prefix("/ndn/test");
-  data.setContent(reinterpret_cast<const uint8_t*>(prefix.c_str()), prefix.size());
-  keyChain.signByIdentity(data, root);
+  data->setContent(reinterpret_cast<const uint8_t*>(prefix.c_str()), prefix.size());
+  keyChain.signByIdentity(*data, root);
 
-  face.put(data);
+  face.put(*data);
 
   face.getIoService().run();
 }

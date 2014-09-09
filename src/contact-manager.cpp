@@ -407,8 +407,8 @@ ContactManager::publishCollectEndorsedDataInDNS()
   Name dnsName = m_identity;
   dnsName.append("DNS").append("ENDORSED").appendVersion();
 
-  Data data;
-  data.setName(dnsName);
+  shared_ptr<Data> data = make_shared<Data>();
+  data->setName(dnsName);
 
   EndorseCollection endorseCollection;
   m_contactStorage->getCollectEndorse(endorseCollection);
@@ -416,11 +416,11 @@ ContactManager::publishCollectEndorsedDataInDNS()
   OBufferStream os;
   endorseCollection.SerializeToOstream(&os);
 
-  data.setContent(os.buf());
-  m_keyChain.signByIdentity(data, m_identity);
+  data->setContent(os.buf());
+  m_keyChain.signByIdentity(*data, m_identity);
 
-  m_contactStorage->updateDnsOthersEndorse(data);
-  m_face->put(data);
+  m_contactStorage->updateDnsOthersEndorse(*data);
+  m_face->put(*data);
 }
 
 void
@@ -499,15 +499,15 @@ ContactManager::publishSelfEndorseCertificateInDNS(const EndorseCertificate& sel
   Name dnsName = m_identity;
   dnsName.append("DNS").append("PROFILE").appendVersion();
 
-  Data data;
-  data.setName(dnsName);
-  data.setContent(selfEndorseCertificate.wireEncode());
-  data.setFreshnessPeriod(time::milliseconds(1000));
+  shared_ptr<Data> data = make_shared<Data>();
+  data->setName(dnsName);
+  data->setContent(selfEndorseCertificate.wireEncode());
+  data->setFreshnessPeriod(time::milliseconds(1000));
 
-  m_keyChain.signByIdentity(data, m_identity);
+  m_keyChain.signByIdentity(*data, m_identity);
 
-  m_contactStorage->updateDnsSelfProfileData(data);
-  m_face->put(data);
+  m_contactStorage->updateDnsSelfProfileData(*data);
+  m_face->put(*data);
 }
 
 shared_ptr<EndorseCertificate>
@@ -545,14 +545,14 @@ ContactManager::publishEndorseCertificateInDNS(const EndorseCertificate& endorse
     .append("ENDORSEE")
     .appendVersion();
 
-  Data data;
-  data.setName(dnsName);
-  data.setContent(endorseCertificate.wireEncode());
+  shared_ptr<Data> data = make_shared<Data>();
+  data->setName(dnsName);
+  data->setContent(endorseCertificate.wireEncode());
 
-  m_keyChain.signByIdentity(data, m_identity);
+  m_keyChain.signByIdentity(*data, m_identity);
 
-  m_contactStorage->updateDnsEndorseOthers(data, dnsName.get(-3).toUri());
-  m_face->put(data);
+  m_contactStorage->updateDnsEndorseOthers(*data, dnsName.get(-3).toUri());
+  m_face->put(*data);
 }
 
 void
