@@ -40,7 +40,8 @@ void
 StartChatDialog::onOkClicked()
 {
   QString chatroom = ui->chatroomInput->text();
-  bool secured = ui->withSecurity->isChecked();
+  bool secured = false;
+  // bool secured = ui->withSecurity->isChecked();
   emit startChatroom(chatroom, secured);
   this->close();
 }

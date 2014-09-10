@@ -26,6 +26,8 @@
 #include "cryptopp.hpp"
 #include <queue>
 #include "logging.h"
+
+#define SECURITY_ENABLED false
 #endif
 
 
@@ -102,7 +104,9 @@ ChatDialog::ChatDialog(ContactManager* contactManager,
 
   m_identity =
     IdentityCertificate::certificateNameToPublicKeyName(m_myCertificate.getName()).getPrefix(-1);
+
   updatePrefix();
+
   updateLabels();
 
   m_scene->setCurrentPrefix(QString(m_localChatPrefix.toUri().c_str()));
@@ -169,11 +173,13 @@ ChatDialog::ChatDialog(ContactManager* contactManager,
 
 ChatDialog::~ChatDialog()
 {
-  if (m_certListPrefixId)
-    m_face->unsetInterestFilter(m_certListPrefixId);
+  if (SECURITY_ENABLED) {
+    if (m_certListPrefixId)
+      m_face->unsetInterestFilter(m_certListPrefixId);
 
-  if (m_certSinglePrefixId)
-    m_face->unsetInterestFilter(m_certSinglePrefixId);
+    if (m_certSinglePrefixId)
+      m_face->unsetInterestFilter(m_certSinglePrefixId);
+  }
 
   if (m_sock != NULL) {
     sendLeave();
@@ -286,22 +292,25 @@ ChatDialog::updatePrefix()
   m_certSinglePrefix.append(m_identity).append("CHRONOCHAT-CERT-SINGLE").append(m_chatroomName);
   m_localChatPrefix.append(m_chatPrefix);
 
-  if (m_certListPrefixId)
-    m_face->unsetInterestFilter(m_certListPrefixId);
+  if (SECURITY_ENABLED) {
+    if (static_cast<bool>(m_certListPrefixId))
+      m_face->unsetInterestFilter(m_certListPrefixId);
 
-  m_certListPrefixId = m_face->setInterestFilter(m_certListPrefix,
-                                                 bind(&ChatDialog::onCertListInterest,
-                                                      this, _1, _2),
-                                                 bind(&ChatDialog::onCertListRegisterFailed,
-                                                      this, _1, _2));
-
-  if (m_certSinglePrefixId)
-    m_face->unsetInterestFilter(m_certSinglePrefixId);
-  m_certSinglePrefixId = m_face->setInterestFilter(m_certSinglePrefix,
-                                                   bind(&ChatDialog::onCertSingleInterest,
+    m_certListPrefixId = m_face->setInterestFilter(m_certListPrefix,
+                                                   bind(&ChatDialog::onCertListInterest,
                                                         this, _1, _2),
-                                                   bind(&ChatDialog::onCertSingleRegisterFailed,
+                                                   bind(&ChatDialog::onCertListRegisterFailed,
                                                         this, _1, _2));
+
+    if (static_cast<bool>(m_certSinglePrefixId))
+      m_face->unsetInterestFilter(m_certSinglePrefixId);
+
+    m_certSinglePrefixId = m_face->setInterestFilter(m_certSinglePrefix,
+                                                     bind(&ChatDialog::onCertSingleInterest,
+                                                          this, _1, _2),
+                                                     bind(&ChatDialog::onCertSingleRegisterFailed,
+                                                          this, _1, _2));
+  }
 }
 
 void
@@ -554,7 +563,7 @@ ChatDialog::onCertListInterest(const ndn::Name& prefix, const ndn::Interest& int
 void
 ChatDialog::onCertListRegisterFailed(const ndn::Name& prefix, const std::string& msg)
 {
-  // _LOG_DEBUG("ChatDialog::onCertListRegisterFailed failed: " + msg);
+  _LOG_DEBUG("ChatDialog::onCertListRegisterFailed failed: " + msg);
 }
 
 void
@@ -577,7 +586,7 @@ ChatDialog::onCertSingleInterest(const Name& prefix, const Interest& interest)
 void
 ChatDialog::onCertSingleRegisterFailed(const Name& prefix, const std::string& msg)
 {
-  // _LOG_DEBUG("ChatDialog::onCertListRegisterFailed failed: " + msg);
+  _LOG_DEBUG("ChatDialog::onCertListRegisterFailed failed: " + msg);
 }
 
 void
@@ -1123,7 +1132,7 @@ ChatDialog::onProcessData(const ndn::shared_ptr<const ndn::Data>& data, bool sho
 void
 ChatDialog::onProcessTreeUpdate(const vector<Sync::MissingDataInfo>& v)
 {
-  // _LOG_DEBUG("<<< processing Tree Update");
+  _LOG_DEBUG("<<< processing Tree Update");
 
   if (v.empty()) {
     return;
@@ -1145,7 +1154,7 @@ ChatDialog::onProcessTreeUpdate(const vector<Sync::MissingDataInfo>& v)
     if (totalMissingPackets < 4) {
       for (Sync::SeqNo seq = v[i].low; seq <= v[i].high; ++seq) {
         m_sock->fetchData(v[i].prefix, seq, bind(&ChatDialog::processDataWrapper, this, _1), 2);
-        // _LOG_DEBUG("<<< Fetching " << v[i].prefix << "/" <<seq.getSession() <<"/" << seq.getSeq());
+        _LOG_DEBUG("<<< Fetching " << v[i].prefix << "/" <<seq.getSession() <<"/" << seq.getSeq());
       }
     }
     else {
