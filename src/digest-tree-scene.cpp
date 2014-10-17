@@ -24,55 +24,52 @@
 namespace chronos {
 
 static const double Pi = 3.14159265358979323846264338327950288419717;
+static const int NODE_SIZE = 40;
 
 //DisplayUserPtr DisplayUserNullPtr;
 
 DigestTreeScene::DigestTreeScene(QWidget *parent)
   : QGraphicsScene(parent)
 {
-  previouslyUpdatedUser = DisplayUserNullPtr;
+  m_previouslyUpdatedUser = DisplayUserNullPtr;
 }
 
 void
-DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QString digest)
+DigestTreeScene::processSyncUpdate(const std::vector<chronos::NodeInfo>& nodeInfos,
+                                   const QString& digest)
 {
-  int n = v.size();
-  bool rePlot = false;
-  for (int i = 0; i < n; i++) {
-    QString routablePrefix(v[i].prefix.c_str());
-    QString prefix = trimRoutablePrefix(routablePrefix);
+  m_rootDigest = digest;
 
-    Roster_iterator it = m_roster.find(prefix);
+  bool rePlot = false;
+
+  // Update roster info
+  for (int i = 0; i < nodeInfos.size(); i++) {
+    Roster_iterator it = m_roster.find(nodeInfos[i].sessionPrefix);
     if (it == m_roster.end()) {
-      // std::cout << "processUpdate v[" << i << "]: " << prefix.toStdString() << std::endl;
       rePlot = true;
+
       DisplayUserPtr p(new DisplayUser());
-      time_t tempTime = ::time(0) + 1;
-      p->setReceived(tempTime);
-      p->setPrefix(prefix);
-      p->setSeq(v[i].high);
+      p->setPrefix(nodeInfos[i].sessionPrefix);
+      p->setSeq(nodeInfos[i].seqNo);
       m_roster.insert(p->getPrefix(), p);
     }
     else {
-      it.value()->setSeq(v[i].high);
+      it.value()->setSeq(nodeInfos[i].seqNo);
     }
   }
 
-  if (rePlot) {
-    plot(digest);
-    QTimer::singleShot(2100, this, SLOT(emitReplot()));
-  }
+  if (rePlot)
+    // If new nodes exist, we need to re-arrange node
+    plot(m_rootDigest);
   else {
-    for (int i = 0; i < n; i++) {
-      QString routablePrefix(v[i].prefix.c_str());
-      QString prefix = trimRoutablePrefix(routablePrefix);
-
-      Roster_iterator it = m_roster.find(prefix);
+    // No new node, update seqNo & digest
+    for (int i = 0; i < nodeInfos.size(); i++) {
+      Roster_iterator it = m_roster.find(nodeInfos[i].sessionPrefix);
       if (it != m_roster.end()) {
         DisplayUserPtr p = it.value();
         QGraphicsTextItem *item = p->getSeqTextItem();
         QGraphicsRectItem *rectItem = p->getInnerRectItem();
-        std::string s = boost::lexical_cast<std::string>(p->getSeqNo().getSeq());
+        std::string s = boost::lexical_cast<std::string>(p->getSeqNo());
         item->setPlainText(s.c_str());
         QRectF textBR = item->boundingRect();
         QRectF rectBR = rectItem->boundingRect();
@@ -80,14 +77,57 @@ DigestTreeScene::processUpdate(const std::vector<Sync::MissingDataInfo> &v, QStr
                      rectBR.y() + (rectBR.height() - textBR.height())/2);
       }
     }
-    m_rootDigest->setPlainText(digest);
+    m_displayRootDigest->setPlainText(digest);
   }
 }
 
 void
-DigestTreeScene::emitReplot()
+DigestTreeScene::updateNick(QString sessionPrefix, QString nick)
 {
-  emit replot();
+  Roster_iterator it = m_roster.find(sessionPrefix);
+  if (it != m_roster.end()) {
+    DisplayUserPtr p = it.value();
+    if (nick != p->getNick()) {
+      p->setNick(nick);
+      QGraphicsTextItem *nickItem = p->getNickTextItem();
+      QGraphicsRectItem *nickRectItem = p->getNickRectItem();
+      nickItem->setPlainText(p->getNick());
+      QRectF rectBR = nickRectItem->boundingRect();
+      QRectF nickBR = nickItem->boundingRect();
+      nickItem->setPos(rectBR.x() + (rectBR.width() - nickBR.width())/2, rectBR.y() + 5);
+    }
+  }
+}
+
+void
+DigestTreeScene::messageReceived(QString sessionPrefix)
+{
+  Roster_iterator it = m_roster.find(sessionPrefix);
+  if (it != m_roster.end()) {
+    DisplayUserPtr p = it.value();
+
+    reDrawNode(p, Qt::red);
+
+    if (m_previouslyUpdatedUser != DisplayUserNullPtr && m_previouslyUpdatedUser != p) {
+      reDrawNode(m_previouslyUpdatedUser, Qt::darkBlue);
+    }
+
+    m_previouslyUpdatedUser = p;
+  }
+}
+
+void
+DigestTreeScene::clearAll()
+{
+  clear();
+  m_roster.clear();
+}
+
+void
+DigestTreeScene::removeNode(const QString sessionPrefix)
+{
+  m_roster.remove(sessionPrefix);
+  plot(m_rootDigest);
 }
 
 QStringList
@@ -105,117 +145,36 @@ DigestTreeScene::getRosterList()
   return rosterList;
 }
 
-void
-DigestTreeScene::msgReceived(QString routablePrefix, QString nick)
+QStringList
+DigestTreeScene::getRosterPrefixList()
 {
-  QString prefix = trimRoutablePrefix(routablePrefix);
-  Roster_iterator it = m_roster.find(prefix);
-  // std::cout << "msgReceived prefix: " << prefix.toStdString() << std::endl;
-  if (it != m_roster.end()) {
-    // std::cout << "Updating for prefix = " << prefix.toStdString() <<
-    // " nick = " << nick.toStdString() << std::endl;
-    DisplayUserPtr p = it.value();
-    p->setReceived(::time(0) + 1);
-    if (nick != p->getNick()) {
-      // std::cout << "old nick = " << p->getNick().toStdString() << std::endl;
-      p->setNick(nick);
-      QGraphicsTextItem *nickItem = p->getNickTextItem();
-      QGraphicsRectItem *nickRectItem = p->getNickRectItem();
-      nickItem->setPlainText(p->getNick());
-      QRectF rectBR = nickRectItem->boundingRect();
-      QRectF nickBR = nickItem->boundingRect();
-      nickItem->setPos(rectBR.x() + (rectBR.width() - nickBR.width())/2, rectBR.y() + 5);
-      emit rosterChanged(QStringList());
-    }
-
-    reDrawNode(p, Qt::red);
-
-    if (previouslyUpdatedUser != DisplayUserNullPtr && previouslyUpdatedUser != p) {
-      reDrawNode(previouslyUpdatedUser, Qt::darkBlue);
-    }
-
-    previouslyUpdatedUser = p;
-  }
-}
-
-void
-DigestTreeScene::clearAll()
-{
-  clear();
-  m_roster.clear();
-}
-
-bool
-DigestTreeScene::removeNode(const QString prefix)
-{
-  int removedCount = m_roster.remove(prefix);
-  return (removedCount > 0);
-}
-
-void
-DigestTreeScene::plot(QString digest)
-{
-#ifdef _DEBUG
-  std::cout << "Plotting at time: " << ::time(NULL) << std::endl;
-#endif
-  clear();
-
-  int nodeSize = 40;
-
-  int siblingDistance = 100, levelDistance = 100;
-  std::auto_ptr<TreeLayout> layout(new OneLevelTreeLayout());
-  layout->setSiblingDistance(siblingDistance);
-  layout->setLevelDistance(levelDistance);
-
-  // do some cleaning, get rid of stale member info
-  Roster_iterator it = m_roster.begin();
-  QStringList staleUserList;
-  while (it != m_roster.end()) {
+  QStringList prefixList;
+  RosterIterator it(m_roster);
+  while (it.hasNext()) {
+    it.next();
     DisplayUserPtr p = it.value();
     if (p != DisplayUserNullPtr) {
-      time_t now = ::time(NULL);
-      if (now - p->getReceived() >= FRESHNESS) {
-#ifdef _DEBUG
-        std::cout << "Removing user: " << p->getNick().toStdString() << std::endl;
-        std::cout << "now - last = " << now - p->getReceived() << std::endl;
-#endif
-        staleUserList << p->getNick();
-        p = DisplayUserNullPtr;
-        it = m_roster.erase(it);
-      }
-      else {
-        if (!m_currentPrefix.startsWith("/private/local") &&
-            p->getPrefix().startsWith("/private/local")) {
-#ifdef _DEBUG
-          std::cout << "erasing: " << p->getPrefix().toStdString() << std::endl;
-#endif
-          staleUserList << p->getNick();
-          p = DisplayUserNullPtr;
-          it = m_roster.erase(it);
-          continue;
-        }
-        ++it;
-      }
-    }
-    else {
-      it = m_roster.erase(it);
+      prefixList << "- " + p->getPrefix();
     }
   }
+  return prefixList;
+}
 
-  // for simpicity here, whenever we replot, we also redo the roster list
-  emit rosterChanged(staleUserList);
+void
+DigestTreeScene::plot(QString rootDigest)
+{
+  clear();
 
-  int n = m_roster.size();
+  shared_ptr<TreeLayout> layout(new OneLevelTreeLayout());
+  layout->setSiblingDistance(100);
+  layout->setLevelDistance(100);
 
-  std::vector<TreeLayout::Coordinate> childNodesCo(n);
-
+  std::vector<TreeLayout::Coordinate> childNodesCo(m_roster.size());
   layout->setOneLevelLayout(childNodesCo);
+  plotEdge(childNodesCo, NODE_SIZE);
+  plotNode(childNodesCo, rootDigest, NODE_SIZE);
 
-  plotEdge(childNodesCo, nodeSize);
-  plotNode(childNodesCo, digest, nodeSize);
-
-  previouslyUpdatedUser = DisplayUserNullPtr;
-
+  m_previouslyUpdatedUser = DisplayUserNullPtr;
 }
 
 void
@@ -266,7 +225,7 @@ DigestTreeScene::plotNode(const std::vector<TreeLayout::Coordinate>& childNodesC
   digestItem->setFont(QFont("Cursive", 12, QFont::Bold));
   digestItem->setPos(- 4.5 * nodeSize + (12 * nodeSize - digestBoundingRect.width()) / 2,
                      - nodeSize + 5);
-  m_rootDigest = digestItem;
+  m_displayRootDigest = digestItem;
 
   // plot child nodes
   for (int i = 0; i < n; i++) {
@@ -288,7 +247,7 @@ DigestTreeScene::plotNode(const std::vector<TreeLayout::Coordinate>& childNodesC
                                                QBrush(Qt::lightGray));
     p->setInnerRectItem(innerRectItem);
 
-    std::string s = boost::lexical_cast<std::string>(p->getSeqNo().getSeq());
+    std::string s = boost::lexical_cast<std::string>(p->getSeqNo());
     QGraphicsTextItem *seqItem = addText(s.c_str());
     seqItem->setFont(QFont("Cursive", 12, QFont::Bold));
     QRectF seqBoundingRect = seqItem->boundingRect();
@@ -317,32 +276,12 @@ DigestTreeScene::reDrawNode(DisplayUserPtr p, QColor rimColor)
     QGraphicsRectItem *innerItem = p->getInnerRectItem();
     innerItem->setBrush(QBrush(Qt::lightGray));
     QGraphicsTextItem *seqTextItem = p->getSeqTextItem();
-    std::string s = boost::lexical_cast<std::string>(p->getSeqNo().getSeq());
+    std::string s = boost::lexical_cast<std::string>(p->getSeqNo());
     seqTextItem->setPlainText(s.c_str());
     QRectF textBR = seqTextItem->boundingRect();
     QRectF innerBR = innerItem->boundingRect();
     seqTextItem->setPos(innerBR.x() + (innerBR.width() - textBR.width())/2,
                         innerBR.y() + (innerBR.height() - textBR.height())/2);
-}
-
-QString
-DigestTreeScene::trimRoutablePrefix(QString prefix)
-{
-  bool encaped = false;
-  ndn::Name prefixName(prefix.toStdString());
-
-  size_t offset = 0;
-  for (ndn::Name::const_iterator it  = prefixName.begin(); it != prefixName.end(); it++, offset++) {
-    if (it->toUri() == "%F0.") {
-      encaped = true;
-      break;
-    }
-  }
-
-  if (!encaped)
-    return prefix;
-  else
-    return QString(prefixName.getSubName(offset+1).toUri().c_str());
 }
 
 } // namespace chronos

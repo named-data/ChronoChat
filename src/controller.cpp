@@ -19,6 +19,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 #include <ndn-cxx/util/random.hpp>
+#include "invitation.hpp"
 #include "cryptopp.hpp"
 #include "config.pb.h"
 #include "endorse-info.pb.h"
@@ -547,9 +548,9 @@ Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
   connect(chatDialog, SIGNAL(rosterChanged(const chronos::ChatroomInfo&)),
           this, SLOT(onRosterChanged(const chronos::ChatroomInfo&)));
   connect(this, SIGNAL(localPrefixUpdated(const QString&)),
-          chatDialog, SLOT(onLocalPrefixUpdated(const QString&)));
+          chatDialog->getBackend(), SLOT(updateRoutingPrefix(const QString&)));
   connect(this, SIGNAL(localPrefixConfigured(const QString&)),
-          chatDialog, SLOT(onLocalPrefixUpdated(const QString&)));
+          chatDialog->getBackend(), SLOT(updateRoutingPrefix(const QString&)));
 
   QAction* chatAction = new QAction(chatroomName, this);
   m_chatActionList[chatroomName.toStdString()] = chatAction;
@@ -558,7 +559,8 @@ Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
 
   QAction* closeAction = new QAction(chatroomName, this);
   m_closeActionList[chatroomName.toStdString()] = closeAction;
-  connect(closeAction, SIGNAL(triggered()), chatDialog, SLOT(onClose()));
+  connect(closeAction, SIGNAL(triggered()),
+          chatDialog, SLOT(shutdown()));
 
   updateMenu();
 }
@@ -734,7 +736,7 @@ Controller::onQuitAction()
 {
   while (!m_chatDialogList.empty()) {
     ChatDialogList::const_iterator it = m_chatDialogList.begin();
-    onRemoveChatDialog(QString::fromStdString(it->first));
+    it->second->shutdown();
   }
 
   if (m_invitationListenerId != 0)
@@ -775,9 +777,16 @@ Controller::onStartChatroom(const QString& chatroomName, bool secured)
   // std::cout << "start chat room localprefix: " << m_localPrefix.toUri() << std::endl;
   shared_ptr<IdentityCertificate> idCert
     = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
+
+  Name chatPrefix;
+  chatPrefix.append(m_identity).append("CHRONOCHAT-DATA").append(chatroomName.toStdString());
+
   ChatDialog* chatDialog
-    = new ChatDialog(&m_contactManager, m_face, *idCert, chatroomPrefix
-                     , m_localPrefix, m_nick, secured);
+    = new ChatDialog(chatroomPrefix,
+                     chatPrefix,
+                     m_localPrefix,
+                     chatroomName.toStdString(),
+                     m_nick);
 
   addChatDialog(chatroomName, chatDialog);
   chatDialog->show();
@@ -845,9 +854,18 @@ Controller::onInvitationResponded(const ndn::Name& invitationName, bool accepted
     //but let's use the default one for now.
     shared_ptr<IdentityCertificate> idCert
       = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
+
+    Name chatPrefix;
+    chatPrefix.append(m_identity).append("CHRONOCHAT-DATA").append(invitation.getChatroom());
+
     ChatDialog* chatDialog
-      = new ChatDialog(&m_contactManager, m_face, *idCert,
-                       chatroomPrefix, m_localPrefix, m_nick, true);
+      = new ChatDialog(chatroomPrefix,
+                       chatPrefix,
+                       m_localPrefix,
+                       invitation.getChatroom(),
+                       m_nick,
+                       true);
+
     chatDialog->addSyncAnchor(invitation);
 
     addChatDialog(QString::fromStdString(invitation.getChatroom()), chatDialog);

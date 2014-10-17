@@ -18,8 +18,8 @@
 
 #ifndef Q_MOC_RUN
 #include "tree-layout.hpp"
-#include <sync-seq-no.h>
-#include <sync-logic.h>
+#include "chat-dialog-backend.hpp"
+#include <Leaf.hpp>
 #include <ctime>
 #include <vector>
 #include <boost/shared_ptr.hpp>
@@ -49,44 +49,29 @@ public:
   DigestTreeScene(QWidget *parent = 0);
 
   void
-  processUpdate(const std::vector<Sync::MissingDataInfo>& v, QString digest);
+  processSyncUpdate(const std::vector<chronos::NodeInfo>& nodeInfos,
+                    const QString& digest);
 
   void
-  msgReceived(QString prefix, QString nick);
+  updateNick(QString sessionPrefix, QString nick);
+
+  void
+  messageReceived(QString sessionPrefix);
 
   void
   clearAll();
 
-  bool
-  removeNode(const QString prefix);
-
   void
-  plot(QString digest);
+  removeNode(const QString sessionPrefix);
 
   QStringList
   getRosterList();
 
-  void
-  setCurrentPrefix(QString prefix)
-  {
-    m_currentPrefix = prefix;
-  }
-
-  QMap<QString, DisplayUserPtr> getRosterFull()
-  {
-    return m_roster;
-  }
-
-signals:
-  void
-  replot();
+  QStringList
+  getRosterPrefixList();
 
   void
-  rosterChanged(QStringList);
-
-private slots:
-  void
-  emitReplot();
+  plot(QString rootDigest);
 
 private:
   void
@@ -98,29 +83,25 @@ private:
   void
   reDrawNode(DisplayUserPtr p, QColor rimColor);
 
-  QString
-  trimRoutablePrefix(QString prefix);
-
 private:
   Roster m_roster;
-  QGraphicsTextItem* m_rootDigest;
-  DisplayUserPtr previouslyUpdatedUser;
-  QString m_currentPrefix;
+
+  QString m_rootDigest;
+  QGraphicsTextItem* m_displayRootDigest;
+
+  DisplayUserPtr m_previouslyUpdatedUser;
 };
 
 class User
 {
 public:
   User()
-    :m_received(::time(NULL))
   {
   }
 
-  User(QString n, QString p, QString c)
+  User(QString n, QString p)
     : m_nick(n)
     , m_prefix(p)
-    , m_chatroom(c)
-    , m_received(::time(NULL))
   {
   }
 
@@ -137,27 +118,9 @@ public:
   }
 
   void
-  setChatroom(QString chatroom)
-  {
-    m_chatroom = chatroom;
-  }
-
-  void
-  setSeq(Sync::SeqNo seq)
+  setSeq(chronosync::SeqNo seq)
   {
     m_seq = seq;
-  }
-
-  void
-  setReceived(time_t t)
-  {
-    m_received = t;
-  }
-
-  void
-  setOriginPrefix(QString originPrefix)
-  {
-    m_originPrefix = originPrefix;
   }
 
   QString
@@ -171,34 +134,16 @@ public:
     return m_prefix;
   }
 
-  QString getChatroom()
-  {
-    return m_chatroom;
-  }
-
-  QString getOriginPrefix()
-  {
-    return m_originPrefix;
-  }
-
-  Sync::SeqNo
+  chronosync::SeqNo
   getSeqNo()
   {
     return m_seq;
   }
 
-  time_t getReceived()
-  {
-    return m_received;
-  }
-
 private:
   QString m_nick;
   QString m_prefix;
-  QString m_chatroom;
-  QString m_originPrefix;
-  Sync::SeqNo m_seq;
-  time_t m_received;
+  chronosync::SeqNo m_seq;
 };
 
 class DisplayUser : public User
@@ -211,8 +156,8 @@ public:
   {
   }
 
-  DisplayUser(QString n, QString p , QString c)
-    : User(n, p, c)
+  DisplayUser(QString n, QString p)
+    : User(n, p)
     , m_seqTextItem(NULL)
     , m_nickTextItem(NULL)
     , m_rimRectItem(NULL)
