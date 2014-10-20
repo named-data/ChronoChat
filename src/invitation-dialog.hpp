@@ -33,14 +33,13 @@ public:
 
   ~InvitationDialog();
 
-  void
-  setInvitation(const std::string& alias,
-                const std::string& chatroom,
-                const ndn::Name& invitationInterest);
-
 signals:
   void
   invitationResponded(const ndn::Name& invitationName, bool accepted);
+
+public slots:
+  void
+  onInvitationReceived(QString alias, QString chatroom, ndn::Name invitationInterest);
 
 private slots:
   void

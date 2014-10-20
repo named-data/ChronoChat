@@ -144,8 +144,6 @@ private:
   ndn::Scheduler m_scheduler;            // scheduler
   ndn::EventId m_helloEventId;           // event id of timeout
 
-  QMutex mutex;                          // mutex used for prefix updates
-
   bool m_joined;                         // true if in a chatroom
 
   BackendRoster m_roster;                // User roster

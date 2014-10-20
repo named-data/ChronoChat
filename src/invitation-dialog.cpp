@@ -31,14 +31,14 @@ InvitationDialog::~InvitationDialog()
 }
 
 void
-InvitationDialog::setInvitation(const std::string& alias,
-                                const std::string& chatroom,
-                                const Name& interestName)
+InvitationDialog::onInvitationReceived(QString alias, QString chatroom, Name interestName)
 {
-  std::string msg = alias;
   m_invitationInterest = interestName;
-  msg.append(" invites you to: ").append(chatroom);
-  ui->msgLabel->setText(QString::fromStdString(msg));
+
+  QString msg = QString("%1 invites you to chatroom\n %2 ").arg(alias).arg(chatroom);
+  ui->msgLabel->setText(msg);
+
+  show();
 }
 
 void

@@ -50,7 +50,7 @@ using ndn::OnInterestValidated;
 using ndn::OnInterestValidationFailed;
 
 
-ContactManager::ContactManager(shared_ptr<Face> face,
+ContactManager::ContactManager(Face& face,
                                QObject* parent)
   : QObject(parent)
   , m_face(face)
@@ -109,7 +109,7 @@ ContactManager::initializeSecurity()
 {
   shared_ptr<IdentityCertificate> anchor = loadTrustAnchor();
 
-  shared_ptr<ValidatorRegex> validator = make_shared<ValidatorRegex>(boost::ref(*m_face));
+  shared_ptr<ValidatorRegex> validator = make_shared<ValidatorRegex>(boost::ref(m_face));
   validator->addDataVerificationRule(make_shared<SecRuleRelative>("^([^<DNS>]*)<DNS><ENDORSED>",
                                                                   "^([^<KEY>]*)<KEY>(<>*)<><ID-CERT>$",
                                                                   "==", "\\1", "\\1\\2", true));
@@ -170,12 +170,12 @@ ContactManager::fetchEndorseCertificateInternal(const Name& identity, int certIn
   interest.setInterestLifetime(time::milliseconds(1000));
   interest.setMustBeFresh(true);
 
-  m_face->expressInterest(interest,
-                          bind(&ContactManager::onEndorseCertificateInternal,
-                               this, _1, _2, identity, certIndex,
-                               endorseCollection->endorsement(certIndex).hash()),
-                          bind(&ContactManager::onEndorseCertificateInternalTimeout,
-                               this, _1, identity, certIndex));
+  m_face.expressInterest(interest,
+                         bind(&ContactManager::onEndorseCertificateInternal,
+                              this, _1, _2, identity, certIndex,
+                              endorseCollection->endorsement(certIndex).hash()),
+                         bind(&ContactManager::onEndorseCertificateInternalTimeout,
+                              this, _1, identity, certIndex));
 }
 
 void
@@ -420,7 +420,7 @@ ContactManager::publishCollectEndorsedDataInDNS()
   m_keyChain.signByIdentity(*data, m_identity);
 
   m_contactStorage->updateDnsOthersEndorse(*data);
-  m_face->put(*data);
+  m_face.put(*data);
 }
 
 void
@@ -507,7 +507,7 @@ ContactManager::publishSelfEndorseCertificateInDNS(const EndorseCertificate& sel
   m_keyChain.signByIdentity(*data, m_identity);
 
   m_contactStorage->updateDnsSelfProfileData(*data);
-  m_face->put(*data);
+  m_face.put(*data);
 }
 
 shared_ptr<EndorseCertificate>
@@ -552,7 +552,7 @@ ContactManager::publishEndorseCertificateInDNS(const EndorseCertificate& endorse
   m_keyChain.signByIdentity(*data, m_identity);
 
   m_contactStorage->updateDnsEndorseOthers(*data, dnsName.get(-3).toUri());
-  m_face->put(*data);
+  m_face.put(*data);
 }
 
 void
@@ -562,11 +562,11 @@ ContactManager::sendInterest(const Interest& interest,
                              const TimeoutNotify& timeoutNotify,
                              int retry /* = 1 */)
 {
-  m_face->expressInterest(interest,
-                          bind(&ContactManager::onTargetData,
-                               this, _1, _2, onValidated, onValidationFailed),
-                          bind(&ContactManager::onTargetTimeout,
-                               this, _1, retry, onValidated, onValidationFailed, timeoutNotify));
+  m_face.expressInterest(interest,
+                         bind(&ContactManager::onTargetData,
+                              this, _1, _2, onValidated, onValidationFailed),
+                         bind(&ContactManager::onTargetTimeout,
+                              this, _1, retry, onValidated, onValidationFailed, timeoutNotify));
 }
 
 void
@@ -605,7 +605,7 @@ ContactManager::onDnsInterest(const Name& prefix, const Interest& interest)
   if (interestName.size() == (prefix.size()+1)) {
     data = m_contactStorage->getDnsData("N/A", interestName.get(prefix.size()).toUri());
     if (static_cast<bool>(data))
-      m_face->put(*data);
+      m_face.put(*data);
     return;
   }
 
@@ -613,7 +613,7 @@ ContactManager::onDnsInterest(const Name& prefix, const Interest& interest)
     data = m_contactStorage->getDnsData(interestName.get(prefix.size()).toUri(),
                                         interestName.get(prefix.size()+1).toUri());
     if (static_cast<bool>(data))
-      m_face->put(*data);
+      m_face.put(*data);
     return;
   }
 }
@@ -633,16 +633,19 @@ ContactManager::onIdentityUpdated(const QString& identity)
 
   m_contactStorage = make_shared<ContactStorage>(m_identity);
 
-  if (m_dnsListenerId)
-    m_face->unsetInterestFilter(m_dnsListenerId);
-
   Name dnsPrefix;
   dnsPrefix.append(m_identity).append("DNS");
-  m_dnsListenerId = m_face->setInterestFilter(dnsPrefix,
-                                              bind(&ContactManager::onDnsInterest,
-                                                   this, _1, _2),
-                                              bind(&ContactManager::onDnsRegisterFailed,
-                                                   this, _1, _2));
+  const ndn::RegisteredPrefixId* dnsListenerId =
+    m_face.setInterestFilter(dnsPrefix,
+                             bind(&ContactManager::onDnsInterest,
+                                  this, _1, _2),
+                             bind(&ContactManager::onDnsRegisterFailed,
+                                  this, _1, _2));
+
+  if (m_dnsListenerId != 0)
+    m_face.unsetInterestFilter(m_dnsListenerId);
+
+  m_dnsListenerId = dnsListenerId;
 
   m_contactList.clear();
   m_contactStorage->getAllContacts(m_contactList);

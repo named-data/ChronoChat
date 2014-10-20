@@ -24,14 +24,11 @@
 #include "browse-contact-dialog.hpp"
 #include "add-contact-panel.hpp"
 #include "chat-dialog.hpp"
-#include "chatroom-discovery-dialog.hpp"
 
 #ifndef Q_MOC_RUN
 #include "common.hpp"
-#include "contact-manager.hpp"
-#include "chatroom-discovery-logic.hpp"
-#include "validator-invitation.hpp"
-#include <ndn-cxx/security/key-chain.hpp>
+#include "invitation.hpp"
+#include "controller-backend.hpp"
 #endif
 
 namespace chronos {
@@ -41,7 +38,7 @@ class Controller : public QDialog
   Q_OBJECT
 
 public: // public methods
-  Controller(shared_ptr<ndn::Face> face, QWidget* parent = 0);
+  Controller(QWidget* parent = 0);
 
   virtual
   ~Controller();
@@ -55,9 +52,6 @@ private: // private methods
 
   void
   initialize();
-
-  void
-  setInvitationListener();
 
   void
   loadConf();
@@ -74,31 +68,8 @@ private: // private methods
   void
   updateMenu();
 
-  void
-  onLocalPrefix(const Interest& interest, Data& data);
-
-  void
-  onLocalPrefixTimeout(const Interest& interest);
-
-  void
-  onInvitationInterestWrapper(const ndn::Name& prefix, const ndn::Interest& interest,
-                              size_t routingPrefixOffset);
-
-  void
-  onInvitationRegisterFailed(const Name& prefix, const std::string& failInfo);
-
-  void
-  onInvitationValidated(const shared_ptr<const Interest>& interest);
-
-  void
-  onInvitationValidationFailed(const shared_ptr<const Interest>& interest,
-                               std::string failureInfo);
-
   std::string
   getRandomString();
-
-  ndn::Name
-  getInvitationRoutingPrefix();
 
   void
   addChatDialog(const QString& chatroomName, ChatDialog* chatDialog);
@@ -107,6 +78,12 @@ private: // private methods
   updateDiscoveryList(const chronos::ChatroomInfo& chatroomName, bool isAdd);
 
 signals:
+  void
+  shutdownBackend();
+
+  void
+  updateLocalPrefix();
+
   void
   closeDBModule();
 
@@ -129,15 +106,18 @@ signals:
   void
   discoverChatroomChanged(const chronos::ChatroomInfo& chatroomInfo, bool isAdd);
 
+  void
+  addChatroom(QString chatroomName);
+
+  void
+  removeChatroom(QString chatroomName);
+
 private slots:
   void
   onIdentityUpdated(const QString& identity);
 
   void
   onIdentityUpdatedContinued();
-
-  void
-  onContactIdListReady(const QStringList& list);
 
   void
   onNickUpdated(const QString& nick);
@@ -170,9 +150,6 @@ private slots:
   onDirectAdd();
 
   void
-  onUpdateLocalPrefixAction();
-
-  void
   onMinimizeAction();
 
   void
@@ -182,7 +159,7 @@ private slots:
   onStartChatroom(const QString& chatroom, bool secured);
 
   void
-  onInvitationResponded(const ndn::Name& invitationName, bool accepted);
+  onStartChatroom2(chronos::Invitation invitation, bool secured);
 
   void
   onShowChatMessage(const QString& chatroomName, const QString& from, const QString& data);
@@ -200,10 +177,6 @@ private slots:
   onError(const QString& msg);
 
   void
-  onInvitationInterest(const ndn::Name& prefix, const ndn::Interest& interest,
-                       size_t routingPrefixOffset);
-
-  void
   onRosterChanged(const chronos::ChatroomInfo& info);
 
 private: // private member
@@ -211,16 +184,8 @@ private: // private member
   typedef std::map<std::string, ChatDialog*> ChatDialogList;
 
   // Communication
-  shared_ptr<ndn::Face> m_face;
   Name m_localPrefix;
   bool m_localPrefixDetected;
-  const ndn::RegisteredPrefixId* m_invitationListenerId;
-
-  // Contact Manager
-  ContactManager m_contactManager;
-
-  // Chatroom discovery
-  ChatroomDiscoveryLogic m_discoveryLogic;
 
   // Tray
   QAction*         m_startChatroom;
@@ -247,16 +212,14 @@ private: // private member
   BrowseContactDialog* m_browseContactDialog;
   AddContactPanel*     m_addContactPanel;
   ChatDialogList       m_chatDialogList;
-  ChatroomDiscoveryDialog* m_chatroomDiscoveryDialog;
 
   // Conf
   Name m_identity;
   std::string m_nick;
   QSqlDatabase m_db;
 
-  // Security related;
-  ndn::KeyChain m_keyChain;
-  ValidatorInvitation m_validator;
+  // Backend
+  ControllerBackend m_backend;
 };
 
 } // namespace chronos

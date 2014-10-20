@@ -61,8 +61,6 @@ ChatDialogBackend::run()
 void
 ChatDialogBackend::initializeSync()
 {
-  QMutexLocker locker(&mutex);
-
   // if a SyncSocket is running, turn it off
   if (static_cast<bool>(m_sock)) {
     if (m_joined)
@@ -375,6 +373,14 @@ ChatDialogBackend::updateRoutingPrefix(const QString& localRoutingPrefix)
 void
 ChatDialogBackend::shutdown()
 {
+  if (static_cast<bool>(m_sock)) {
+    if (m_joined)
+      sendLeave();
+    m_sock.reset();
+
+    usleep(100000);
+  }
+
   m_face.getIoService().stop();
 }
 

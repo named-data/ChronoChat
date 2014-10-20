@@ -19,14 +19,13 @@
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 #include <ndn-cxx/util/random.hpp>
-#include "invitation.hpp"
 #include "cryptopp.hpp"
 #include "config.pb.h"
 #include "endorse-info.pb.h"
 #include "logging.h"
 #endif
 
-// INIT_LOGGER("chronos.Controller");
+INIT_LOGGER("chronos.Controller");
 
 Q_DECLARE_METATYPE(ndn::Name)
 Q_DECLARE_METATYPE(ndn::IdentityCertificate)
@@ -34,28 +33,16 @@ Q_DECLARE_METATYPE(Chronos::EndorseInfo)
 Q_DECLARE_METATYPE(ndn::Interest)
 Q_DECLARE_METATYPE(size_t)
 Q_DECLARE_METATYPE(chronos::ChatroomInfo)
+Q_DECLARE_METATYPE(chronos::Invitation)
 
 namespace chronos {
 
 using std::string;
 
-using ndn::Face;
-using ndn::IdentityCertificate;
-using ndn::OnInterestValidated;
-using ndn::OnInterestValidationFailed;
-
-static const uint8_t ROUTING_PREFIX_SEPARATOR[2] = {0xF0, 0x2E};
-
 // constructor & destructor
-Controller::Controller(shared_ptr<Face> face,
-                       QWidget* parent)
+Controller::Controller(QWidget* parent)
   : QDialog(parent)
-  , m_face(face)
   , m_localPrefixDetected(false)
-  , m_invitationListenerId(0)
-  , m_contactManager(m_face)
-  , m_discoveryLogic(m_face,
-                     bind(&Controller::updateDiscoveryList, this, _1, _2))
   , m_settingDialog(new SettingDialog)
   , m_startChatDialog(new StartChatDialog)
   , m_profileEditor(new ProfileEditor)
@@ -63,7 +50,6 @@ Controller::Controller(shared_ptr<Face> face,
   , m_contactPanel(new ContactPanel)
   , m_browseContactDialog(new BrowseContactDialog)
   , m_addContactPanel(new AddContactPanel)
-  , m_chatroomDiscoveryDialog(new ChatroomDiscoveryDialog)
 {
   qRegisterMetaType<ndn::Name>("ndn.Name");
   qRegisterMetaType<ndn::IdentityCertificate>("ndn.IdentityCertificate");
@@ -71,23 +57,15 @@ Controller::Controller(shared_ptr<Face> face,
   qRegisterMetaType<ndn::Interest>("ndn.Interest");
   qRegisterMetaType<size_t>("size_t");
   qRegisterMetaType<chronos::ChatroomInfo>("chronos.Chatroom");
-
-  connect(this, SIGNAL(localPrefixUpdated(const QString&)),
-          this, SLOT(onLocalPrefixUpdated(const QString&)));
-  connect(this, SIGNAL(invitationInterest(const ndn::Name&, const ndn::Interest&, size_t)),
-          this, SLOT(onInvitationInterest(const ndn::Name&, const ndn::Interest&, size_t)));
+  qRegisterMetaType<chronos::Invitation>("chronos.Invitation");
 
   // Connection to ContactManager
-  connect(this, SIGNAL(identityUpdated(const QString&)),
-          &m_contactManager, SLOT(onIdentityUpdated(const QString&)));
-  connect(&m_contactManager, SIGNAL(warning(const QString&)),
+  connect(m_backend.getContactManager(), SIGNAL(warning(const QString&)),
           this, SLOT(onWarning(const QString&)));
   connect(this, SIGNAL(refreshBrowseContact()),
-          &m_contactManager, SLOT(onRefreshBrowseContact()));
-  connect(&m_contactManager, SIGNAL(contactInfoFetchFailed(const QString&)),
+          m_backend.getContactManager(), SLOT(onRefreshBrowseContact()));
+  connect(m_backend.getContactManager(), SIGNAL(contactInfoFetchFailed(const QString&)),
           this, SLOT(onWarning(const QString&)));
-  connect(&m_contactManager, SIGNAL(contactIdListReady(const QStringList&)),
-          this, SLOT(onContactIdListReady(const QStringList&)));
 
   // Connection to SettingDialog
   connect(this, SIGNAL(identityUpdated(const QString&)),
@@ -96,8 +74,6 @@ Controller::Controller(shared_ptr<Face> face,
           this, SLOT(onIdentityUpdated(const QString&)));
   connect(m_settingDialog, SIGNAL(nickUpdated(const QString&)),
           this, SLOT(onNickUpdated(const QString&)));
-  connect(this, SIGNAL(localPrefixUpdated(const QString&)),
-          m_settingDialog, SLOT(onLocalPrefixUpdated(const QString&)));
   connect(m_settingDialog, SIGNAL(prefixUpdated(const QString&)),
           this, SLOT(onLocalPrefixConfigured(const QString&)));
 
@@ -107,7 +83,7 @@ Controller::Controller(shared_ptr<Face> face,
   connect(this, SIGNAL(identityUpdated(const QString&)),
           m_profileEditor, SLOT(onIdentityUpdated(const QString&)));
   connect(m_profileEditor, SIGNAL(updateProfile()),
-          &m_contactManager, SLOT(onUpdateProfile()));
+          m_backend.getContactManager(), SLOT(onUpdateProfile()));
 
   // Connection to StartChatDialog
   connect(m_startChatDialog, SIGNAL(startChatroom(const QString&, bool)),
@@ -115,72 +91,95 @@ Controller::Controller(shared_ptr<Face> face,
 
   // Connection to InvitationDialog
   connect(m_invitationDialog, SIGNAL(invitationResponded(const ndn::Name&, bool)),
-          this, SLOT(onInvitationResponded(const ndn::Name&, bool)));
+          &m_backend, SLOT(onInvitationResponded(const ndn::Name&, bool)));
 
   // Connection to AddContactPanel
   connect(m_addContactPanel, SIGNAL(fetchInfo(const QString&)),
-          &m_contactManager, SLOT(onFetchContactInfo(const QString&)));
+          m_backend.getContactManager(), SLOT(onFetchContactInfo(const QString&)));
   connect(m_addContactPanel, SIGNAL(addContact(const QString&)),
-          &m_contactManager, SLOT(onAddFetchedContact(const QString&)));
-  connect(&m_contactManager, SIGNAL(contactEndorseInfoReady(const Chronos::EndorseInfo&)),
-          m_addContactPanel, SLOT(onContactEndorseInfoReady(const Chronos::EndorseInfo&)));
+          m_backend.getContactManager(), SLOT(onAddFetchedContact(const QString&)));
+  connect(m_backend.getContactManager(),
+          SIGNAL(contactEndorseInfoReady(const Chronos::EndorseInfo&)),
+          m_addContactPanel,
+          SLOT(onContactEndorseInfoReady(const Chronos::EndorseInfo&)));
 
 
   // Connection to BrowseContactDialog
   connect(m_browseContactDialog, SIGNAL(directAddClicked()),
           this, SLOT(onDirectAdd()));
   connect(m_browseContactDialog, SIGNAL(fetchIdCert(const QString&)),
-          &m_contactManager, SLOT(onFetchIdCert(const QString&)));
+          m_backend.getContactManager(), SLOT(onFetchIdCert(const QString&)));
   connect(m_browseContactDialog, SIGNAL(addContact(const QString&)),
-          &m_contactManager, SLOT(onAddFetchedContactIdCert(const QString&)));
-  connect(&m_contactManager, SIGNAL(idCertNameListReady(const QStringList&)),
+          m_backend.getContactManager(), SLOT(onAddFetchedContactIdCert(const QString&)));
+  connect(m_backend.getContactManager(), SIGNAL(idCertNameListReady(const QStringList&)),
           m_browseContactDialog, SLOT(onIdCertNameListReady(const QStringList&)));
-  connect(&m_contactManager, SIGNAL(nameListReady(const QStringList&)),
+  connect(m_backend.getContactManager(), SIGNAL(nameListReady(const QStringList&)),
           m_browseContactDialog, SLOT(onNameListReady(const QStringList&)));
-  connect(&m_contactManager, SIGNAL(idCertReady(const ndn::IdentityCertificate&)),
+  connect(m_backend.getContactManager(), SIGNAL(idCertReady(const ndn::IdentityCertificate&)),
           m_browseContactDialog, SLOT(onIdCertReady(const ndn::IdentityCertificate&)));
 
   // Connection to ContactPanel
   connect(m_contactPanel, SIGNAL(waitForContactList()),
-          &m_contactManager, SLOT(onWaitForContactList()));
+          m_backend.getContactManager(), SLOT(onWaitForContactList()));
   connect(m_contactPanel, SIGNAL(waitForContactInfo(const QString&)),
-          &m_contactManager, SLOT(onWaitForContactInfo(const QString&)));
+          m_backend.getContactManager(), SLOT(onWaitForContactInfo(const QString&)));
   connect(m_contactPanel, SIGNAL(removeContact(const QString&)),
-          &m_contactManager, SLOT(onRemoveContact(const QString&)));
+          m_backend.getContactManager(), SLOT(onRemoveContact(const QString&)));
   connect(m_contactPanel, SIGNAL(updateAlias(const QString&, const QString&)),
-          &m_contactManager, SLOT(onUpdateAlias(const QString&, const QString&)));
+          m_backend.getContactManager(), SLOT(onUpdateAlias(const QString&, const QString&)));
   connect(m_contactPanel, SIGNAL(updateIsIntroducer(const QString&, bool)),
-          &m_contactManager, SLOT(onUpdateIsIntroducer(const QString&, bool)));
+          m_backend.getContactManager(), SLOT(onUpdateIsIntroducer(const QString&, bool)));
   connect(m_contactPanel, SIGNAL(updateEndorseCertificate(const QString&)),
-          &m_contactManager, SLOT(onUpdateEndorseCertificate(const QString&)));
+          m_backend.getContactManager(), SLOT(onUpdateEndorseCertificate(const QString&)));
   connect(m_contactPanel, SIGNAL(warning(const QString&)),
           this, SLOT(onWarning(const QString&)));
   connect(this, SIGNAL(closeDBModule()),
           m_contactPanel, SLOT(onCloseDBModule()));
   connect(this, SIGNAL(identityUpdated(const QString&)),
           m_contactPanel, SLOT(onIdentityUpdated(const QString&)));
-  connect(&m_contactManager, SIGNAL(contactAliasListReady(const QStringList&)),
+  connect(m_backend.getContactManager(), SIGNAL(contactAliasListReady(const QStringList&)),
           m_contactPanel, SLOT(onContactAliasListReady(const QStringList&)));
-  connect(&m_contactManager, SIGNAL(contactIdListReady(const QStringList&)),
+  connect(m_backend.getContactManager(), SIGNAL(contactIdListReady(const QStringList&)),
           m_contactPanel, SLOT(onContactIdListReady(const QStringList&)));
-  connect(&m_contactManager, SIGNAL(contactInfoReady(const QString&, const QString&,
-                                                     const QString&, bool)),
+  connect(m_backend.getContactManager(), SIGNAL(contactInfoReady(const QString&, const QString&,
+                                                                 const QString&, bool)),
           m_contactPanel, SLOT(onContactInfoReady(const QString&, const QString&,
                                                   const QString&, bool)));
 
-  // Connection to DiscoveryDialog
-  connect(this,
-          SIGNAL(discoverChatroomChanged(const chronos::ChatroomInfo&, bool)),
-          m_chatroomDiscoveryDialog,
-          SLOT(onDiscoverChatroomChanged(const chronos::ChatroomInfo&, bool)));
-  connect(m_chatroomDiscoveryDialog, SIGNAL(startChatroom(const QString&, bool)),
-          this, SLOT(onStartChatroom(const QString&, bool)));
+  // Connection to backend thread
+  connect(this, SIGNAL(shutdownBackend()),
+          &m_backend, SLOT(shutdown()));
+  connect(this, SIGNAL(updateLocalPrefix()),
+          &m_backend, SLOT(onUpdateLocalPrefixAction()));
+  connect(this, SIGNAL(identityUpdated(const QString&)),
+          &m_backend, SLOT(onIdentityChanged(const QString&)));
+  connect(this, SIGNAL(addChatroom(QString)),
+          &m_backend, SLOT(addChatroom(QString)));
+  connect(this, SIGNAL(removeChatroom(QString)),
+          &m_backend, SLOT(removeChatroom(QString)));
+
+  // Thread notifications:
+  // on local prefix udpated:
+  connect(&m_backend, SIGNAL(localPrefixUpdated(const QString&)),
+          this, SLOT(onLocalPrefixUpdated(const QString&)));
+  connect(&m_backend, SIGNAL(localPrefixUpdated(const QString&)),
+          m_settingDialog, SLOT(onLocalPrefixUpdated(const QString&)));
+
+  // on invitation validated:
+  connect(&m_backend, SIGNAL(invitaionValidated(QString, QString, ndn::Name)),
+          m_invitationDialog, SLOT(onInvitationReceived(QString, QString, ndn::Name)));
+
+  // on invitation accepted:
+  connect(&m_backend, SIGNAL(startChatroomOnInvitation(chronos::Invitation, bool)),
+          this, SLOT(onStartChatroom2(chronos::Invitation, bool)));
+
+  m_backend.start();
 
   initialize();
 
   createTrayIcon();
 
-  onUpdateLocalPrefixAction();
+  emit updateLocalPrefix();
 }
 
 Controller::~Controller()
@@ -232,37 +231,9 @@ Controller::initialize()
 {
   loadConf();
 
-  m_keyChain.createIdentity(m_identity);
-
   openDB();
 
   emit identityUpdated(QString(m_identity.toUri().c_str()));
-
-  setInvitationListener();
-
-  m_discoveryLogic.sendDiscoveryInterest();
-}
-
-void
-Controller::setInvitationListener()
-{
-  if (m_invitationListenerId != 0)
-    m_face->unsetInterestFilter(m_invitationListenerId);
-
-  Name invitationPrefix;
-  Name routingPrefix = getInvitationRoutingPrefix();
-  size_t offset = 0;
-  if (!routingPrefix.isPrefixOf(m_identity)) {
-    invitationPrefix.append(routingPrefix).append(ROUTING_PREFIX_SEPARATOR, 2);
-    offset = routingPrefix.size() + 1;
-  }
-  invitationPrefix.append(m_identity).append("CHRONOCHAT-INVITATION");
-
-  m_invitationListenerId = m_face->setInterestFilter(invitationPrefix,
-                                                     bind(&Controller::onInvitationInterestWrapper,
-                                                          this, _1, _2, offset),
-                                                     bind(&Controller::onInvitationRegisterFailed,
-                                                          this, _1, _2));
 }
 
 void
@@ -333,7 +304,8 @@ Controller::createActions()
   connect(m_addContactAction, SIGNAL(triggered()), this, SLOT(onAddContactAction()));
 
   m_updateLocalPrefixAction = new QAction(tr("Update local prefix"), this);
-  connect(m_updateLocalPrefixAction, SIGNAL(triggered()), this, SLOT(onUpdateLocalPrefixAction()));
+  connect(m_updateLocalPrefixAction, SIGNAL(triggered()),
+          &m_backend, SLOT(onUpdateLocalPrefixAction()));
 
   m_minimizeAction = new QAction(tr("Mi&nimize"), this);
   connect(m_minimizeAction, SIGNAL(triggered()), this, SLOT(onMinimizeAction()));
@@ -350,7 +322,7 @@ Controller::createTrayIcon()
 
   m_trayIconMenu = new QMenu(this);
   m_trayIconMenu->addAction(m_startChatroom);
-  m_trayIconMenu->addAction(m_discoveryAction);
+  // m_trayIconMenu->addAction(m_discoveryAction); // disable discovery temporarily
 
   m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_settingsAction);
@@ -382,7 +354,7 @@ Controller::updateMenu()
   QMenu* closeMenu = 0;
 
   menu->addAction(m_startChatroom);
-  menu->addAction(m_discoveryAction);
+  // menu->addAction(m_discoveryAction);
 
   menu->addSeparator();
   menu->addAction(m_settingsAction);
@@ -422,88 +394,6 @@ Controller::updateMenu()
   m_closeMenu = closeMenu;
 }
 
-void
-Controller::onLocalPrefix(const Interest& interest, Data& data)
-{
-  QString localPrefixStr("/private/local");
-  Name prefix;
-
-  Block contentBlock = data.getContent();
-  try {
-    contentBlock.parse();
-
-    for (Block::element_const_iterator it = contentBlock.elements_begin();
-         it != contentBlock.elements_end(); it++) {
-      Name candidate;
-      candidate.wireDecode(*it);
-      if (candidate.isPrefixOf(m_identity)) {
-        prefix = candidate;
-        break;
-      }
-    }
-
-    if (prefix.empty()) {
-      if (contentBlock.elements_begin() != contentBlock.elements_end())
-        prefix.wireDecode(*contentBlock.elements_begin());
-      else
-        prefix = Name("/private/local");
-    }
-
-    localPrefixStr = QString::fromStdString(prefix.toUri());
-  }
-  catch (Block::Error& e) {
-    prefix = Name("/private/local");
-  }
-
-  if (m_localPrefix.empty() || m_localPrefix != prefix) {
-    emit localPrefixUpdated(localPrefixStr);
-  }
-}
-
-void
-Controller::onLocalPrefixTimeout(const Interest& interest)
-{
-  QString localPrefixStr("/private/local");
-
-  Name localPrefix(localPrefixStr.toStdString());
-  if (m_localPrefix.empty() || m_localPrefix != localPrefix) {
-    emit localPrefixUpdated(localPrefixStr);
-  }
-}
-
-void
-Controller::onInvitationInterestWrapper(const Name& prefix,
-                                        const Interest& interest,
-                                        size_t routingPrefixOffset)
-{
-  emit invitationInterest(prefix, interest, routingPrefixOffset);
-}
-
-void
-Controller::onInvitationRegisterFailed(const Name& prefix, const string& failInfo)
-{
-  // _LOG_DEBUG("Controller::onInvitationRegisterFailed: " << failInfo);
-}
-
-void
-Controller::onInvitationValidated(const shared_ptr<const Interest>& interest)
-{
-  Invitation invitation(interest->getName());
-  // Should be obtained via a method of ContactManager.
-  string alias = invitation.getInviterCertificate().getPublicKeyName().getPrefix(-1).toUri();
-
-  m_invitationDialog->setInvitation(alias, invitation.getChatroom(), interest->getName());
-  m_invitationDialog->show();
-}
-
-void
-Controller::onInvitationValidationFailed(const shared_ptr<const Interest>& interest,
-                                         string failureInfo)
-{
-  // _LOG_DEBUG("Invitation: " << interest->getName() <<
-  //            " cannot not be validated due to: " << failureInfo);
-}
-
 string
 Controller::getRandomString()
 {
@@ -528,17 +418,10 @@ Controller::getRandomString()
   return ss.str();
 }
 
-ndn::Name
-Controller::getInvitationRoutingPrefix()
-{
-  return Name("/ndn/broadcast");
-}
-
 void
 Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
 {
   m_chatDialogList[chatroomName.toStdString()] = chatDialog;
-  m_discoveryLogic.addLocalChatroom(*chatDialog->getChatroomInfo());
   connect(chatDialog, SIGNAL(closeChatDialog(const QString&)),
           this, SLOT(onRemoveChatDialog(const QString&)));
   connect(chatDialog, SIGNAL(showChatMessage(const QString&, const QString&, const QString&)),
@@ -547,7 +430,7 @@ Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
           this, SLOT(onResetIcon()));
   connect(chatDialog, SIGNAL(rosterChanged(const chronos::ChatroomInfo&)),
           this, SLOT(onRosterChanged(const chronos::ChatroomInfo&)));
-  connect(this, SIGNAL(localPrefixUpdated(const QString&)),
+  connect(&m_backend, SIGNAL(localPrefixUpdated(const QString&)),
           chatDialog->getBackend(), SLOT(updateRoutingPrefix(const QString&)));
   connect(this, SIGNAL(localPrefixConfigured(const QString&)),
           chatDialog->getBackend(), SLOT(updateRoutingPrefix(const QString&)));
@@ -574,21 +457,17 @@ Controller::updateDiscoveryList(const ChatroomInfo& info, bool isAdd)
 void
 Controller::onIdentityUpdated(const QString& identity)
 {
-  Name identityName(identity.toStdString());
-
   while (!m_chatDialogList.empty()) {
     ChatDialogList::const_iterator it = m_chatDialogList.begin();
     onRemoveChatDialog(QString::fromStdString(it->first));
   }
 
-  m_identity = identityName;
-  m_keyChain.createIdentity(m_identity);
-  setInvitationListener();
-
   emit closeDBModule();
 
-  QTimer::singleShot(500, this, SLOT(onIdentityUpdatedContinued()));
+  Name identityName(identity.toStdString());
+  m_identity = identityName;
 
+  QTimer::singleShot(500, this, SLOT(onIdentityUpdatedContinued()));
 }
 
 void
@@ -605,19 +484,6 @@ Controller::onIdentityUpdatedContinued()
 }
 
 void
-Controller::onContactIdListReady(const QStringList& list)
-{
-  ContactList contactList;
-
-  m_contactManager.getContactList(contactList);
-  m_validator.cleanTrustAnchor();
-
-  for (ContactList::const_iterator it  = contactList.begin(); it != contactList.end(); it++)
-    m_validator.addTrustAnchor((*it)->getPublicKeyName(), (*it)->getPublicKey());
-
-}
-
-void
 Controller::onNickUpdated(const QString& nick)
 {
   m_nick = nick.toStdString();
@@ -628,12 +494,12 @@ Controller::onLocalPrefixUpdated(const QString& localPrefix)
 {
   QString privateLocalPrefix("/private/local");
 
-  m_localPrefix = Name(localPrefix.toStdString());
-
   if (privateLocalPrefix != localPrefix)
     m_localPrefixDetected = true;
   else
     m_localPrefixDetected = false;
+
+  m_localPrefix = Name(localPrefix.toStdString());
 }
 
 void
@@ -658,11 +524,6 @@ Controller::onStartChatAction()
 void
 Controller::onDiscoveryAction()
 {
-  m_discoveryLogic.sendDiscoveryInterest();
-
-  m_chatroomDiscoveryDialog->updateChatroomList();
-  m_chatroomDiscoveryDialog->show();
-  m_chatroomDiscoveryDialog->raise();
 }
 
 
@@ -704,19 +565,6 @@ Controller::onDirectAdd()
 }
 
 void
-Controller::onUpdateLocalPrefixAction()
-{
-  // Name interestName();
-  Interest interest("/localhop/ndn-autoconf/routable-prefixes");
-  interest.setInterestLifetime(time::milliseconds(1000));
-  interest.setMustBeFresh(true);
-
-  m_face->expressInterest(interest,
-                          bind(&Controller::onLocalPrefix, this, _1, _2),
-                          bind(&Controller::onLocalPrefixTimeout, this, _1));
-}
-
-void
 Controller::onMinimizeAction()
 {
   m_settingDialog->hide();
@@ -739,9 +587,6 @@ Controller::onQuitAction()
     it->second->shutdown();
   }
 
-  if (m_invitationListenerId != 0)
-    m_face->unsetInterestFilter(m_invitationListenerId);
-
   delete m_settingDialog;
   delete m_startChatDialog;
   delete m_profileEditor;
@@ -749,7 +594,10 @@ Controller::onQuitAction()
   delete m_browseContactDialog;
   delete m_addContactPanel;
 
-  m_face->getIoService().stop();
+  if (m_backend.isRunning()) {
+    emit shutdownBackend();
+    m_backend.wait();
+  }
 
   QApplication::quit();
 }
@@ -774,10 +622,6 @@ Controller::onStartChatroom(const QString& chatroomName, bool secured)
   // TODO: We should create a chatroom specific key/cert
   //(which should be created in the first half of this method
   //, but let's use the default one for now.
-  // std::cout << "start chat room localprefix: " << m_localPrefix.toUri() << std::endl;
-  shared_ptr<IdentityCertificate> idCert
-    = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
-
   Name chatPrefix;
   chatPrefix.append(m_identity).append("CHRONOCHAT-DATA").append(chatroomName.toStdString());
 
@@ -790,88 +634,22 @@ Controller::onStartChatroom(const QString& chatroomName, bool secured)
 
   addChatDialog(chatroomName, chatDialog);
   chatDialog->show();
+
+  emit addChatroom(chatroomName);
 }
 
 void
-Controller::onInvitationResponded(const ndn::Name& invitationName, bool accepted)
+Controller::onStartChatroom2(chronos::Invitation invitation, bool secured)
 {
-  shared_ptr<Data> response = make_shared<Data>();
-  shared_ptr<IdentityCertificate> chatroomCert;
+  QString chatroomName = QString::fromStdString(invitation.getChatroom());
+  onStartChatroom(chatroomName, secured);
 
-  // generate reply;
-  if (accepted) {
-    Name responseName = invitationName;
-    responseName.append(m_localPrefix.wireEncode());
+  ChatDialogList::iterator it = m_chatDialogList.find(chatroomName.toStdString());
 
-    response->setName(responseName);
-
-    // We should create a particular certificate for this chatroom,
-    //but let's use default one for now.
-    chatroomCert
-      = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
-
-    response->setContent(chatroomCert->wireEncode());
-    response->setFreshnessPeriod(time::milliseconds(1000));
-  }
-  else {
-    response->setName(invitationName);
-    response->setFreshnessPeriod(time::milliseconds(1000));
-  }
-
-  m_keyChain.signByIdentity(*response, m_identity);
-
-  // Check if we need a wrapper
-  Name invitationRoutingPrefix = getInvitationRoutingPrefix();
-  if (invitationRoutingPrefix.isPrefixOf(m_identity))
-    m_face->put(*response);
-  else {
-    Name wrappedName;
-    wrappedName.append(invitationRoutingPrefix)
-      .append(ROUTING_PREFIX_SEPARATOR, 2)
-      .append(response->getName());
-
-    // _LOG_DEBUG("onInvitationResponded: prepare reply " << wrappedName);
-
-    shared_ptr<Data> wrappedData = make_shared<Data>(wrappedName);
-    wrappedData->setContent(response->wireEncode());
-    wrappedData->setFreshnessPeriod(time::milliseconds(1000));
-
-    m_keyChain.signByIdentity(*wrappedData, m_identity);
-    m_face->put(*wrappedData);
-  }
-
-  // create chatroom
-  if (accepted) {
-    Invitation invitation(invitationName);
-    Name chatroomPrefix;
-    chatroomPrefix.append("ndn")
-      .append("broadcast")
-      .append("ChronoChat")
-      .append(invitation.getChatroom());
-
-    //We should create a chatroom specific key/cert
-    //(which should be created in the first half of this method,
-    //but let's use the default one for now.
-    shared_ptr<IdentityCertificate> idCert
-      = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
-
-    Name chatPrefix;
-    chatPrefix.append(m_identity).append("CHRONOCHAT-DATA").append(invitation.getChatroom());
-
-    ChatDialog* chatDialog
-      = new ChatDialog(chatroomPrefix,
-                       chatPrefix,
-                       m_localPrefix,
-                       invitation.getChatroom(),
-                       m_nick,
-                       true);
-
-    chatDialog->addSyncAnchor(invitation);
-
-    addChatDialog(QString::fromStdString(invitation.getChatroom()), chatDialog);
-    chatDialog->show();
-  }
+  BOOST_ASSERT(it != m_chatDialogList.end());
+  it->second->addSyncAnchor(invitation);
 }
+
 
 void
 Controller::onShowChatMessage(const QString& chatroomName, const QString& from, const QString& data)
@@ -898,7 +676,6 @@ Controller::onRemoveChatDialog(const QString& chatroomName)
     if (deletedChat)
       delete deletedChat;
     m_chatDialogList.erase(it);
-    m_discoveryLogic.removeLocalChatroom(Name::Component(chatroomName.toStdString()));
 
     QAction* chatAction = m_chatActionList[chatroomName.toStdString()];
     QAction* closeAction = m_closeActionList[chatroomName.toStdString()];
@@ -928,35 +705,9 @@ Controller::onError(const QString& msg)
 }
 
 void
-Controller::onInvitationInterest(const ndn::Name& prefix,
-                                 const ndn::Interest& interest,
-                                 size_t routingPrefixOffset)
-{
-  // _LOG_DEBUG("onInvitationInterest: " << interest.getName());
-  shared_ptr<Interest> invitationInterest =
-    make_shared<Interest>(boost::cref(interest.getName().getSubName(routingPrefixOffset)));
-
-  // check if the chatroom already exists;
-  try {
-      Invitation invitation(invitationInterest->getName());
-      if (m_chatDialogList.find(invitation.getChatroom()) != m_chatDialogList.end())
-        return;
-  }
-  catch (Invitation::Error& e) {
-    // Cannot parse the invitation;
-    return;
-  }
-
-  OnInterestValidated onValidated = bind(&Controller::onInvitationValidated, this, _1);
-  OnInterestValidationFailed onValidationFailed = bind(&Controller::onInvitationValidationFailed,
-                                                       this, _1, _2);
-  m_validator.validate(*invitationInterest, onValidated, onValidationFailed);
-}
-
-void
 Controller::onRosterChanged(const chronos::ChatroomInfo& info)
 {
-  m_discoveryLogic.addLocalChatroom(info);
+
 }
 
 } // namespace chronos

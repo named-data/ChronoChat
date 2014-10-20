@@ -36,7 +36,7 @@ class ContactManager : public QObject
   Q_OBJECT
 
 public:
-  ContactManager(shared_ptr<ndn::Face> m_face, QObject* parent = 0);
+  ContactManager(ndn::Face& m_face, QObject* parent = 0);
 
   ~ContactManager();
 
@@ -269,7 +269,7 @@ private:
   // Conf
   shared_ptr<ContactStorage> m_contactStorage;
   shared_ptr<ndn::Validator> m_validator;
-  shared_ptr<ndn::Face> m_face;
+  ndn::Face& m_face;
   ndn::KeyChain m_keyChain;
   Name m_identity;
   ContactList m_contactList;

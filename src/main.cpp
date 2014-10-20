@@ -38,27 +38,13 @@ public:
   }
 };
 
-void
-runIO(boost::asio::io_service& ioService)
-{
-  try {
-    ioService.run();
-  }
-  catch (std::runtime_error& e) {
-    std::cerr << e.what() << std::endl;
-  }
-}
-
 int main(int argc, char *argv[])
 {
   NewApp app(argc, argv);
 
-  ndn::shared_ptr<ndn::Face> face = ndn::make_shared<ndn::Face>();
-  chronos::Controller controller(face);
+  chronos::Controller controller;
 
   app.setQuitOnLastWindowClosed(false);
-
-  boost::thread(runIO, boost::ref(face->getIoService()));
 
   return app.exec();
 }
