@@ -3,7 +3,6 @@
 
 namespace chronos {
 
-using std::vector;
 using ndn::Name;
 
 ChatroomDiscoveryDialog::ChatroomDiscoveryDialog(QWidget* parent)
@@ -67,7 +66,7 @@ ChatroomDiscoveryDialog::updateChatroomList()
 
     QString content;
 
-    for (vector<Name>::const_iterator nameIt = it->second.getParticipants().begin();
+    for (std::list<Name>::const_iterator nameIt = it->second.getParticipants().begin();
          nameIt != it->second.getParticipants().end(); nameIt++) {
       content.append(QString::fromStdString(nameIt->toUri())).append(",");
     }

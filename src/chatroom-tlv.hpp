@@ -6,13 +6,16 @@ namespace chronos {
 namespace tlv {
 
 enum {
-  PARTICIPANT = 128,
-  CHATROOM = 129,
-  TRUSTMODEL = 130
+  ChatroomInfo = 128,
+  ChatroomName = 129,
+  TrustModel = 130,
+  ChatroomPrefix = 131,
+  ManagerPrefix = 132,
+  Participants = 133,
 };
 
-} //namespace tlv
+} // namespace tlv
 
-} //namespace chronos
+} // namespace chronos
 
-#endif //CHRONOCHAT_CHATROOM_TLV_HPP
+#endif // CHRONOCHAT_CHATROOM_TLV_HPP

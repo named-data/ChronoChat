@@ -22,6 +22,7 @@
 #include <ndn-cxx/encoding/encoding-buffer.hpp>
 #include <ndn-cxx/exclude.hpp>
 #include <boost/concept_check.hpp>
+#include <list>
 
 namespace chronos {
 
@@ -43,7 +44,6 @@ public:
     {
     }
   };
-
 
   enum TrustModel {
     TRUST_MODEL_HIERARCHICAL = 2,
@@ -67,26 +67,35 @@ public:
   const Name::Component&
   getName() const;
 
+  const TrustModel
+  getTrustModel() const;
+
+  const Name&
+  getSyncPrefix() const;
+
+  const Name&
+  getManagerPrefix() const;
+
+  const std::list<Name>&
+  getParticipants() const;
+
   void
   setName(const Name::Component& name);
 
-  const std::vector<Name>&
-  getParticipants() const;
+  void
+  setTrustModel(const TrustModel trustModel);
 
   void
   addParticipant(const Name& participant);
 
-  const std::vector<Name>&
-  getContacts() const;
+  void
+  removeParticipant(const Name& participant);
 
   void
-  addContact(const Name& contact);
-
-  const TrustModel
-  getTrustModel() const;
+  setSyncPrefix(const Name& prefix);
 
   void
-  setTrustModel(const TrustModel trustModel);
+  setManager(const Name& manager);
 
 private:
   template<bool T>
@@ -95,35 +104,43 @@ private:
 
 private:
   mutable Block m_wire;
-  Name::Component m_name;
-  std::vector<Name> m_participants;
+  Name::Component m_chatroomName;
+  std::list<Name> m_participants;
+  Name m_manager;
+  Name m_syncPrefix;
   TrustModel m_trustModel;
-  std::vector<Name> m_contacts;
 
 };
 
 inline const Name::Component&
 ChatroomInfo::getName() const
 {
-  return m_name;
-}
-
-inline const std::vector<Name>&
-ChatroomInfo::getParticipants() const
-{
-  return m_participants;
-}
-
-inline const std::vector<Name>&
-ChatroomInfo::getContacts() const
-{
-  return m_contacts;
+  return m_chatroomName;
 }
 
 inline const ChatroomInfo::TrustModel
 ChatroomInfo::getTrustModel() const
 {
   return m_trustModel;
+}
+
+
+inline const Name&
+ChatroomInfo::getManagerPrefix() const
+{
+  return m_manager;
+}
+
+inline const Name&
+ChatroomInfo::getSyncPrefix() const
+{
+  return m_syncPrefix;
+}
+
+inline const std::list<Name>&
+ChatroomInfo::getParticipants() const
+{
+  return m_participants;
 }
 
 BOOST_CONCEPT_ASSERT((ndn::WireEncodable<ChatroomInfo>));

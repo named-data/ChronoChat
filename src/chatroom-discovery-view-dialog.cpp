@@ -13,7 +13,6 @@
 
 namespace chronos {
 
-using std::vector;
 using ndn::Name;
 
 ChatroomDiscoveryViewDialog::ChatroomDiscoveryViewDialog(QWidget* parent)
@@ -52,10 +51,10 @@ ChatroomDiscoveryViewDialog::setChatroomTrustModel(QString chatroomTrustModel)
 }
 
 void
-ChatroomDiscoveryViewDialog::setChatroomParticipants(const vector<Name>& participants)
+ChatroomDiscoveryViewDialog::setChatroomParticipants(const std::list<Name>& participants)
 {
   QString content;
-  for (vector<Name>::const_iterator it = participants.begin();
+  for (std::list<Name>::const_iterator it = participants.begin();
        it != participants.end(); it++) {
     content.append(QString::fromStdString(it->toUri())).append("\n");
   }

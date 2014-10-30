@@ -39,7 +39,7 @@ public:
   setChatroomTrustModel(QString chatroomTrustModel);
 
   void
-  setChatroomParticipants(const std::vector<ndn::Name>& chatroomParticipants);
+  setChatroomParticipants(const std::list<ndn::Name>& chatroomParticipants);
 
 
 private slots:

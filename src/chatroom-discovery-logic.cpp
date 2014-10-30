@@ -151,18 +151,18 @@ ChatroomDiscoveryLogic::onReceiveData(const ndn::Interest& interest,
                                       const ndn::Data& data,
                                       const bool isRefreshing)
 {
-  Name::Component chatroomName = data.getName().get(OFFSET_CHATROOM_NAME);
+  // Name::Component chatroomName = data.getName().get(OFFSET_CHATROOM_NAME);
 
   ChatroomInfo chatroom;
   chatroom.wireDecode(data.getContent().blockFromValue());
-  chatroom.setName(chatroomName);
+  // chatroom.setName(chatroomName);
 
   // Tmp Disabled
   // if (chatroom.getTrustModel() == ChatroomInfo::TRUST_MODEL_WEBOFTRUST)
   //   addContacts(chatroom);
 
 
-  m_chatrooms[chatroomName] = chatroom;
+  m_chatrooms[chatroom.getName()] = chatroom;
   m_onUpdate(chatroom, true); //add
 
   time::milliseconds refreshingTime;
@@ -172,7 +172,8 @@ ChatroomDiscoveryLogic::onReceiveData(const ndn::Interest& interest,
     refreshingTime = DEFAULT_REFRESHING_TIMER;
 
   m_scheduler.scheduleEvent(refreshingTime,
-                            bind(&ChatroomDiscoveryLogic::refreshChatroom, this, chatroomName));
+                            bind(&ChatroomDiscoveryLogic::refreshChatroom, this,
+                                 chatroom.getName()));
 
   if (!isRefreshing)
     sendDiscoveryInterest();
@@ -218,4 +219,4 @@ ChatroomDiscoveryLogic::addContacts(ChatroomInfo& chatroom)
 }
 
 
-} //namespace chronos
+} // namespace chronos
