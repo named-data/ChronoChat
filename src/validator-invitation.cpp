@@ -13,8 +13,6 @@
 
 #include "logging.h"
 
-using namespace ndn;
-
 namespace chronos {
 
 using std::vector;
@@ -106,8 +104,8 @@ ValidatorInvitation::checkPolicy (const Interest& interest,
                               "Invalid interest name: " +  interest.getName().toUri());
 
   Name signedName = interestName.getPrefix(-1);
-  Buffer signedBlob = Buffer(signedName.wireEncode().value(),
-                             signedName.wireEncode().value_size());
+  ndn::Buffer signedBlob = ndn::Buffer(signedName.wireEncode().value(),
+                                       signedName.wireEncode().value_size());
 
   Block signatureBlock = interestName.get(Invitation::SIGNATURE).blockFromValue();
   Block signatureInfo = interestName.get(Invitation::KEY_LOCATOR).blockFromValue();

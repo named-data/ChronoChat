@@ -9,15 +9,15 @@
 #include "config.h"
 
 #ifdef WITH_TESTS
-#define VIRTUAL_WITH_TESTS virtual
-#define PUBLIC_WITH_TESTS_ELSE_PROTECTED public
-#define PUBLIC_WITH_TESTS_ELSE_PRIVATE public
-#define PROTECTED_WITH_TESTS_ELSE_PRIVATE protected
+#define CHRONOCHAT_VIRTUAL_WITH_TESTS virtual
+#define CHRONOCHAT_PUBLIC_WITH_TESTS_ELSE_PROTECTED public
+#define CHRONOCHAT_PUBLIC_WITH_TESTS_ELSE_PRIVATE public
+#define CHRONOCHAT_PROTECTED_WITH_TESTS_ELSE_PRIVATE protected
 #else
-#define VIRTUAL_WITH_TESTS
-#define PUBLIC_WITH_TESTS_ELSE_PROTECTED protected
-#define PUBLIC_WITH_TESTS_ELSE_PRIVATE private
-#define PROTECTED_WITH_TESTS_ELSE_PRIVATE private
+#define CHRONOCHAT_VIRTUAL_WITH_TESTS
+#define CHRONOCHAT_PUBLIC_WITH_TESTS_ELSE_PROTECTED protected
+#define CHRONOCHAT_PUBLIC_WITH_TESTS_ELSE_PRIVATE private
+#define CHRONOCHAT_PROTECTED_WITH_TESTS_ELSE_PRIVATE private
 #endif
 
 #include <cstddef>
@@ -66,7 +66,7 @@ using ndn::Signature;
 using ndn::KeyLocator;
 
 namespace tlv {
-using namespace ndn::Tlv;
+using namespace ndn::tlv;
 }
 
 namespace name = ndn::name;

@@ -53,7 +53,7 @@ public:
   void
   sendDiscoveryInterest();
 
-PUBLIC_WITH_TESTS_ELSE_PRIVATE:
+CHRONOCHAT_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   /**
    */
   void
@@ -79,7 +79,7 @@ PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   void
   addContacts(ChatroomInfo& chatroom);
 
-PUBLIC_WITH_TESTS_ELSE_PRIVATE:
+CHRONOCHAT_PUBLIC_WITH_TESTS_ELSE_PRIVATE:
 
   /** \brief erase the chatroom from the ongoing chatroom list
    */

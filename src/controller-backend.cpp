@@ -143,7 +143,7 @@ ControllerBackend::onInvitationInterest(const ndn::Name& prefix,
 {
   // _LOG_DEBUG("onInvitationInterest: " << interest.getName());
   shared_ptr<Interest> invitationInterest =
-    make_shared<Interest>(boost::cref(interest.getName().getSubName(routingPrefixOffset)));
+    make_shared<Interest>(interest.getName().getSubName(routingPrefixOffset));
 
   // check if the chatroom already exists;
   try {
