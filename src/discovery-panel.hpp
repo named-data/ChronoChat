@@ -72,6 +72,17 @@ signals:
   void
   startChatroom(const QString& chatroomName, bool secured);
 
+  /**
+   * @brief send request for invitation to a chatroom
+   *
+   * This function will be called if request invitation button is clicked.
+   *
+   * @param chatroomName the chatroom to join
+   * @param identity the person that the user send the request to
+   */
+  void
+  sendInvitationRequest(const QString& chatroomName, const QString& identity);
+
 public slots:
   /**
    * @brief reset the panel when identity is updated
@@ -92,9 +103,10 @@ public slots:
    * @brief print the chatroom info on the panel
    *
    * @param info chatroom info get from discovery backend
+   * @param isParticipant if the user is a participant of the chatroom
    */
   void
-  onChatroomInfoReady(const ChatroomInfo& info);
+  onChatroomInfoReady(const ChatroomInfo& info, bool isParticipant);
 
 private slots:
   void
@@ -107,6 +119,12 @@ private slots:
 
   void
   onJoinClicked();
+
+  void
+  onRequestInvitation();
+
+  void
+  onInvitationRequestResult(const std::string& message);
 
 private:
   Ui::DiscoveryPanel* ui;

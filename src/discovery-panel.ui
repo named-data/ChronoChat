@@ -59,139 +59,145 @@
         <attribute name="title">
          <string>General</string>
         </attribute>
-        <layout class="QVBoxLayout" name="verticalLayout_7">
+        <layout class="QHBoxLayout" name="horizontalLayout_6">
          <item>
-          <layout class="QVBoxLayout" name="verticalLayout_6" stretch="2">
+          <layout class="QVBoxLayout" name="verticalLayout_2">
            <item>
-            <layout class="QVBoxLayout" name="verticalLayout">
+            <layout class="QHBoxLayout" name="horizontalLayout" stretch="35,100">
+             <property name="spacing">
+              <number>-1</number>
+             </property>
              <item>
-              <layout class="QHBoxLayout" name="horizontalLayout" stretch="35,100">
-               <property name="spacing">
-                <number>-1</number>
+              <widget class="QLabel" name="NameSpaceLabel">
+               <property name="font">
+                <font>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
                </property>
-               <item>
-                <widget class="QLabel" name="NameSpaceLabel">
-                 <property name="font">
-                  <font>
-                   <weight>75</weight>
-                   <bold>true</bold>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Sync Prefix</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="NameSpaceData">
-                 <property name="font">
-                  <font>
-                   <family>Lucida Grande</family>
-                  </font>
-                 </property>
-                 <property name="readOnly">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-              </layout>
+               <property name="text">
+                <string>Sync Prefix</string>
+               </property>
+              </widget>
              </item>
              <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="35,100">
-               <item>
-                <widget class="QLabel" name="NameLabel">
-                 <property name="font">
-                  <font>
-                   <weight>75</weight>
-                   <bold>true</bold>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Name</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="NameData">
-                 <property name="font">
-                  <font>
-                   <family>Lucida Grande</family>
-                  </font>
-                 </property>
-                 <property name="readOnly">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-              </layout>
+              <widget class="QLineEdit" name="NameSpaceData">
+               <property name="font">
+                <font>
+                 <family>Lucida Grande</family>
+                </font>
+               </property>
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="35,100">
+             <item>
+              <widget class="QLabel" name="NameLabel">
+               <property name="font">
+                <font>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>Name</string>
+               </property>
+              </widget>
              </item>
              <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="35,100">
-               <item>
-                <widget class="QLabel" name="TrustModel">
-                 <property name="font">
-                  <font>
-                   <weight>75</weight>
-                   <bold>true</bold>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Trust Model</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="TrustModelData">
-                 <property name="font">
-                  <font>
-                   <family>Lucida Grande</family>
-                  </font>
-                 </property>
-                 <property name="readOnly">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-              </layout>
+              <widget class="QLineEdit" name="NameData">
+               <property name="font">
+                <font>
+                 <family>Lucida Grande</family>
+                </font>
+               </property>
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="35,100">
+             <item>
+              <widget class="QLabel" name="TrustModel">
+               <property name="font">
+                <font>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>Trust Model</string>
+               </property>
+              </widget>
              </item>
              <item>
-              <layout class="QVBoxLayout" name="verticalLayout_3">
+              <widget class="QLineEdit" name="TrustModelData">
+               <property name="font">
+                <font>
+                 <family>Lucida Grande</family>
+                </font>
+               </property>
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
+             <item>
+              <widget class="QListView" name="RosterList">
+               <property name="contextMenuPolicy">
+                <enum>Qt::PreventContextMenu</enum>
+               </property>
+               <property name="acceptDrops">
+                <bool>false</bool>
+               </property>
+               <property name="editTriggers">
+                <set>QAbstractItemView::NoEditTriggers</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="InChatroomWarning">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_4">
                <item>
-                <widget class="QListView" name="RosterList">
-                  <property name="contextMenuPolicy">
-                    <enum>Qt::PreventContextMenu</enum>
-                  </property>
-                  <property name="acceptDrops">
-                    <bool>false</bool>
-                  </property>
-                  <property name="editTriggers">
-                    <set>QAbstractItemView::NoEditTriggers</set>
-                  </property>
+                <widget class="QPushButton" name="join">
+                 <property name="text">
+                  <string>Join</string>
+                 </property>
+                 <property name="autoDefault">
+                  <bool>false</bool>
+                 </property>
                 </widget>
                </item>
                <item>
-                <layout class="QHBoxLayout" name="horizontalLayout_4">
-                 <item>
-                  <widget class="QPushButton" name="join">
-                   <property name="text">
-                    <string>Join</string>
-                   </property>
-                   <property name="autoDefault">
-                    <bool>false</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QPushButton" name="requestInvitation">
-                   <property name="text">
-                    <string>Request Invitation</string>
-                   </property>
-                   <property name="autoDefault">
-                    <bool>false</bool>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
+                <widget class="QPushButton" name="requestInvitation">
+                 <property name="text">
+                  <string>Request Invitation</string>
+                 </property>
+                 <property name="autoDefault">
+                  <bool>false</bool>
+                 </property>
+                </widget>
                </item>
               </layout>
              </item>

@@ -13,6 +13,7 @@
 
 #include <QItemSelectionModel>
 #include <QModelIndex>
+#include <QMessageBox>
 
 #ifndef Q_MOC_RUN
 #endif
@@ -21,7 +22,8 @@
 namespace chronochat {
 
 static const time::seconds REFRESH_INTERVAL(60);
-static const uint8_t ROUTING_HINT_SEPARATOR[2] = {0xF0, 0x2E};
+static const ndn::Name::Component ROUTING_HINT_SEPARATOR =
+  ndn::name::Component::fromEscapedString("%F0%2E");
 
 DiscoveryPanel::DiscoveryPanel(QWidget *parent)
   : QDialog(parent)
@@ -43,6 +45,12 @@ DiscoveryPanel::DiscoveryPanel(QWidget *parent)
           SLOT(onSelectedParticipantChanged(const QItemSelection &, const QItemSelection &)));
   connect(ui->join, SIGNAL(clicked()),
           this, SLOT(onJoinClicked()));
+  connect(ui->requestInvitation, SIGNAL(clicked()),
+          this, SLOT(onRequestInvitation()));
+
+  ui->join->setEnabled(false);
+  ui->requestInvitation->setEnabled(false);
+  ui->InChatroomWarning->clear();
 }
 
 DiscoveryPanel::~DiscoveryPanel()
@@ -73,6 +81,9 @@ DiscoveryPanel::resetPanel()
   m_chatroom.clear();
   m_chatroomListModel->setStringList(m_chatroomList);
 
+  ui->join->setEnabled(false);
+  ui->requestInvitation->setEnabled(false);
+  ui->InChatroomWarning->clear();
 }
 
 // public slots
@@ -90,7 +101,7 @@ DiscoveryPanel::onChatroomListReady(const QStringList& list)
 }
 
 void
-DiscoveryPanel::onChatroomInfoReady(const ChatroomInfo& info)
+DiscoveryPanel::onChatroomInfoReady(const ChatroomInfo& info, bool isParticipant)
 {
   ui->NameData->setText(QString::fromStdString(info.getName().toUri()));
   ui->NameSpaceData->setText(QString::fromStdString(info.getSyncPrefix().toUri()));
@@ -124,10 +135,16 @@ DiscoveryPanel::onChatroomInfoReady(const ChatroomInfo& info)
       ui->requestInvitation->setEnabled(false);
     }
   }
+  ui->InChatroomWarning->clear();
+  if (isParticipant) {
+    ui->join->setEnabled(false);
+    ui->requestInvitation->setEnabled(false);
+    ui->InChatroomWarning->setText(QString("You are already in this chatroom"));
+  }
 
   std::list<Name>roster = info.getParticipants();
   m_rosterList.clear();
-  Name::Component routingHint = Name::Component(ROUTING_HINT_SEPARATOR, 2);
+  Name::Component routingHint = Name::Component(ROUTING_HINT_SEPARATOR);
   for (const auto& participant : roster) {
     size_t i;
     for (i = 0; i < participant.size(); ++i) {
@@ -194,6 +211,19 @@ void
 DiscoveryPanel::onJoinClicked()
 {
   emit startChatroom(m_chatroom, false);
+}
+
+void
+DiscoveryPanel::onRequestInvitation()
+{
+  emit sendInvitationRequest(m_chatroom, m_participant);
+}
+
+void
+DiscoveryPanel::onInvitationRequestResult(const std::string& message)
+{
+  QMessageBox::information(this, tr("Chatroom Discovery"),
+                           tr(message.c_str()));
 }
 
 } // namespace chronochat

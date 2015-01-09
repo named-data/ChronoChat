@@ -28,7 +28,9 @@ using ndn::OnInterestValidated;
 using ndn::OnInterestValidationFailed;
 
 
-static const uint8_t ROUTING_PREFIX_SEPARATOR[2] = {0xF0, 0x2E};
+static const ndn::Name::Component ROUTING_HINT_SEPARATOR =
+  ndn::name::Component::fromEscapedString("%F0%2E");
+static const int MAXIMUM_REQUEST = 3;
 
 ControllerBackend::ControllerBackend(QObject* parent)
   : QThread(parent)
@@ -92,13 +94,16 @@ ControllerBackend::setInvitationListener()
   QMutexLocker locker(&m_mutex);
 
   Name invitationPrefix;
+  Name requestPrefix;
   Name routingPrefix = getInvitationRoutingPrefix();
   size_t offset = 0;
   if (!routingPrefix.isPrefixOf(m_identity)) {
-    invitationPrefix.append(routingPrefix).append(ROUTING_PREFIX_SEPARATOR, 2);
+    invitationPrefix.append(routingPrefix).append(ROUTING_HINT_SEPARATOR);
+    requestPrefix.append(routingPrefix).append(ROUTING_HINT_SEPARATOR);
     offset = routingPrefix.size() + 1;
   }
   invitationPrefix.append(m_identity).append("CHRONOCHAT-INVITATION");
+  requestPrefix.append(m_identity).append("CHRONOCHAT-INVITATION-REQUEST");
 
   const ndn::RegisteredPrefixId* invitationListenerId =
     m_face.setInterestFilter(invitationPrefix,
@@ -115,6 +120,19 @@ ControllerBackend::setInvitationListener()
 
   m_invitationListenerId = invitationListenerId;
 
+  const ndn::RegisteredPrefixId* requestListenerId =
+    m_face.setInterestFilter(requestPrefix,
+                             bind(&ControllerBackend::onInvitationRequestInterest,
+                                  this, _1, _2, offset),
+                             [] (const Name& prefix, const std::string& failInfo) {});
+
+  if (m_requestListenerId != 0) {
+    m_face.unregisterPrefix(m_requestListenerId,
+                            []{},
+                            [] (const std::string& failInfo) {});
+  }
+
+  m_requestListenerId = requestListenerId;
 }
 
 ndn::Name
@@ -164,9 +182,33 @@ ControllerBackend::onInvitationInterest(const ndn::Name& prefix,
 }
 
 void
-ControllerBackend::onInvitationRegisterFailed(const Name& prefix, const string& failInfo)
+ControllerBackend::onInvitationRegisterFailed(const Name& prefix, const std::string& failInfo)
 {
   // _LOG_DEBUG("ControllerBackend::onInvitationRegisterFailed: " << failInfo);
+}
+
+void
+ControllerBackend::onInvitationRequestInterest(const ndn::Name& prefix,
+                                               const ndn::Interest& interest,
+                                               size_t routingPrefixOffset)
+{
+  shared_ptr<const Data> data = m_ims.find(interest);
+  if (data != nullptr) {
+    m_face.put(*data);
+    return;
+  }
+  Name interestName = interest.getName();
+  size_t i;
+  for (i = 0; i < interestName.size(); i++)
+    if (interestName.at(i) == Name::Component("CHRONOCHAT-INVITATION-REQUEST"))
+      break;
+  if (i < interestName.size()) {
+    string chatroom = interestName.at(i+1).toUri();
+    string alias = interestName.getSubName(i+2).getPrefix(-1).toUri();
+    emit invitationRequestReceived(QString::fromStdString(alias),
+                                   QString::fromStdString(chatroom),
+                                   interestName);
+  }
 }
 
 void
@@ -176,9 +218,9 @@ ControllerBackend::onInvitationValidated(const shared_ptr<const Interest>& inter
   // Should be obtained via a method of ContactManager.
   string alias = invitation.getInviterCertificate().getPublicKeyName().getPrefix(-1).toUri();
 
-  emit invitaionValidated(QString::fromStdString(alias),
-                          QString::fromStdString(invitation.getChatroom()),
-                          interest->getName());
+  emit invitationValidated(QString::fromStdString(alias),
+                           QString::fromStdString(invitation.getChatroom()),
+                           interest->getName());
 }
 
 void
@@ -236,6 +278,36 @@ ControllerBackend::updateLocalPrefix(const Name& localPrefix)
     m_localPrefix = localPrefix;
     emit localPrefixUpdated(QString::fromStdString(localPrefix.toUri()));
   }
+}
+
+void
+ControllerBackend::onRequestResponse(const Interest& interest, Data& data)
+{
+  size_t i;
+  Name interestName = interest.getName();
+  for (i = 0; i < interestName.size(); i++) {
+    if (interestName.at(i) == Name::Component("CHRONOCHAT-INVITATION-REQUEST"))
+      break;
+  }
+  Name::Component chatroomName = interestName.at(i+1);
+  Block contentBlock = data.getContent();
+  int res = ndn::readNonNegativeInteger(contentBlock);
+  // if data is true,
+  if (res == 1)
+    emit startChatroom(QString::fromStdString(chatroomName.toUri()), false);
+  else
+    emit invitationRequestResult("You are rejected to enter chatroom: " + chatroomName.toUri());
+}
+
+void
+ControllerBackend::onRequestTimeout(const Interest& interest, int& resendTimes)
+{
+  if (resendTimes < MAXIMUM_REQUEST)
+    m_face.expressInterest(interest,
+                           bind(&ControllerBackend::onRequestResponse, this, _1, _2),
+                           bind(&ControllerBackend::onRequestTimeout, this, _1, resendTimes + 1));
+  else
+    emit invitationRequestResult("Invitation request times out.");
 }
 
 // public slots:
@@ -321,7 +393,7 @@ ControllerBackend::onInvitationResponded(const ndn::Name& invitationName, bool a
   else {
     Name wrappedName;
     wrappedName.append(invitationRoutingPrefix)
-      .append(ROUTING_PREFIX_SEPARATOR, 2)
+      .append(ROUTING_HINT_SEPARATOR)
       .append(response->getName());
 
     // _LOG_DEBUG("onInvitationResponded: prepare reply " << wrappedName);
@@ -336,6 +408,41 @@ ControllerBackend::onInvitationResponded(const ndn::Name& invitationName, bool a
 
   Invitation invitation(invitationName);
   emit startChatroomOnInvitation(invitation, true);
+}
+
+void
+ControllerBackend::onInvitationRequestResponded(const ndn::Name& invitationResponseName,
+                                                bool accepted)
+{
+  shared_ptr<Data> response = make_shared<Data>(invitationResponseName);
+  if (accepted)
+    response->setContent(ndn::nonNegativeIntegerBlock(tlv::Content, 1));
+  else
+    response->setContent(ndn::nonNegativeIntegerBlock(tlv::Content, 0));
+
+  m_keyChain.signByIdentity(*response, m_identity);
+  m_ims.insert(*response);
+  m_face.put(*response);
+}
+
+void
+ControllerBackend::onSendInvitationRequest(const QString& chatroomName, const QString& prefix)
+{
+  if (prefix.length() == 0)
+    return;
+  Name interestName = getInvitationRoutingPrefix();
+  interestName.append(ROUTING_HINT_SEPARATOR).append(prefix.toStdString());
+  interestName.append("CHRONOCHAT-INVITATION-REQUEST");
+  interestName.append(chatroomName.toStdString());
+  interestName.append(m_identity);
+  interestName.appendTimestamp();
+  Interest interest(interestName);
+  interest.setInterestLifetime(time::milliseconds(10000));
+  interest.setMustBeFresh(true);
+  interest.getNonce();
+  m_face.expressInterest(interest,
+                         bind(&ControllerBackend::onRequestResponse, this, _1, _2),
+                         bind(&ControllerBackend::onRequestTimeout, this, _1, 0));
 }
 
 void

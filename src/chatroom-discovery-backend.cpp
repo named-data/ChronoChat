@@ -21,7 +21,8 @@ namespace chronochat {
 static const time::milliseconds FRESHNESS_PERIOD(60000);
 static const time::seconds REFRESH_INTERVAL(60);
 static const time::seconds HELLO_INTERVAL(60);
-static const uint8_t ROUTING_HINT_SEPARATOR[2] = {0xF0, 0x2E}; // %F0.
+static const ndn::Name::Component ROUTING_HINT_SEPARATOR =
+  ndn::name::Component::fromEscapedString("%F0%2E");
 // a count enforced when a manager himself find another one publish chatroom data
 static const int MAXIMUM_COUNT = 3;
 static const int IDENTITY_OFFSET = -1;
@@ -249,7 +250,7 @@ ChatroomDiscoveryBackend::updatePrefixes()
     temp = m_userDiscoveryPrefix;
   else
     temp.append(m_routingPrefix)
-      .append(ROUTING_HINT_SEPARATOR, 2)
+      .append(ROUTING_HINT_SEPARATOR)
       .append(m_userDiscoveryPrefix);
 
   Name routableIdentity = m_routableUserDiscoveryPrefix.getPrefix(IDENTITY_OFFSET);
@@ -432,7 +433,7 @@ ChatroomDiscoveryBackend::onWaitForChatroomInfo(const QString& chatroomName)
 {
   auto chatroom = m_chatroomList.find(Name::Component(chatroomName.toStdString()));
   if (chatroom != m_chatroomList.end())
-    emit chatroomInfoReady(chatroom->second.info);
+    emit chatroomInfoReady(chatroom->second.info, chatroom->second.isParticipant);
 }
 
 void

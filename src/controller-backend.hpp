@@ -10,6 +10,7 @@
 #ifndef CHRONOCHAT_CONTROLLER_BACKEND_HPP
 #define CHRONOCHAT_CONTROLLER_BACKEND_HPP
 
+#include <QString>
 #include <QThread>
 #include <QStringList>
 #include <QMutex>
@@ -20,6 +21,7 @@
 #include "invitation.hpp"
 #include "validator-invitation.hpp"
 #include <ndn-cxx/security/key-chain.hpp>
+#include <ndn-cxx/util/in-memory-storage-persistent.hpp>
 #endif
 
 namespace chronochat {
@@ -61,6 +63,10 @@ private:
                        size_t routingPrefixOffset);
 
   void
+  onInvitationRequestInterest(const ndn::Name& prefix, const ndn::Interest& interest,
+                              size_t routingPrefixOffset);
+
+  void
   onInvitationRegisterFailed(const Name& prefix, const std::string& failInfo);
 
   void
@@ -79,6 +85,12 @@ private:
   void
   updateLocalPrefix(const Name& localPrefix);
 
+  void
+  onRequestResponse(const Interest& interest, Data& data);
+
+  void
+  onRequestTimeout(const Interest& interest, int& resendTimes);
+
 signals:
   void
   identityUpdated(const QString& identity);
@@ -87,10 +99,19 @@ signals:
   localPrefixUpdated(const QString& localPrefix);
 
   void
-  invitaionValidated(QString alias, QString chatroom, ndn::Name invitationINterest);
+  invitationValidated(QString alias, QString chatroom, ndn::Name invitationINterest);
+
+  void
+  invitationRequestReceived(QString alias, QString chatroom, ndn::Name invitationRequestInterest);
 
   void
   startChatroomOnInvitation(chronochat::Invitation invitation, bool secured);
+
+  void
+  startChatroom(const QString& chatroomName, bool secured);
+
+  void
+  invitationRequestResult(const std::string& msg);
 
 public slots:
   void
@@ -110,6 +131,12 @@ public slots:
 
   void
   onInvitationResponded(const ndn::Name& invitationName, bool accepted);
+
+  void
+  onInvitationRequestResponded(const ndn::Name& invitationName, bool accepted);
+
+  void
+  onSendInvitationRequest(const QString& chatroomName, const QString& prefix);
 
 private slots:
   void
@@ -131,11 +158,14 @@ private:
 
   // RegisteredPrefixId
   const ndn::RegisteredPrefixId* m_invitationListenerId;
+  const ndn::RegisteredPrefixId* m_requestListenerId;
 
   // ChatRoomList
   QStringList m_chatDialogList;
 
   QMutex m_mutex;
+
+  ndn::util::InMemoryStoragePersistent m_ims;
 };
 
 } // namespace chronochat

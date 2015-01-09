@@ -20,6 +20,7 @@
 #include "start-chat-dialog.hpp"
 #include "profile-editor.hpp"
 #include "invitation-dialog.hpp"
+#include "invitation-request-dialog.hpp"
 #include "contact-panel.hpp"
 #include "browse-contact-dialog.hpp"
 #include "add-contact-panel.hpp"
@@ -220,6 +221,7 @@ private: // private member
   StartChatDialog*          m_startChatDialog;
   ProfileEditor*            m_profileEditor;
   InvitationDialog*         m_invitationDialog;
+  InvitationRequestDialog*  m_invitationRequestDialog;
   ContactPanel*             m_contactPanel;
   BrowseContactDialog*      m_browseContactDialog;
   AddContactPanel*          m_addContactPanel;

@@ -25,7 +25,8 @@ namespace chronochat {
 
 static const time::milliseconds FRESHNESS_PERIOD(60000);
 static const time::seconds HELLO_INTERVAL(60);
-static const uint8_t ROUTING_HINT_SEPARATOR[2] = {0xF0, 0x2E}; // %F0.
+static const ndn::Name::Component ROUTING_HINT_SEPARATOR =
+  ndn::name::Component::fromEscapedString("%F0%2E");
 static const int IDENTITY_OFFSET = -3;
 
 ChatDialogBackend::ChatDialogBackend(const Name& chatroomPrefix,
@@ -446,7 +447,7 @@ ChatDialogBackend::updatePrefixes()
     m_routableUserChatPrefix = m_userChatPrefix;
   else
     m_routableUserChatPrefix.append(m_localRoutingPrefix)
-      .append(ROUTING_HINT_SEPARATOR, 2)
+      .append(ROUTING_HINT_SEPARATOR)
       .append(m_userChatPrefix);
 
   emit chatPrefixChanged(m_routableUserChatPrefix);

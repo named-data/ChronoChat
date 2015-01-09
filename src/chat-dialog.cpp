@@ -24,7 +24,8 @@ Q_DECLARE_METATYPE(std::vector<chronochat::NodeInfo>)
 namespace chronochat {
 
 static const Name PRIVATE_PREFIX("/private/local");
-static const uint8_t ROUTING_HINT_SEPARATOR[2] = {0xF0, 0x2E}; // %F0.
+static const ndn::Name::Component ROUTING_HINT_SEPARATOR =
+  ndn::name::Component::fromEscapedString("%F0%2E");
 
 ChatDialog::ChatDialog(const Name& chatroomPrefix,
                        const Name& userChatPrefix,
@@ -68,7 +69,7 @@ ChatDialog::ChatDialog(const Name& chatroomPrefix,
     routablePrefix = userChatPrefix;
   else
     routablePrefix.append(routingPrefix)
-      .append(ROUTING_HINT_SEPARATOR, 2)
+      .append(ROUTING_HINT_SEPARATOR)
       .append(userChatPrefix);
 
   updateLabels(routablePrefix);

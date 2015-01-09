@@ -119,9 +119,10 @@ signals:
    * @brief send chatroom info to front end
    *
    * @param info the chatroom info request by front end
+   * @param isParticipant if the user is a participant of the chatroom
    */
   void
-  chatroomInfoReady(const ChatroomInfo& info);
+  chatroomInfoReady(const ChatroomInfo& info, bool isParticipant);
 
 public slots:
 
