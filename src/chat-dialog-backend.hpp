@@ -59,6 +59,9 @@ private:
   initializeSync();
 
   void
+  close();
+
+  void
   processSyncUpdate(const std::vector<chronosync::MissingDataInfo>& updates);
 
   void
@@ -129,7 +132,7 @@ public slots:
 private:
   typedef std::map<ndn::Name, UserInfo> BackendRoster;
 
-  ndn::Face m_face;
+  unique_ptr<ndn::Face> m_face;
 
   Name m_localRoutingPrefix;             // routable local prefix
   Name m_chatroomPrefix;                 // chatroom sync prefix
@@ -141,12 +144,15 @@ private:
 
   shared_ptr<chronosync::Socket> m_sock; // SyncSocket
 
-  ndn::Scheduler m_scheduler;            // scheduler
+  unique_ptr<ndn::Scheduler> m_scheduler;// scheduler
   ndn::EventId m_helloEventId;           // event id of timeout
 
   bool m_joined;                         // true if in a chatroom
 
   BackendRoster m_roster;                // User roster
+
+  QMutex m_mutex;
+  bool m_shouldResume;
 };
 
 } // namespace chronos

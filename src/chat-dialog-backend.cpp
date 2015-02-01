@@ -36,7 +36,6 @@ ChatDialogBackend::ChatDialogBackend(const Name& chatroomPrefix,
   , m_userChatPrefix(userChatPrefix)
   , m_chatroomName(chatroomName)
   , m_nick(nick)
-  , m_scheduler(m_face.getIoService())
 {
   updatePrefixes();
 }
@@ -50,9 +49,21 @@ ChatDialogBackend::~ChatDialogBackend()
 void
 ChatDialogBackend::run()
 {
-  initializeSync();
+  bool shouldResume = false;
+  do {
+    initializeSync();
 
-  m_face.processEvents();
+    if (m_face == nullptr)
+      break;
+
+    m_face->getIoService().run();
+
+    m_mutex.lock();
+    shouldResume = m_shouldResume;
+    m_shouldResume = false;
+    m_mutex.unlock();
+
+  } while (shouldResume);
 
   std::cerr << "Bye!" << std::endl;
 }
@@ -61,30 +72,40 @@ ChatDialogBackend::run()
 void
 ChatDialogBackend::initializeSync()
 {
-  // if a SyncSocket is running, turn it off
-  if (static_cast<bool>(m_sock)) {
-    if (m_joined)
-      sendLeave();
-    m_sock.reset();
+  BOOST_ASSERT(m_sock == nullptr);
 
-    usleep(100000);
-  }
+  m_face = unique_ptr<ndn::Face>(new ndn::Face);
+  m_scheduler = unique_ptr<ndn::Scheduler>(new ndn::Scheduler(m_face->getIoService()));
 
   // create a new SyncSocket
   m_sock = make_shared<chronosync::Socket>(m_chatroomPrefix,
                                            m_routableUserChatPrefix,
-                                           ref(m_face),
+                                           ref(*m_face),
                                            bind(&ChatDialogBackend::processSyncUpdate, this, _1));
 
   // schedule a new join event
-  m_scheduler.scheduleEvent(time::milliseconds(600),
-                            bind(&ChatDialogBackend::sendJoin, this));
+  m_scheduler->scheduleEvent(time::milliseconds(600),
+                             bind(&ChatDialogBackend::sendJoin, this));
 
   // cancel existing hello event if it exists
-  if (static_cast<bool>(m_helloEventId)) {
-    m_scheduler.cancelEvent(m_helloEventId);
+  if (m_helloEventId != nullptr) {
+    m_scheduler->cancelEvent(m_helloEventId);
     m_helloEventId.reset();
   }
+}
+
+void
+ChatDialogBackend::close()
+{
+  if (m_joined)
+    sendLeave();
+
+  usleep(100000);
+
+  m_scheduler->cancelAllEvents();
+  m_helloEventId.reset();
+  m_roster.clear();
+  m_sock.reset();
 }
 
 void
@@ -156,7 +177,7 @@ ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data,
     if (it != m_roster.end()) {
       // cancel timeout event
       if (static_cast<bool>(it->second.timeoutEventId))
-        m_scheduler.cancelEvent(it->second.timeoutEventId);
+        m_scheduler->cancelEvent(it->second.timeoutEventId);
 
       // notify frontend to remove the remote session (node)
       emit sessionRemoved(QString::fromStdString(remoteSessionPrefix.toUri()),
@@ -193,13 +214,13 @@ ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data,
 
     // If a timeout event has been scheduled, cancel it.
     if (static_cast<bool>(it->second.timeoutEventId))
-      m_scheduler.cancelEvent(it->second.timeoutEventId);
+      m_scheduler->cancelEvent(it->second.timeoutEventId);
 
     // (Re)schedule another timeout event after 3 HELLO_INTERVAL;
     it->second.timeoutEventId =
-      m_scheduler.scheduleEvent(HELLO_INTERVAL * 3,
-                                bind(&ChatDialogBackend::remoteSessionTimeout,
-                                     this, remoteSessionPrefix));
+      m_scheduler->scheduleEvent(HELLO_INTERVAL * 3,
+                                 bind(&ChatDialogBackend::remoteSessionTimeout,
+                                      this, remoteSessionPrefix));
 
     // If chat message, notify the frontend
     if (msg.type() == SyncDemo::ChatMessage::CHAT)
@@ -262,8 +283,8 @@ ChatDialogBackend::sendJoin()
   prepareControlMessage(msg, SyncDemo::ChatMessage::JOIN);
   sendMsg(msg);
 
-  m_helloEventId = m_scheduler.scheduleEvent(HELLO_INTERVAL,
-                                             bind(&ChatDialogBackend::sendHello, this));
+  m_helloEventId = m_scheduler->scheduleEvent(HELLO_INTERVAL,
+                                              bind(&ChatDialogBackend::sendHello, this));
 
   emit sessionAdded(QString::fromStdString(m_routableUserChatPrefix.toUri()),
                     QString::fromStdString(msg.from()),
@@ -277,8 +298,8 @@ ChatDialogBackend::sendHello()
   prepareControlMessage(msg, SyncDemo::ChatMessage::HELLO);
   sendMsg(msg);
 
-  m_helloEventId = m_scheduler.scheduleEvent(HELLO_INTERVAL,
-                                             bind(&ChatDialogBackend::sendHello, this));
+  m_helloEventId = m_scheduler->scheduleEvent(HELLO_INTERVAL,
+                                              bind(&ChatDialogBackend::sendHello, this));
 }
 
 void
@@ -366,22 +387,26 @@ ChatDialogBackend::updateRoutingPrefix(const QString& localRoutingPrefix)
 
     updatePrefixes();
 
-    initializeSync();
+    m_mutex.lock();
+    m_shouldResume = true;
+    m_mutex.unlock();
+
+    close();
+
+    m_face->getIoService().stop();
   }
 }
 
 void
 ChatDialogBackend::shutdown()
 {
-  if (static_cast<bool>(m_sock)) {
-    if (m_joined)
-      sendLeave();
-    m_sock.reset();
+  m_mutex.lock();
+  m_shouldResume = false;
+  m_mutex.unlock();
 
-    usleep(100000);
-  }
+  close();
 
-  m_face.getIoService().stop();
+  m_face->getIoService().stop();
 }
 
 } // namespace chronos
