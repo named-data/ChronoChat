@@ -48,6 +48,7 @@ public:
              const std::string& chatroomName,
              const std::string& nick,
              bool isSecured = false,
+             const Name& signingId = Name(),
              QWidget* parent = 0);
 
   ~ChatDialog();

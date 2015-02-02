@@ -630,7 +630,9 @@ Controller::onStartChatroom(const QString& chatroomName, bool secured)
                      chatPrefix,
                      m_localPrefix,
                      chatroomName.toStdString(),
-                     m_nick);
+                     m_nick,
+                     true,
+                     m_identity);
 
   addChatDialog(chatroomName, chatDialog);
   chatDialog->show();

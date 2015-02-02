@@ -32,10 +32,11 @@ ChatDialog::ChatDialog(const Name& chatroomPrefix,
                        const std::string& chatroomName,
                        const std::string& nick,
                        bool isSecured,
+                       const Name& signingId,
                        QWidget* parent)
   : QDialog(parent)
   , ui(new Ui::ChatDialog)
-  , m_backend(chatroomPrefix, userChatPrefix, routingPrefix, chatroomName, nick)
+  , m_backend(chatroomPrefix, userChatPrefix, routingPrefix, chatroomName, nick, signingId)
   , m_chatroomName(chatroomName)
   , m_nick(nick.c_str())
   , m_isSecured(isSecured)
@@ -186,7 +187,7 @@ ChatDialog::getChatroomInfo()
   }
 
   if (m_isSecured)
-    chatroomInfo->setTrustModel(ChatroomInfo::TRUST_MODEL_WEBOFTRUST);
+    chatroomInfo->setTrustModel(ChatroomInfo::TRUST_MODEL_HIERARCHICAL);
   else
     chatroomInfo->setTrustModel(ChatroomInfo::TRUST_MODEL_NONE);
   return chatroomInfo;

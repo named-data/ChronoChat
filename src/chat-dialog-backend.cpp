@@ -10,8 +10,11 @@
 
 #include "chat-dialog-backend.hpp"
 
+#include <QFile>
+
 #ifndef Q_MOC_RUN
 #include <ndn-cxx/util/io.hpp>
+#include <ndn-cxx/security/validator-regex.hpp>
 #include "logging.h"
 #endif
 
@@ -29,6 +32,7 @@ ChatDialogBackend::ChatDialogBackend(const Name& chatroomPrefix,
                                      const Name& routingPrefix,
                                      const std::string& chatroomName,
                                      const std::string& nick,
+                                     const Name& signingId,
                                      QObject* parent)
   : QThread(parent)
   , m_localRoutingPrefix(routingPrefix)
@@ -36,6 +40,7 @@ ChatDialogBackend::ChatDialogBackend(const Name& chatroomPrefix,
   , m_userChatPrefix(userChatPrefix)
   , m_chatroomName(chatroomName)
   , m_nick(nick)
+  , m_signingId(signingId)
 {
   updatePrefixes();
 }
@@ -74,14 +79,38 @@ ChatDialogBackend::initializeSync()
 {
   BOOST_ASSERT(m_sock == nullptr);
 
-  m_face = unique_ptr<ndn::Face>(new ndn::Face);
+  m_face = make_shared<ndn::Face>();
   m_scheduler = unique_ptr<ndn::Scheduler>(new ndn::Scheduler(m_face->getIoService()));
+
+  // initialize validator
+  shared_ptr<ndn::IdentityCertificate> anchor = loadTrustAnchor();
+
+  if (static_cast<bool>(anchor)) {
+    shared_ptr<ndn::ValidatorRegex> validator =
+      make_shared<ndn::ValidatorRegex>(m_face.get()); // TODO: Change to Face*
+    validator->addDataVerificationRule(
+      make_shared<ndn::SecRuleRelative>("^<>*<%F0.>(<>*)$",
+                                        "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$",
+                                        ">", "\\1", "\\1\\2", true));
+    validator->addDataVerificationRule(
+      make_shared<ndn::SecRuleRelative>("(<>*)$",
+                                        "^([^<KEY>]*)<KEY>(<>*)<ksk-.*><ID-CERT>$",
+                                        ">", "\\1", "\\1\\2", true));
+    validator->addTrustAnchor(anchor);
+
+    m_validator = validator;
+  }
+  else
+    m_validator = shared_ptr<ndn::Validator>();
+
 
   // create a new SyncSocket
   m_sock = make_shared<chronosync::Socket>(m_chatroomPrefix,
                                            m_routableUserChatPrefix,
                                            ref(*m_face),
-                                           bind(&ChatDialogBackend::processSyncUpdate, this, _1));
+                                           bind(&ChatDialogBackend::processSyncUpdate, this, _1),
+                                           m_signingId,
+                                           m_validator);
 
   // schedule a new join event
   m_scheduler->scheduleEvent(time::milliseconds(600),
@@ -92,6 +121,40 @@ ChatDialogBackend::initializeSync()
     m_scheduler->cancelEvent(m_helloEventId);
     m_helloEventId.reset();
   }
+}
+
+class IoDeviceSource
+{
+public:
+  typedef char char_type;
+  typedef boost::iostreams::source_tag category;
+
+  explicit
+  IoDeviceSource(QIODevice& source)
+    : m_source(source)
+  {
+  }
+
+  std::streamsize
+  read(char* buffer, std::streamsize n)
+  {
+    return m_source.read(buffer, n);
+  }
+private:
+  QIODevice& m_source;
+};
+
+shared_ptr<ndn::IdentityCertificate>
+ChatDialogBackend::loadTrustAnchor()
+{
+  QFile anchorFile(":/security/anchor.cert");
+
+  if (!anchorFile.open(QIODevice::ReadOnly)) {
+    return {};
+  }
+
+  boost::iostreams::stream<IoDeviceSource> anchorFileStream(anchorFile);
+  return ndn::io::load<ndn::IdentityCertificate>(anchorFileStream);
 }
 
 void
@@ -105,6 +168,7 @@ ChatDialogBackend::close()
   m_scheduler->cancelAllEvents();
   m_helloEventId.reset();
   m_roster.clear();
+  m_validator.reset();
   m_sock.reset();
 }
 
@@ -131,7 +195,13 @@ ChatDialogBackend::processSyncUpdate(const std::vector<chronosync::MissingDataIn
     if (updates[i].high - updates[i].low < 3) {
       for (chronosync::SeqNo seq = updates[i].low; seq <= updates[i].high; ++seq) {
         m_sock->fetchData(updates[i].session, seq,
-                          bind(&ChatDialogBackend::processChatData, this, _1, true),
+                          [this] (const shared_ptr<const ndn::Data>& data) {
+                            this->processChatData(data, true, true);
+                          },
+                          [this] (const shared_ptr<const ndn::Data>& data, const std::string& msg) {
+                            this->processChatData(data, true, false);
+                          },
+                          ndn::OnTimeout(),
                           2);
         _LOG_DEBUG("<<< Fetching " << updates[i].session << "/" << seq);
       }
@@ -139,7 +209,13 @@ ChatDialogBackend::processSyncUpdate(const std::vector<chronosync::MissingDataIn
     else {
       // There are too many msgs to fetch, let's just fetch the latest one
       m_sock->fetchData(updates[i].session, updates[i].high,
-                        bind(&ChatDialogBackend::processChatData, this, _1, false),
+                        [this] (const shared_ptr<const ndn::Data>& data) {
+                          this->processChatData(data, false, true);
+                        },
+                        [this] (const shared_ptr<const ndn::Data>& data, const std::string& msg) {
+                          this->processChatData(data, false, false);
+                        },
+                        ndn::OnTimeout(),
                         2);
     }
 
@@ -156,7 +232,9 @@ ChatDialogBackend::processSyncUpdate(const std::vector<chronosync::MissingDataIn
 }
 
 void
-ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data, bool needDisplay)
+ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data,
+                                   bool needDisplay,
+                                   bool isValidated)
 {
   SyncDemo::ChatMessage msg;
 
@@ -223,10 +301,16 @@ ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data,
                                       this, remoteSessionPrefix));
 
     // If chat message, notify the frontend
-    if (msg.type() == SyncDemo::ChatMessage::CHAT)
-      emit chatMessageReceived(QString::fromStdString(msg.from()),
-                               QString::fromStdString(msg.data()),
-                               msg.timestamp());
+    if (msg.type() == SyncDemo::ChatMessage::CHAT) {
+      if (isValidated)
+        emit chatMessageReceived(QString::fromStdString(msg.from()),
+                                 QString::fromStdString(msg.data()),
+                                 msg.timestamp());
+      else
+        emit chatMessageReceived(QString::fromStdString(msg.from() + " (Unverified)"),
+                                 QString::fromStdString(msg.data()),
+                                 msg.timestamp());
+    }
 
     // Notify frontend to plot notification on DigestTree.
     emit messageReceived(QString::fromStdString(remoteSessionPrefix.toUri()));

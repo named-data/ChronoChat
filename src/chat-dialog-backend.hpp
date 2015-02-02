@@ -46,6 +46,7 @@ public:
                     const Name& routingPrefix,
                     const std::string& chatroomName,
                     const std::string& nick,
+                    const Name& signingId = Name(),
                     QObject* parent = 0);
 
   ~ChatDialogBackend();
@@ -58,6 +59,9 @@ private:
   void
   initializeSync();
 
+  shared_ptr<ndn::IdentityCertificate>
+  loadTrustAnchor();
+
   void
   close();
 
@@ -65,7 +69,9 @@ private:
   processSyncUpdate(const std::vector<chronosync::MissingDataInfo>& updates);
 
   void
-  processChatData(const ndn::shared_ptr<const ndn::Data>& data, bool needDisplay);
+  processChatData(const ndn::shared_ptr<const ndn::Data>& data,
+                  bool needDisplay,
+                  bool isValidated);
 
   void
   remoteSessionTimeout(const Name& sessionPrefix);
@@ -132,7 +138,7 @@ public slots:
 private:
   typedef std::map<ndn::Name, UserInfo> BackendRoster;
 
-  unique_ptr<ndn::Face> m_face;
+  shared_ptr<ndn::Face> m_face;
 
   Name m_localRoutingPrefix;             // routable local prefix
   Name m_chatroomPrefix;                 // chatroom sync prefix
@@ -142,6 +148,8 @@ private:
   std::string m_chatroomName;            // chatroom name
   std::string m_nick;                    // user nick
 
+  Name m_signingId;                      // signing identity
+  shared_ptr<ndn::Validator> m_validator;// validator
   shared_ptr<chronosync::Socket> m_sock; // SyncSocket
 
   unique_ptr<ndn::Scheduler> m_scheduler;// scheduler
