@@ -459,7 +459,7 @@ Controller::onIdentityUpdated(const QString& identity)
 {
   while (!m_chatDialogList.empty()) {
     ChatDialogList::const_iterator it = m_chatDialogList.begin();
-    onRemoveChatDialog(QString::fromStdString(it->first));
+    it->second->shutdown();
   }
 
   emit closeDBModule();
