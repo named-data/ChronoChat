@@ -24,6 +24,8 @@
 #include "browse-contact-dialog.hpp"
 #include "add-contact-panel.hpp"
 #include "chat-dialog.hpp"
+#include "chatroom-discovery-backend.hpp"
+#include "discovery-panel.hpp"
 
 #ifndef Q_MOC_RUN
 #include "common.hpp"
@@ -82,6 +84,9 @@ signals:
   shutdownBackend();
 
   void
+  shutdownDiscoveryBackend();
+
+  void
   updateLocalPrefix();
 
   void
@@ -112,6 +117,12 @@ signals:
   void
   removeChatroom(QString chatroomName);
 
+  void
+  newChatroomForDiscovery(Name::Component chatroomName);
+
+  void
+  respondChatroomInfoRequest(ChatroomInfo chatroomInfo, bool isManager);
+
 private slots:
   void
   onIdentityUpdated(const QString& identity);
@@ -130,9 +141,6 @@ private slots:
 
   void
   onStartChatAction();
-
-  void
-  onDiscoveryAction();
 
   void
   onSettingsAction();
@@ -156,6 +164,9 @@ private slots:
   onQuitAction();
 
   void
+  onChatroomDiscoveryAction();
+
+  void
   onStartChatroom(const QString& chatroom, bool secured);
 
   void
@@ -177,7 +188,7 @@ private slots:
   onError(const QString& msg);
 
   void
-  onRosterChanged(const chronochat::ChatroomInfo& info);
+  onChatroomInfoRequest(std::string chatroomName, bool isManager);
 
 private: // private member
   typedef std::map<std::string, QAction*> ChatActionList;
@@ -189,7 +200,7 @@ private: // private member
 
   // Tray
   QAction*         m_startChatroom;
-  QAction*         m_discoveryAction;
+  //QAction*         m_discoveryAction;
   QAction*         m_minimizeAction;
   QAction*         m_settingsAction;
   QAction*         m_editProfileAction;
@@ -197,6 +208,7 @@ private: // private member
   QAction*         m_addContactAction;
   QAction*         m_updateLocalPrefixAction;
   QAction*         m_quitAction;
+  QAction*         m_chatroomDiscoveryAction;
   QMenu*           m_trayIconMenu;
   QMenu*           m_closeMenu;
   QSystemTrayIcon* m_trayIcon;
@@ -204,14 +216,16 @@ private: // private member
   ChatActionList   m_closeActionList;
 
   // Dialogs
-  SettingDialog*       m_settingDialog;
-  StartChatDialog*     m_startChatDialog;
-  ProfileEditor*       m_profileEditor;
-  InvitationDialog*    m_invitationDialog;
-  ContactPanel*        m_contactPanel;
-  BrowseContactDialog* m_browseContactDialog;
-  AddContactPanel*     m_addContactPanel;
-  ChatDialogList       m_chatDialogList;
+  SettingDialog*            m_settingDialog;
+  StartChatDialog*          m_startChatDialog;
+  ProfileEditor*            m_profileEditor;
+  InvitationDialog*         m_invitationDialog;
+  ContactPanel*             m_contactPanel;
+  BrowseContactDialog*      m_browseContactDialog;
+  AddContactPanel*          m_addContactPanel;
+  ChatDialogList            m_chatDialogList;
+  DiscoveryPanel*           m_discoveryPanel;
+  ChatroomDiscoveryBackend* m_chatroomDiscoveryBackend;
 
   // Conf
   Name m_identity;

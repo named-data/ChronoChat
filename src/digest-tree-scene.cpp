@@ -154,7 +154,7 @@ DigestTreeScene::getRosterPrefixList()
     it.next();
     DisplayUserPtr p = it.value();
     if (p != DisplayUserNullPtr) {
-      prefixList << "- " + p->getPrefix();
+      prefixList << p->getPrefix();
     }
   }
   return prefixList;

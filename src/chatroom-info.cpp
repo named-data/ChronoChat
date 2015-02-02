@@ -137,11 +137,9 @@ ChatroomInfo::wireDecode(const Block& chatroomWire)
 
   // Chatroom Info
   Block::element_const_iterator i = m_wire.elements_begin();
-
   if (i == m_wire.elements_end() || i->type() != tlv::ChatroomName)
     throw Error("Missing Chatroom Name Info");
   m_chatroomName.wireDecode(i->blockFromValue());
-
   ++i;
 
   // Trust Model
@@ -149,14 +147,12 @@ ChatroomInfo::wireDecode(const Block& chatroomWire)
     throw Error("Missing TrustModel");
   m_trustModel =
       static_cast<TrustModel>(readNonNegativeInteger(*i));
-
   ++i;
 
   // Chatroom Sync Prefix
   if (i == m_wire.elements_end() || i->type() != tlv::ChatroomPrefix)
     throw Error("Missing Chatroom Prefix");
   m_syncPrefix.wireDecode(i->blockFromValue());
-
   ++i;
 
   // Manager Prefix
@@ -209,7 +205,10 @@ void
 ChatroomInfo::addParticipant(const Name& participant)
 {
   m_wire.reset();
-  m_participants.push_back(participant);
+  if (find(m_participants.begin(), m_participants.end(), participant) ==
+      m_participants.end()) {
+    m_participants.push_back(participant);
+  }
 }
 
 void

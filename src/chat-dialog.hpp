@@ -76,7 +76,7 @@ public:
   {
   }
 
-  shared_ptr<ChatroomInfo>
+  ChatroomInfo
   getChatroomInfo();
 
 private:
@@ -116,9 +116,6 @@ signals:
 
   void
   resetIcon();
-
-  void
-  rosterChanged(const chronochat::ChatroomInfo& info);
 
 public slots:
   void
@@ -167,6 +164,7 @@ private:
   ChatDialogBackend m_backend;
 
   std::string m_chatroomName;
+  Name m_chatroomPrefix;
   QString m_nick;
   bool m_isSecured;
 

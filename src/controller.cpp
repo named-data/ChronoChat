@@ -13,7 +13,6 @@
 #include <QDir>
 #include <QTimer>
 #include "controller.hpp"
-//#include "chatroom-discovery.h"
 
 #ifndef Q_MOC_RUN
 #include <boost/filesystem.hpp>
@@ -34,6 +33,8 @@ Q_DECLARE_METATYPE(ndn::Interest)
 Q_DECLARE_METATYPE(size_t)
 Q_DECLARE_METATYPE(chronochat::ChatroomInfo)
 Q_DECLARE_METATYPE(chronochat::Invitation)
+Q_DECLARE_METATYPE(std::string)
+Q_DECLARE_METATYPE(ndn::Name::Component)
 
 namespace chronochat {
 
@@ -43,21 +44,25 @@ using std::string;
 Controller::Controller(QWidget* parent)
   : QDialog(parent)
   , m_localPrefixDetected(false)
-  , m_settingDialog(new SettingDialog)
-  , m_startChatDialog(new StartChatDialog)
-  , m_profileEditor(new ProfileEditor)
-  , m_invitationDialog(new InvitationDialog)
-  , m_contactPanel(new ContactPanel)
-  , m_browseContactDialog(new BrowseContactDialog)
-  , m_addContactPanel(new AddContactPanel)
+  , m_settingDialog(new SettingDialog(this))
+  , m_startChatDialog(new StartChatDialog(this))
+  , m_profileEditor(new ProfileEditor(this))
+  , m_invitationDialog(new InvitationDialog(this))
+  , m_contactPanel(new ContactPanel(this))
+  , m_browseContactDialog(new BrowseContactDialog(this))
+  , m_addContactPanel(new AddContactPanel(this))
+  , m_discoveryPanel(new DiscoveryPanel(this))
 {
   qRegisterMetaType<ndn::Name>("ndn.Name");
   qRegisterMetaType<ndn::IdentityCertificate>("ndn.IdentityCertificate");
   qRegisterMetaType<chronochat::EndorseInfo>("chronochat.EndorseInfo");
   qRegisterMetaType<ndn::Interest>("ndn.Interest");
   qRegisterMetaType<size_t>("size_t");
-  qRegisterMetaType<chronochat::ChatroomInfo>("chronos.Chatroom");
-  qRegisterMetaType<chronochat::Invitation>("chronos.Invitation");
+  qRegisterMetaType<chronochat::ChatroomInfo>("chronochat.Chatroom");
+  qRegisterMetaType<chronochat::Invitation>("chronochat.Invitation");
+  qRegisterMetaType<std::string>("std.string");
+  qRegisterMetaType<ndn::Name::Component>("ndn.Component");
+
 
   // Connection to ContactManager
   connect(m_backend.getContactManager(), SIGNAL(warning(const QString&)),
@@ -102,7 +107,6 @@ Controller::Controller(QWidget* parent)
           SIGNAL(contactEndorseInfoReady(const chronochat::EndorseInfo&)),
           m_addContactPanel,
           SLOT(onContactEndorseInfoReady(const chronochat::EndorseInfo&)));
-
 
   // Connection to BrowseContactDialog
   connect(m_browseContactDialog, SIGNAL(directAddClicked()),
@@ -176,6 +180,43 @@ Controller::Controller(QWidget* parent)
   m_backend.start();
 
   initialize();
+
+  m_chatroomDiscoveryBackend
+    = new ChatroomDiscoveryBackend(m_localPrefix,
+                                   m_identity,
+                                   this);
+
+  // connect to chatroom discovery back end
+  connect(&m_backend, SIGNAL(localPrefixUpdated(const QString&)),
+          m_chatroomDiscoveryBackend, SLOT(updateRoutingPrefix(const QString&)));
+  connect(this, SIGNAL(localPrefixConfigured(const QString&)),
+          m_chatroomDiscoveryBackend, SLOT(updateRoutingPrefix(const QString&)));
+  connect(this, SIGNAL(newChatroomForDiscovery(Name::Component)),
+          m_chatroomDiscoveryBackend, SLOT(onNewChatroomForDiscovery(Name::Component)));
+  connect(m_chatroomDiscoveryBackend, SIGNAL(chatroomInfoRequest(std::string, bool)),
+          this, SLOT(onChatroomInfoRequest(std::string, bool)));
+  connect(this, SIGNAL(respondChatroomInfoRequest(ChatroomInfo, bool)),
+          m_chatroomDiscoveryBackend, SLOT(onRespondChatroomInfoRequest(ChatroomInfo, bool)));
+  connect(this, SIGNAL(shutdownDiscoveryBackend()),
+          m_chatroomDiscoveryBackend, SLOT(shutdown()));
+  connect(this, SIGNAL(identityUpdated(const QString&)),
+          m_chatroomDiscoveryBackend, SLOT(onIdentityUpdated(const QString&)));
+
+  // connect chatroom discovery back end with front end
+  connect(m_discoveryPanel, SIGNAL(waitForChatroomInfo(const QString&)),
+          m_chatroomDiscoveryBackend, SLOT(onWaitForChatroomInfo(const QString&)));
+  connect(m_discoveryPanel, SIGNAL(warning(const QString&)),
+          this, SLOT(onWarning(const QString&)));
+  connect(this, SIGNAL(identityUpdated(const QString&)),
+          m_discoveryPanel, SLOT(onIdentityUpdated(const QString&)));
+  connect(m_chatroomDiscoveryBackend, SIGNAL(chatroomListReady(const QStringList&)),
+          m_discoveryPanel, SLOT(onChatroomListReady(const QStringList&)));
+  connect(m_chatroomDiscoveryBackend, SIGNAL(chatroomInfoReady(const ChatroomInfo&)),
+          m_discoveryPanel, SLOT(onChatroomInfoReady(const ChatroomInfo&)));
+  connect(m_discoveryPanel, SIGNAL(startChatroom(const QString&, bool)),
+          this, SLOT(onStartChatroom(const QString&, bool)));
+
+  m_chatroomDiscoveryBackend->start();
 
   createTrayIcon();
 
@@ -288,9 +329,6 @@ Controller::createActions()
   m_startChatroom = new QAction(tr("Start new chat"), this);
   connect(m_startChatroom, SIGNAL(triggered()), this, SLOT(onStartChatAction()));
 
-  m_discoveryAction = new QAction(tr("Ongoing Chatrooms"), this);
-  connect(m_discoveryAction, SIGNAL(triggered()), this, SLOT(onDiscoveryAction()));
-
   m_settingsAction = new QAction(tr("Settings"), this);
   connect(m_settingsAction, SIGNAL(triggered()), this, SLOT(onSettingsAction()));
 
@@ -302,6 +340,9 @@ Controller::createActions()
 
   m_addContactAction = new QAction(tr("Add contact"), this);
   connect(m_addContactAction, SIGNAL(triggered()), this, SLOT(onAddContactAction()));
+
+  m_chatroomDiscoveryAction = new QAction(tr("Chatroom Discovery"), this);
+  connect(m_chatroomDiscoveryAction, SIGNAL(triggered()), this, SLOT(onChatroomDiscoveryAction()));
 
   m_updateLocalPrefixAction = new QAction(tr("Update local prefix"), this);
   connect(m_updateLocalPrefixAction, SIGNAL(triggered()),
@@ -322,7 +363,7 @@ Controller::createTrayIcon()
 
   m_trayIconMenu = new QMenu(this);
   m_trayIconMenu->addAction(m_startChatroom);
-  // m_trayIconMenu->addAction(m_discoveryAction); // disable discovery temporarily
+  m_trayIconMenu->addAction(m_chatroomDiscoveryAction);
 
   m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_settingsAction);
@@ -354,7 +395,7 @@ Controller::updateMenu()
   QMenu* closeMenu = 0;
 
   menu->addAction(m_startChatroom);
-  // menu->addAction(m_discoveryAction);
+  menu->addAction(m_chatroomDiscoveryAction);
 
   menu->addSeparator();
   menu->addAction(m_settingsAction);
@@ -428,12 +469,17 @@ Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
           this, SLOT(onShowChatMessage(const QString&, const QString&, const QString&)));
   connect(chatDialog, SIGNAL(resetIcon()),
           this, SLOT(onResetIcon()));
-  connect(chatDialog, SIGNAL(rosterChanged(const chronochat::ChatroomInfo&)),
-          this, SLOT(onRosterChanged(const chronochat::ChatroomInfo&)));
   connect(&m_backend, SIGNAL(localPrefixUpdated(const QString&)),
           chatDialog->getBackend(), SLOT(updateRoutingPrefix(const QString&)));
   connect(this, SIGNAL(localPrefixConfigured(const QString&)),
           chatDialog->getBackend(), SLOT(updateRoutingPrefix(const QString&)));
+
+  // connect chat dialog with discovery backend
+  connect(chatDialog->getBackend(), SIGNAL(addInRoster(ndn::Name, ndn::Name::Component)),
+          m_chatroomDiscoveryBackend, SLOT(onAddInRoster(ndn::Name, ndn::Name::Component)));
+  connect(chatDialog->getBackend(), SIGNAL(eraseInRoster(ndn::Name, ndn::Name::Component)),
+          m_chatroomDiscoveryBackend, SLOT(onEraseInRoster(ndn::Name, ndn::Name::Component)));
+
 
   QAction* chatAction = new QAction(chatroomName, this);
   m_chatActionList[chatroomName.toStdString()] = chatAction;
@@ -446,6 +492,7 @@ Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
           chatDialog, SLOT(shutdown()));
 
   updateMenu();
+  emit newChatroomForDiscovery(Name::Component(chatroomName.toStdString()));
 }
 
 void
@@ -522,12 +569,6 @@ Controller::onStartChatAction()
 }
 
 void
-Controller::onDiscoveryAction()
-{
-}
-
-
-void
 Controller::onSettingsAction()
 {
   m_settingDialog->setNick(QString(m_nick.c_str()));
@@ -558,6 +599,13 @@ Controller::onContactListAction()
 }
 
 void
+Controller::onChatroomDiscoveryAction()
+{
+  m_discoveryPanel->show();
+  m_discoveryPanel->raise();
+}
+
+void
 Controller::onDirectAdd()
 {
   m_addContactPanel->show();
@@ -572,6 +620,7 @@ Controller::onMinimizeAction()
   m_profileEditor->hide();
   m_invitationDialog->hide();
   m_addContactPanel->hide();
+  m_discoveryPanel->hide();
 
   ChatDialogList::iterator it = m_chatDialogList.begin();
   ChatDialogList::iterator end = m_chatDialogList.end();
@@ -593,6 +642,12 @@ Controller::onQuitAction()
   delete m_invitationDialog;
   delete m_browseContactDialog;
   delete m_addContactPanel;
+  delete m_discoveryPanel;
+  if (m_chatroomDiscoveryBackend->isRunning()) {
+    emit shutdownDiscoveryBackend();
+    m_chatroomDiscoveryBackend->wait();
+  }
+  delete m_chatroomDiscoveryBackend;
 
   if (m_backend.isRunning()) {
     emit shutdownBackend();
@@ -609,6 +664,7 @@ Controller::onStartChatroom(const QString& chatroomName, bool secured)
   chatroomPrefix.append("ndn")
     .append("broadcast")
     .append("ChronoChat")
+    .append("Chatroom")
     .append(chatroomName.toStdString());
 
   // check if the chatroom exists
@@ -623,7 +679,7 @@ Controller::onStartChatroom(const QString& chatroomName, bool secured)
   //(which should be created in the first half of this method
   //, but let's use the default one for now.
   Name chatPrefix;
-  chatPrefix.append(m_identity).append("CHRONOCHAT-DATA").append(chatroomName.toStdString());
+  chatPrefix.append(m_identity).append("CHRONOCHAT-CHATDATA").append(chatroomName.toStdString());
 
   ChatDialog* chatDialog
     = new ChatDialog(chatroomPrefix,
@@ -632,7 +688,8 @@ Controller::onStartChatroom(const QString& chatroomName, bool secured)
                      chatroomName.toStdString(),
                      m_nick,
                      true,
-                     m_identity);
+                     m_identity,
+                     this);
 
   addChatDialog(chatroomName, chatDialog);
   chatDialog->show();
@@ -672,11 +729,11 @@ void
 Controller::onRemoveChatDialog(const QString& chatroomName)
 {
   ChatDialogList::iterator it = m_chatDialogList.find(chatroomName.toStdString());
-
   if (it != m_chatDialogList.end()) {
     ChatDialog* deletedChat = it->second;
     if (deletedChat)
       delete deletedChat;
+
     m_chatDialogList.erase(it);
 
     QAction* chatAction = m_chatActionList[chatroomName.toStdString()];
@@ -707,9 +764,11 @@ Controller::onError(const QString& msg)
 }
 
 void
-Controller::onRosterChanged(const chronochat::ChatroomInfo& info)
+Controller::onChatroomInfoRequest(std::string chatroomName, bool isManager)
 {
-
+  auto it = m_chatDialogList.find(chatroomName);
+  if (it != m_chatDialogList.end())
+    emit respondChatroomInfoRequest(it->second->getChatroomInfo(), isManager);
 }
 
 } // namespace chronochat

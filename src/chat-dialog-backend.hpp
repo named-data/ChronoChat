@@ -125,6 +125,12 @@ signals:
   void
   chatPrefixChanged(ndn::Name newChatPrefix);
 
+  void
+  eraseInRoster(ndn::Name sessionPrefix, ndn::Name::Component chatroomName);
+
+  void
+  addInRoster(ndn::Name sessionPrefix, ndn::Name::Component chatroomName);
+
 public slots:
   void
   sendChatMessage(QString text, time_t timestamp);

@@ -38,6 +38,7 @@ ChatDialog::ChatDialog(const Name& chatroomPrefix,
   , ui(new Ui::ChatDialog)
   , m_backend(chatroomPrefix, userChatPrefix, routingPrefix, chatroomName, nick, signingId)
   , m_chatroomName(chatroomName)
+  , m_chatroomPrefix(chatroomPrefix)
   , m_nick(nick.c_str())
   , m_isSecured(isSecured)
 {
@@ -172,24 +173,23 @@ ChatDialog::showEvent(QShowEvent *e)
   fitView();
 }
 
-shared_ptr<ChatroomInfo>
+ChatroomInfo
 ChatDialog::getChatroomInfo()
 {
-  shared_ptr<ChatroomInfo> chatroomInfo = make_shared<ChatroomInfo>();
-
-  chatroomInfo->setName(Name::Component(m_chatroomName));
-
+  ChatroomInfo chatroomInfo;
+  chatroomInfo.setName(Name::Component(m_chatroomName));
   QStringList prefixList = m_scene->getRosterPrefixList();
   for(QStringList::iterator it = prefixList.begin();
       it != prefixList.end(); ++it ) {
     Name participant = Name(it->toStdString()).getPrefix(-3);
-    chatroomInfo->addParticipant(participant);
+    chatroomInfo.addParticipant(participant);
   }
 
+  chatroomInfo.setSyncPrefix(m_chatroomPrefix);
   if (m_isSecured)
-    chatroomInfo->setTrustModel(ChatroomInfo::TRUST_MODEL_HIERARCHICAL);
+    chatroomInfo.setTrustModel(ChatroomInfo::TRUST_MODEL_HIERARCHICAL);
   else
-    chatroomInfo->setTrustModel(ChatroomInfo::TRUST_MODEL_NONE);
+    chatroomInfo.setTrustModel(ChatroomInfo::TRUST_MODEL_NONE);
   return chatroomInfo;
 }
 

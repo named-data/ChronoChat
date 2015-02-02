@@ -26,6 +26,7 @@ namespace chronochat {
 static const time::milliseconds FRESHNESS_PERIOD(60000);
 static const time::seconds HELLO_INTERVAL(60);
 static const uint8_t ROUTING_HINT_SEPARATOR[2] = {0xF0, 0x2E}; // %F0.
+static const int IDENTITY_OFFSET = -3;
 
 ChatDialogBackend::ChatDialogBackend(const Name& chatroomPrefix,
                                      const Name& userChatPrefix,
@@ -264,6 +265,9 @@ ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data,
 
       // remove roster entry
       m_roster.erase(remoteSessionPrefix);
+
+      emit eraseInRoster(remoteSessionPrefix.getPrefix(IDENTITY_OFFSET),
+                         Name::Component(m_chatroomName));
     }
   }
   else {
@@ -281,6 +285,9 @@ ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data,
       emit sessionAdded(QString::fromStdString(remoteSessionPrefix.toUri()),
                         QString::fromStdString(msg.from()),
                         msg.timestamp());
+
+      emit addInRoster(remoteSessionPrefix.getPrefix(IDENTITY_OFFSET),
+                       Name::Component(m_chatroomName));
     }
 
     // If we get a new nick for an existing session, update it.
@@ -330,6 +337,9 @@ ChatDialogBackend::remoteSessionTimeout(const Name& sessionPrefix)
 
   // remove roster entry
   m_roster.erase(sessionPrefix);
+
+  emit eraseInRoster(sessionPrefix.getPrefix(IDENTITY_OFFSET),
+                     Name::Component(m_chatroomName));
 }
 
 void
@@ -350,7 +360,8 @@ ChatDialogBackend::sendMsg(SyncDemo::ChatMessage& msg)
   m_sock->publishData(os.buf()->buf(), os.buf()->size(), FRESHNESS_PERIOD);
 
   std::vector<NodeInfo> nodeInfos;
-  NodeInfo nodeInfo = {QString::fromStdString(m_routableUserChatPrefix.toUri()),
+  Name sessionName = m_sock->getLogic().getSessionName();
+  NodeInfo nodeInfo = {QString::fromStdString(sessionName.toUri()),
                        nextSequence};
   nodeInfos.push_back(nodeInfo);
 
@@ -370,7 +381,8 @@ ChatDialogBackend::sendJoin()
   m_helloEventId = m_scheduler->scheduleEvent(HELLO_INTERVAL,
                                               bind(&ChatDialogBackend::sendHello, this));
 
-  emit sessionAdded(QString::fromStdString(m_routableUserChatPrefix.toUri()),
+  Name sessionName = m_sock->getLogic().getSessionName();
+  emit sessionAdded(QString::fromStdString(sessionName.toUri()),
                     QString::fromStdString(msg.from()),
                     msg.timestamp());
 }
@@ -392,6 +404,10 @@ ChatDialogBackend::sendLeave()
   SyncDemo::ChatMessage msg;
   prepareControlMessage(msg, SyncDemo::ChatMessage::LEAVE);
   sendMsg(msg);
+
+  // get my own identity with routable prefix by getPrefix(-2)
+  emit eraseInRoster(m_routableUserChatPrefix.getPrefix(-2),
+                     Name::Component(m_chatroomName));
 
   usleep(5000);
   m_joined = false;
