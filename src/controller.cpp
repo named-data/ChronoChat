@@ -6,6 +6,7 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #include <QApplication>
@@ -44,6 +45,7 @@ using std::string;
 Controller::Controller(QWidget* parent)
   : QDialog(parent)
   , m_localPrefixDetected(false)
+  , m_isInConnectionDetection(false)
   , m_settingDialog(new SettingDialog(this))
   , m_startChatDialog(new StartChatDialog(this))
   , m_profileEditor(new ProfileEditor(this))
@@ -156,6 +158,10 @@ Controller::Controller(QWidget* parent)
                                                   const QString&, bool)));
 
   // Connection to backend thread
+  connect(&m_backend, SIGNAL(nfdError()),
+          this, SLOT(onNfdError()));
+  connect(this, SIGNAL(nfdReconnect()),
+          &m_backend, SLOT(onNfdReconnect()));
   connect(this, SIGNAL(shutdownBackend()),
           &m_backend, SLOT(shutdown()));
   connect(this, SIGNAL(updateLocalPrefix()),
@@ -203,8 +209,6 @@ Controller::Controller(QWidget* parent)
           m_chatroomDiscoveryBackend, SLOT(updateRoutingPrefix(const QString&)));
   connect(this, SIGNAL(localPrefixConfigured(const QString&)),
           m_chatroomDiscoveryBackend, SLOT(updateRoutingPrefix(const QString&)));
-  connect(this, SIGNAL(newChatroomForDiscovery(Name::Component)),
-          m_chatroomDiscoveryBackend, SLOT(onNewChatroomForDiscovery(Name::Component)));
   connect(m_chatroomDiscoveryBackend, SIGNAL(chatroomInfoRequest(std::string, bool)),
           this, SLOT(onChatroomInfoRequest(std::string, bool)));
   connect(this, SIGNAL(respondChatroomInfoRequest(ChatroomInfo, bool)),
@@ -213,6 +217,10 @@ Controller::Controller(QWidget* parent)
           m_chatroomDiscoveryBackend, SLOT(shutdown()));
   connect(this, SIGNAL(identityUpdated(const QString&)),
           m_chatroomDiscoveryBackend, SLOT(onIdentityUpdated(const QString&)));
+  connect(this, SIGNAL(nfdReconnect()),
+          m_chatroomDiscoveryBackend, SLOT(onNfdReconnect()));
+  connect(m_chatroomDiscoveryBackend, SIGNAL(nfdError()),
+          this, SLOT(onNfdError()));
 
   // connect chatroom discovery back end with front end
   connect(m_discoveryPanel, SIGNAL(waitForChatroomInfo(const QString&)),
@@ -489,8 +497,14 @@ Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
           chatDialog->getBackend(), SLOT(updateRoutingPrefix(const QString&)));
   connect(this, SIGNAL(localPrefixConfigured(const QString&)),
           chatDialog->getBackend(), SLOT(updateRoutingPrefix(const QString&)));
+  connect(this, SIGNAL(nfdReconnect()),
+          chatDialog->getBackend(), SLOT(onNfdReconnect()));
 
   // connect chat dialog with discovery backend
+  connect(chatDialog->getBackend(), SIGNAL(nfdError()),
+          this, SLOT(onNfdError()));
+  connect(chatDialog->getBackend(), SIGNAL(newChatroomForDiscovery(ndn::Name::Component)),
+          m_chatroomDiscoveryBackend, SLOT(onNewChatroomForDiscovery(ndn::Name::Component)));
   connect(chatDialog->getBackend(), SIGNAL(addInRoster(ndn::Name, ndn::Name::Component)),
           m_chatroomDiscoveryBackend, SLOT(onAddInRoster(ndn::Name, ndn::Name::Component)));
   connect(chatDialog->getBackend(), SIGNAL(eraseInRoster(ndn::Name, ndn::Name::Component)),
@@ -508,7 +522,6 @@ Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
           chatDialog, SLOT(shutdown()));
 
   updateMenu();
-  emit newChatroomForDiscovery(Name::Component(chatroomName.toStdString()));
 }
 
 void
@@ -670,6 +683,11 @@ Controller::onQuitAction()
     m_backend.wait();
   }
 
+  if (m_nfdConnectionChecker != nullptr && m_nfdConnectionChecker->isRunning()) {
+    emit shutdownNfdChecker();
+    m_nfdConnectionChecker->wait();
+  }
+
   QApplication::quit();
 }
 
@@ -773,10 +791,34 @@ Controller::onWarning(const QString& msg)
 }
 
 void
-Controller::onError(const QString& msg)
+Controller::onNfdError()
 {
-  QMessageBox::critical(this, tr("ChronoChat"), msg, QMessageBox::Ok);
-  exit(1);
+  if (m_isInConnectionDetection)
+    return;
+  // begin a thread
+  
+  m_isInConnectionDetection = true;
+  m_nfdConnectionChecker = new NfdConnectionChecker(this);
+
+  connect(m_nfdConnectionChecker, SIGNAL(nfdConnected()),
+          this, SLOT(onNfdReconnect()));
+  connect(this, SIGNAL(shutdownNfdChecker()),
+          m_nfdConnectionChecker, SLOT(shutdown()));
+
+  m_nfdConnectionChecker->start();
+  QMessageBox::information(this, tr("ChronoChat"), "Nfd is not running");
+}
+
+void
+Controller::onNfdReconnect()
+{
+  if (m_nfdConnectionChecker != nullptr && m_nfdConnectionChecker->isRunning()) {
+    m_nfdConnectionChecker->wait();
+  }
+  delete m_nfdConnectionChecker;
+  m_nfdConnectionChecker = nullptr;
+  m_isInConnectionDetection = false;
+  emit nfdReconnect();
 }
 
 void

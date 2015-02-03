@@ -26,16 +26,17 @@ static const ndn::Name::Component ROUTING_HINT_SEPARATOR =
 // a count enforced when a manager himself find another one publish chatroom data
 static const int MAXIMUM_COUNT = 3;
 static const int IDENTITY_OFFSET = -1;
+static const int CONNECTION_RETRY_TIMER = 3;
 
 ChatroomDiscoveryBackend::ChatroomDiscoveryBackend(const Name& routingPrefix,
                                                    const Name& identity,
                                                    QObject* parent)
   : QThread(parent)
+  , m_shouldResume(false)
   , m_routingPrefix(routingPrefix)
   , m_identity(identity)
   , m_randomGenerator(static_cast<unsigned int>(std::time(0)))
   , m_rangeUniformRandom(m_randomGenerator, boost::uniform_int<>(500,2000))
-  , m_shouldResume(false)
 {
   m_discoveryPrefix.append("ndn")
     .append("broadcast")
@@ -59,13 +60,38 @@ ChatroomDiscoveryBackend::run()
     if (m_face == nullptr)
       break;
 
-    m_face->getIoService().run();
-
+    try {
+      m_face->getIoService().run();
+    }
+    catch (std::runtime_error& e) {
+      {
+        std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
+        m_isNfdConnected = false;
+      }
+      emit nfdError();
+      {
+        std::lock_guard<std::mutex>lock(m_resumeMutex);
+        m_shouldResume = true;
+      }
+#ifdef BOOST_THREAD_USES_CHRONO
+      time::seconds reconnectTimer = time::seconds(CONNECTION_RETRY_TIMER);
+#else
+      boost::posix_time::time_duration reconnectTimer = boost::posix_time::seconds(CONNECTION_RETRY_TIMER);
+#endif
+      while (!m_isNfdConnected) {
+#ifdef BOOST_THREAD_USES_CHRONO
+        boost::this_thread::sleep_for(reconnectTimer);
+#else
+        boost::this_thread::sleep(reconnectTimer);
+#endif
+      }
+    }
     {
-      std::lock_guard<std::mutex>lock(m_mutex);
+      std::lock_guard<std::mutex>lock(m_resumeMutex);
       shouldResume = m_shouldResume;
       m_shouldResume = false;
     }
+    close();
 
   } while (shouldResume);
 
@@ -275,11 +301,9 @@ ChatroomDiscoveryBackend::updateRoutingPrefix(const QString& routingPrefix)
     updatePrefixes();
 
     {
-      std::lock_guard<std::mutex>lock(m_mutex);
+      std::lock_guard<std::mutex>lock(m_resumeMutex);
       m_shouldResume = true;
     }
-
-    close();
 
     m_face->getIoService().stop();
   }
@@ -341,14 +365,12 @@ ChatroomDiscoveryBackend::onAddInRoster(ndn::Name sessionPrefix,
       sendUpdate(chatroomName);
   }
   else {
-    m_chatroomList[chatroomName].chatroomName = chatroomName.toUri();
-    m_chatroomList[chatroomName].info.setName(chatroomName);
-    m_chatroomList[chatroomName].info.addParticipant(sessionPrefix);
+    onNewChatroomForDiscovery(chatroomName);
   }
 }
 
 void
-ChatroomDiscoveryBackend::onNewChatroomForDiscovery(Name::Component chatroomName)
+ChatroomDiscoveryBackend::onNewChatroomForDiscovery(ndn::Name::Component chatroomName)
 {
   Name newPrefix = m_routableUserDiscoveryPrefix;
   newPrefix.append(chatroomName);
@@ -406,11 +428,9 @@ ChatroomDiscoveryBackend::onIdentityUpdated(const QString& identity)
   updatePrefixes();
 
   {
-    std::lock_guard<std::mutex>lock(m_mutex);
+    std::lock_guard<std::mutex>lock(m_resumeMutex);
     m_shouldResume = true;
   }
-
-  close();
 
   m_face->getIoService().stop();
 }
@@ -443,15 +463,25 @@ void
 ChatroomDiscoveryBackend::shutdown()
 {
   {
-    std::lock_guard<std::mutex>lock(m_mutex);
+    std::lock_guard<std::mutex>lock(m_resumeMutex);
     m_shouldResume = false;
   }
 
-  close();
+  {
+    // In this case, we just stop checking the nfd connection and exit
+    std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
+    m_isNfdConnected = true;
+  }
 
   m_face->getIoService().stop();
 }
 
+void
+ChatroomDiscoveryBackend::onNfdReconnect()
+{
+  std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
+  m_isNfdConnected = true;
+}
 
 } // namespace chronochat
 

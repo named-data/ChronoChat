@@ -6,6 +6,7 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #ifndef CHRONOCHAT_CONTROLLER_HPP
@@ -27,6 +28,7 @@
 #include "chat-dialog.hpp"
 #include "chatroom-discovery-backend.hpp"
 #include "discovery-panel.hpp"
+#include "nfd-connection-checker.hpp"
 
 #ifndef Q_MOC_RUN
 #include "common.hpp"
@@ -41,7 +43,7 @@ class Controller : public QDialog
   Q_OBJECT
 
 public: // public methods
-  Controller(QWidget* parent = 0);
+  Controller(QWidget* parent = nullptr);
 
   virtual
   ~Controller();
@@ -119,10 +121,13 @@ signals:
   removeChatroom(QString chatroomName);
 
   void
-  newChatroomForDiscovery(Name::Component chatroomName);
+  respondChatroomInfoRequest(ChatroomInfo chatroomInfo, bool isManager);
 
   void
-  respondChatroomInfoRequest(ChatroomInfo chatroomInfo, bool isManager);
+  nfdReconnect();
+
+  void
+  shutdownNfdChecker();
 
 private slots:
   void
@@ -186,7 +191,10 @@ private slots:
   onWarning(const QString& msg);
 
   void
-  onError(const QString& msg);
+  onNfdError();
+
+  void
+  onNfdReconnect();
 
   void
   onChatroomInfoRequest(std::string chatroomName, bool isManager);
@@ -198,6 +206,7 @@ private: // private member
   // Communication
   Name m_localPrefix;
   bool m_localPrefixDetected;
+  bool m_isInConnectionDetection;
 
   // Tray
   QAction*         m_startChatroom;
@@ -227,7 +236,6 @@ private: // private member
   AddContactPanel*          m_addContactPanel;
   ChatDialogList            m_chatDialogList;
   DiscoveryPanel*           m_discoveryPanel;
-  ChatroomDiscoveryBackend* m_chatroomDiscoveryBackend;
 
   // Conf
   Name m_identity;
@@ -235,7 +243,9 @@ private: // private member
   QSqlDatabase m_db;
 
   // Backend
-  ControllerBackend m_backend;
+  ControllerBackend          m_backend;
+  ChatroomDiscoveryBackend*  m_chatroomDiscoveryBackend;
+  NfdConnectionChecker*      m_nfdConnectionChecker;
 };
 
 } // namespace chronochat

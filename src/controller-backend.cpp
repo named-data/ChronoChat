@@ -6,6 +6,7 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #include "controller-backend.hpp"
@@ -32,9 +33,11 @@ using ndn::OnInterestValidationFailed;
 static const ndn::Name::Component ROUTING_HINT_SEPARATOR =
   ndn::name::Component::fromEscapedString("%F0%2E");
 static const int MAXIMUM_REQUEST = 3;
+static const int CONNECTION_RETRY_TIMER = 3;
 
 ControllerBackend::ControllerBackend(QObject* parent)
   : QThread(parent)
+  , m_shouldResume(false)
   , m_contactManager(m_face)
   , m_invitationListenerId(0)
 {
@@ -54,10 +57,42 @@ ControllerBackend::~ControllerBackend()
 void
 ControllerBackend::run()
 {
-  setInvitationListener();
-
-  m_face.processEvents();
-
+  bool shouldResume = false;
+  do {
+    try {
+      setInvitationListener();
+      m_face.processEvents();
+    }
+    catch (std::runtime_error& e) {
+      {
+        std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
+        m_isNfdConnected = false;
+      }
+      emit nfdError();
+      {
+        std::lock_guard<std::mutex>lock(m_resumeMutex);
+        m_shouldResume = true;
+      }
+#ifdef BOOST_THREAD_USES_CHRONO
+      time::seconds reconnectTimer = time::seconds(CONNECTION_RETRY_TIMER);
+#else
+      boost::posix_time::time_duration reconnectTimer;
+      reconnectTimer = boost::posix_time::seconds(CONNECTION_RETRY_TIMER);
+#endif
+      while (!m_isNfdConnected) {
+#ifdef BOOST_THREAD_USES_CHRONO
+        boost::this_thread::sleep_for(reconnectTimer);
+#else
+        boost::this_thread::sleep(reconnectTimer);
+#endif
+      }
+    }
+    {
+      std::lock_guard<std::mutex>lock(m_resumeMutex);
+      shouldResume = m_shouldResume;
+      m_shouldResume = false;
+    }
+  } while (shouldResume);
   std::cerr << "Bye!" << std::endl;
 }
 
@@ -318,6 +353,15 @@ ControllerBackend::onRequestTimeout(const Interest& interest, int& resendTimes)
 void
 ControllerBackend::shutdown()
 {
+  {
+    std::lock_guard<std::mutex>lock(m_resumeMutex);
+    m_shouldResume = false;
+  }
+  {
+    // In this case, we just stop checking the nfd connection and exit
+    std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
+    m_isNfdConnected = true;
+  }
   m_face.getIoService().stop();
 }
 
@@ -461,6 +505,13 @@ ControllerBackend::onContactIdListReady(const QStringList& list)
   for (ContactList::const_iterator it  = contactList.begin(); it != contactList.end(); it++)
     m_validator.addTrustAnchor((*it)->getPublicKeyName(), (*it)->getPublicKey());
 
+}
+
+void
+ControllerBackend::onNfdReconnect()
+{
+  std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
+  m_isNfdConnected = true;
 }
 
 

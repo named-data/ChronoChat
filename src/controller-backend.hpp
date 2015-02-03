@@ -5,6 +5,7 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #ifndef CHRONOCHAT_CONTROLLER_BACKEND_HPP
@@ -22,6 +23,8 @@
 #include "validator-invitation.hpp"
 #include <ndn-cxx/security/key-chain.hpp>
 #include <ndn-cxx/util/in-memory-storage-persistent.hpp>
+#include <boost/thread.hpp>
+#include <mutex>
 #endif
 
 namespace chronochat {
@@ -31,7 +34,7 @@ class ControllerBackend : public QThread
   Q_OBJECT
 
 public:
-  ControllerBackend(QObject* parent = 0);
+  ControllerBackend(QObject* parent = nullptr);
 
   ~ControllerBackend();
 
@@ -113,6 +116,9 @@ signals:
   void
   invitationRequestResult(const std::string& msg);
 
+  void
+  nfdError();
+
 public slots:
   void
   shutdown();
@@ -138,11 +144,16 @@ public slots:
   void
   onSendInvitationRequest(const QString& chatroomName, const QString& prefix);
 
+  void
+  onNfdReconnect();
+
 private slots:
   void
   onContactIdListReady(const QStringList& list);
 
 private:
+  bool m_isNfdConnected;
+  bool m_shouldResume;
   ndn::Face m_face;
 
   Name m_identity;  //TODO: set/get
@@ -164,6 +175,8 @@ private:
   QStringList m_chatDialogList;
 
   QMutex m_mutex;
+  std::mutex m_resumeMutex;
+  std::mutex m_nfdConnectionMutex;
 
   ndn::util::InMemoryStoragePersistent m_ims;
 };

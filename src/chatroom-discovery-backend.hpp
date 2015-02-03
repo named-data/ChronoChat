@@ -16,10 +16,10 @@
 #ifndef Q_MOC_RUN
 #include "common.hpp"
 #include "chatroom-info.hpp"
-#include <ndn-cxx/util/scheduler.hpp>
 #include <boost/random.hpp>
 #include <mutex>
 #include <socket.hpp>
+#include <boost/thread.hpp>
 #endif
 
 namespace chronochat {
@@ -55,7 +55,7 @@ class ChatroomDiscoveryBackend : public QThread
 public:
   ChatroomDiscoveryBackend(const Name& routingPrefix,
                            const Name& identity,
-                           QObject* parent = 0);
+                           QObject* parent = nullptr);
 
   ~ChatroomDiscoveryBackend();
 
@@ -124,6 +124,9 @@ signals:
   void
   chatroomInfoReady(const ChatroomInfo& info, bool isParticipant);
 
+  void
+  nfdError();
+
 public slots:
 
   /**
@@ -166,7 +169,7 @@ public slots:
    * @param chatroomName the name of chatroom the user join
    */
   void
-  onNewChatroomForDiscovery(Name::Component chatroomName);
+  onNewChatroomForDiscovery(ndn::Name::Component chatroomName);
 
   /**
    * @brief get chatroom info from chat dialog
@@ -204,10 +207,15 @@ public slots:
   void
   shutdown();
 
+  void
+  onNfdReconnect();
+
 private:
 
   typedef std::map<ndn::Name::Component, ChatroomInfoBackend> ChatroomList;
 
+  bool m_shouldResume;
+  bool m_isNfdConnected;
   Name m_discoveryPrefix;
   Name m_routableUserDiscoveryPrefix;
   Name m_routingPrefix;
@@ -224,9 +232,9 @@ private:
   shared_ptr<chronosync::Socket> m_sock; // SyncSocket
 
   ChatroomList m_chatroomList;
-  std::mutex m_mutex;
+  std::mutex m_resumeMutex;
+  std::mutex m_nfdConnectionMutex;
 
-  bool m_shouldResume;
 };
 
 } // namespace chronochat

@@ -98,7 +98,6 @@ void
 DiscoveryPanel::onChatroomListReady(const QStringList& list)
 {
   m_chatroomList = list;
-  resetPanel();
   m_chatroomListModel->setStringList(m_chatroomList);
 }
 

@@ -102,6 +102,9 @@ ChatDialog::ChatDialog(const Name& chatroomPrefix,
   connect(&m_backend, SIGNAL(chatPrefixChanged(ndn::Name)),
           this,       SLOT(updateLabels(ndn::Name)));
 
+  connect(&m_backend, SIGNAL(refreshChatDialog(ndn::Name)),
+          this,       SLOT(updateLabels(ndn::Name)));
+
   // When frontend gets a message to send, notify backend.
   connect(this,       SIGNAL(msgToSent(QString, time_t)),
           &m_backend, SLOT(sendChatMessage(QString, time_t)));
@@ -351,6 +354,7 @@ ChatDialog::receiveMessage(QString sessionPrefix, QString nick, uint64_t seqNo, 
     appendControlMessage(nick, "enters room", timestamp);
     m_rosterModel->setStringList(m_scene->getRosterList());
   }
+  fitView();
 }
 
 void

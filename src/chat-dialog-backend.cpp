@@ -6,6 +6,7 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #include "chat-dialog-backend.hpp"
@@ -28,6 +29,7 @@ static const time::seconds HELLO_INTERVAL(60);
 static const ndn::Name::Component ROUTING_HINT_SEPARATOR =
   ndn::name::Component::fromEscapedString("%F0%2E");
 static const int IDENTITY_OFFSET = -3;
+static const int CONNECTION_RETRY_TIMER = 3;
 
 ChatDialogBackend::ChatDialogBackend(const Name& chatroomPrefix,
                                      const Name& userChatPrefix,
@@ -37,6 +39,7 @@ ChatDialogBackend::ChatDialogBackend(const Name& chatroomPrefix,
                                      const Name& signingId,
                                      QObject* parent)
   : QThread(parent)
+  , m_shouldResume(false)
   , m_localRoutingPrefix(routingPrefix)
   , m_chatroomPrefix(chatroomPrefix)
   , m_userChatPrefix(userChatPrefix)
@@ -63,13 +66,40 @@ ChatDialogBackend::run()
     if (m_face == nullptr)
       break;
 
-    m_face->getIoService().run();
-
+    try {
+      m_face->getIoService().run();
+    }
+    catch (std::runtime_error& e) {
+      {
+        std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
+        m_isNfdConnected = false;
+      }
+      emit nfdError();
+      {
+        std::lock_guard<std::mutex>lock(m_resumeMutex);
+        m_shouldResume = true;
+      }
+#ifdef BOOST_THREAD_USES_CHRONO
+      time::seconds reconnectTimer = time::seconds(CONNECTION_RETRY_TIMER);
+#else
+      boost::posix_time::time_duration reconnectTimer;
+      reconnectTimer = boost::posix_time::seconds(CONNECTION_RETRY_TIMER);
+#endif
+      while (!m_isNfdConnected) {
+#ifdef BOOST_THREAD_USES_CHRONO
+        boost::this_thread::sleep_for(reconnectTimer);
+#else
+        boost::this_thread::sleep(reconnectTimer);
+#endif
+      }
+      emit refreshChatDialog(m_routableUserChatPrefix);
+    }
     {
-      std::lock_guard<std::mutex>lock(m_mutex);
+      std::lock_guard<std::mutex>lock(m_resumeMutex);
       shouldResume = m_shouldResume;
       m_shouldResume = false;
     }
+    close();
 
   } while (shouldResume);
 
@@ -161,13 +191,16 @@ ChatDialogBackend::loadTrustAnchor()
 }
 
 void
-ChatDialogBackend::close()
-{
+ChatDialogBackend::exitChatroom() {
   if (m_joined)
     sendLeave();
 
   usleep(100000);
+}
 
+void
+ChatDialogBackend::close()
+{
   m_scheduler->cancelAllEvents();
   m_helloEventId.reset();
   m_roster.clear();
@@ -386,6 +419,7 @@ ChatDialogBackend::sendJoin()
 
   m_helloEventId = m_scheduler->scheduleEvent(HELLO_INTERVAL,
                                               bind(&ChatDialogBackend::sendHello, this));
+  emit newChatroomForDiscovery(Name::Component(m_chatroomName));
 }
 
 void
@@ -487,11 +521,11 @@ ChatDialogBackend::updateRoutingPrefix(const QString& localRoutingPrefix)
     m_localRoutingPrefix = newLocalRoutingPrefix;
 
     {
-      std::lock_guard<std::mutex>lock(m_mutex);
+      std::lock_guard<std::mutex>lock(m_resumeMutex);
       m_shouldResume = true;
     }
 
-    close();
+    exitChatroom();
 
     updatePrefixes();
 
@@ -503,13 +537,26 @@ void
 ChatDialogBackend::shutdown()
 {
   {
-    std::lock_guard<std::mutex>lock(m_mutex);
+    std::lock_guard<std::mutex>lock(m_resumeMutex);
     m_shouldResume = false;
   }
 
-  close();
+  {
+    // In this case, we just stop checking the nfd connection and exit
+    std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
+    m_isNfdConnected = true;
+  }
+
+  exitChatroom();
 
   m_face->getIoService().stop();
+}
+
+void
+ChatDialogBackend::onNfdReconnect()
+{
+  std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
+  m_isNfdConnected = true;
 }
 
 } // namespace chronochat

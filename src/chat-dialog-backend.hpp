@@ -5,6 +5,7 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #ifndef CHRONOCHAT_CHAT_DIALOG_BACKEND_HPP
@@ -18,6 +19,7 @@
 #include "chatbuf.pb.h"
 #include <mutex>
 #include <socket.hpp>
+#include <boost/thread.hpp>
 #endif
 
 namespace chronochat {
@@ -47,7 +49,7 @@ public:
                     const std::string& chatroomName,
                     const std::string& nick,
                     const Name& signingId = Name(),
-                    QObject* parent = 0);
+                    QObject* parent = nullptr);
 
   ~ChatDialogBackend();
 
@@ -61,6 +63,9 @@ private:
 
   shared_ptr<ndn::IdentityCertificate>
   loadTrustAnchor();
+
+  void
+  exitChatroom();
 
   void
   close();
@@ -121,10 +126,19 @@ signals:
   chatPrefixChanged(ndn::Name newChatPrefix);
 
   void
+  refreshChatDialog(ndn::Name chatPrefix);
+
+  void
   eraseInRoster(ndn::Name sessionPrefix, ndn::Name::Component chatroomName);
 
   void
   addInRoster(ndn::Name sessionPrefix, ndn::Name::Component chatroomName);
+
+  void
+  newChatroomForDiscovery(ndn::Name::Component chatroomName);
+
+  void
+  nfdError();
 
 public slots:
   void
@@ -136,9 +150,14 @@ public slots:
   void
   shutdown();
 
+  void
+  onNfdReconnect();
+
 private:
   typedef std::map<ndn::Name, UserInfo> BackendRoster;
 
+  bool m_shouldResume;
+  bool m_isNfdConnected;
   shared_ptr<ndn::Face> m_face;
 
   Name m_localRoutingPrefix;             // routable local prefix
@@ -160,8 +179,8 @@ private:
 
   BackendRoster m_roster;                // User roster
 
-  std::mutex m_mutex;
-  bool m_shouldResume;
+  std::mutex m_resumeMutex;
+  std::mutex m_nfdConnectionMutex;
 };
 
 } // namespace chronochat
