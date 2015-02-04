@@ -39,46 +39,33 @@ DigestTreeScene::processSyncUpdate(const std::vector<chronochat::NodeInfo>& node
                                    const QString& digest)
 {
   m_rootDigest = digest;
+}
 
-  bool rePlot = false;
-
-  // Update roster info
-  for (size_t i = 0; i < nodeInfos.size(); i++) {
-    Roster_iterator it = m_roster.find(nodeInfos[i].sessionPrefix);
-    if (it == m_roster.end()) {
-      rePlot = true;
-
-      DisplayUserPtr p(new DisplayUser());
-      p->setPrefix(nodeInfos[i].sessionPrefix);
-      p->setSeq(nodeInfos[i].seqNo);
-      m_roster.insert(p->getPrefix(), p);
-    }
-    else {
-      it.value()->setSeq(nodeInfos[i].seqNo);
-    }
-  }
-
-  if (rePlot)
-    // If new nodes exist, we need to re-arrange node
+void
+DigestTreeScene::updateNode(QString sessionPrefix, QString nick, uint64_t seqNo)
+{
+  Roster_iterator it = m_roster.find(sessionPrefix);
+  if (it == m_roster.end()) {
+    DisplayUserPtr p(new DisplayUser());
+    p->setPrefix(sessionPrefix);
+    p->setSeq(seqNo);
+    m_roster.insert(p->getPrefix(), p);
     plot(m_rootDigest);
-  else {
-    // No new node, update seqNo & digest
-    for (size_t i = 0; i < nodeInfos.size(); i++) {
-      Roster_iterator it = m_roster.find(nodeInfos[i].sessionPrefix);
-      if (it != m_roster.end()) {
-        DisplayUserPtr p = it.value();
-        QGraphicsTextItem *item = p->getSeqTextItem();
-        QGraphicsRectItem *rectItem = p->getInnerRectItem();
-        std::string s = boost::lexical_cast<std::string>(p->getSeqNo());
-        item->setPlainText(s.c_str());
-        QRectF textBR = item->boundingRect();
-        QRectF rectBR = rectItem->boundingRect();
-        item->setPos(rectBR.x() + (rectBR.width() - textBR.width())/2,
-                     rectBR.y() + (rectBR.height() - textBR.height())/2);
-      }
-    }
-    m_displayRootDigest->setPlainText(digest);
   }
+  else {
+    it.value()->setSeq(seqNo);
+    DisplayUserPtr p = it.value();
+    QGraphicsTextItem *item = p->getSeqTextItem();
+    QGraphicsRectItem *rectItem = p->getInnerRectItem();
+    std::string s = boost::lexical_cast<std::string>(p->getSeqNo());
+    item->setPlainText(s.c_str());
+    QRectF textBR = item->boundingRect();
+    QRectF rectBR = rectItem->boundingRect();
+    item->setPos(rectBR.x() + (rectBR.width() - textBR.width())/2,
+                 rectBR.y() + (rectBR.height() - textBR.height())/2);
+  }
+  m_displayRootDigest->setPlainText(m_rootDigest);
+  updateNick(sessionPrefix, nick);
 }
 
 void

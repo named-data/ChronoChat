@@ -51,6 +51,9 @@ public:
                     const QString& digest);
 
   void
+  updateNode(QString sessionPrefix, QString nick, uint64_t seqNo);
+
+  void
   updateNick(QString sessionPrefix, QString nick);
 
   void

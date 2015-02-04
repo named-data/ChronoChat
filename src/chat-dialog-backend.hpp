@@ -111,16 +111,11 @@ signals:
   chatMessageReceived(QString nick, QString text, time_t timestamp);
 
   void
-  sessionAdded(QString sessionPrefix, QString nick, time_t timestamp);
-
-  void
   sessionRemoved(QString sessionPrefix, QString nick, time_t timestamp);
 
   void
-  nickUpdated(QString sessionPrefix, QString nick);
-
-  void
-  messageReceived(QString sessionPrefix);
+  messageReceived(QString sessionPrefix, QString nick, uint64_t seqNo, time_t timestamp,
+                  bool addSession);
 
   void
   chatPrefixChanged(ndn::Name newChatPrefix);

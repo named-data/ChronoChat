@@ -132,16 +132,11 @@ private slots:
   receiveChatMessage(QString nick, QString text, time_t timestamp);
 
   void
-  addSession(QString sessionPrefix, QString nick, time_t timestamp);
-
-  void
   removeSession(QString sessionPrefix, QString nick, time_t timestamp);
 
   void
-  updateNick(QString sessionPrefix, QString nick);
-
-  void
-  receiveMessage(QString sessionPrefix);
+  receiveMessage(QString sessionPrefix, QString nick, uint64_t seqNo, time_t timestamp,
+                 bool addSession);
 
   void
   updateLabels(ndn::Name newChatPrefix);

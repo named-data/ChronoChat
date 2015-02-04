@@ -20,6 +20,7 @@
 Q_DECLARE_METATYPE(ndn::Name)
 Q_DECLARE_METATYPE(time_t)
 Q_DECLARE_METATYPE(std::vector<chronochat::NodeInfo>)
+Q_DECLARE_METATYPE(uint64_t)
 
 namespace chronochat {
 
@@ -46,6 +47,7 @@ ChatDialog::ChatDialog(const Name& chatroomPrefix,
   qRegisterMetaType<ndn::Name>("ndn::Name");
   qRegisterMetaType<time_t>("time_t");
   qRegisterMetaType<std::vector<chronochat::NodeInfo> >("std::vector<chronochat::NodeInfo>");
+  qRegisterMetaType<uint64_t>("uint64_t");
 
   m_scene = new DigestTreeScene(this);
   m_trustScene = new TrustTreeScene(this);
@@ -78,6 +80,8 @@ ChatDialog::ChatDialog(const Name& chatroomPrefix,
   roster << "- " + m_nick;
   m_rosterModel->setStringList(roster);
 
+  ui->syncTreeButton->setText("Hide ChronoSync Tree");
+
   // When backend receives a sync update, notify frontend to update sync tree
   connect(&m_backend, SIGNAL(syncTreeUpdated(std::vector<chronochat::NodeInfo>, QString)),
           this,       SLOT(updateSyncTree(std::vector<chronochat::NodeInfo>, QString)));
@@ -86,21 +90,13 @@ ChatDialog::ChatDialog(const Name& chatroomPrefix,
   connect(&m_backend, SIGNAL(chatMessageReceived(QString, QString, time_t)),
           this,       SLOT(receiveChatMessage(QString, QString, time_t)));
 
-  // When backend detects a new session, notify frontend to print the message.
-  connect(&m_backend, SIGNAL(sessionAdded(QString, QString, time_t)),
-          this,       SLOT(addSession(QString, QString, time_t)));
-
   // When backend detects a deleted session, notify frontend to print the message.
   connect(&m_backend, SIGNAL(sessionRemoved(QString, QString, time_t)),
           this,       SLOT(removeSession(QString, QString, time_t)));
 
-  // When backend detects nick changed, notify frontend to print the new nick
-  connect(&m_backend, SIGNAL(nickUpdated(QString, QString)),
-          this,       SLOT(updateNick(QString, QString)));
-
   // When backend receives a new message, notify frontend to print notification
-  connect(&m_backend, SIGNAL(messageReceived(QString)),
-          this,       SLOT(receiveMessage(QString)));
+  connect(&m_backend, SIGNAL(messageReceived(QString, QString, uint64_t, time_t, bool)),
+          this,       SLOT(receiveMessage(QString, QString, uint64_t, time_t, bool)));
 
   // When backend updates prefix, notify frontend to update labels.
   connect(&m_backend, SIGNAL(chatPrefixChanged(ndn::Name)),
@@ -337,15 +333,6 @@ ChatDialog::receiveChatMessage(QString nick, QString text, time_t timestamp)
 }
 
 void
-ChatDialog::addSession(QString sessionPrefix, QString nick, time_t timestamp)
-{
-  appendControlMessage(nick, "enters room", timestamp);
-  m_scene->updateNick(sessionPrefix, nick);
-  m_rosterModel->setStringList(m_scene->getRosterList());
-  fitView();
-}
-
-void
 ChatDialog::removeSession(QString sessionPrefix, QString nick, time_t timestamp)
 {
   appendControlMessage(nick, "leaves room", timestamp);
@@ -355,16 +342,15 @@ ChatDialog::removeSession(QString sessionPrefix, QString nick, time_t timestamp)
 }
 
 void
-ChatDialog::updateNick(QString sessionPrefix, QString nick)
+ChatDialog::receiveMessage(QString sessionPrefix, QString nick, uint64_t seqNo, time_t timestamp,
+                           bool addSession)
 {
-  m_scene->updateNick(sessionPrefix, nick);
-  m_rosterModel->setStringList(m_scene->getRosterList());
-}
-
-void
-ChatDialog::receiveMessage(QString sessionPrefix)
-{
+  m_scene->updateNode(sessionPrefix, nick, seqNo);
   m_scene->messageReceived(sessionPrefix);
+  if (addSession) {
+    appendControlMessage(nick, "enters room", timestamp);
+    m_rosterModel->setStringList(m_scene->getRosterList());
+  }
 }
 
 void

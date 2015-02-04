@@ -222,11 +222,6 @@ ChatDialogBackend::processSyncUpdate(const std::vector<chronosync::MissingDataIn
                         2);
     }
 
-    // prepare notification to frontend
-    NodeInfo nodeInfo;
-    nodeInfo.sessionPrefix = QString::fromStdString(updates[i].session.toUri());
-    nodeInfo.seqNo = updates[i].high;
-    nodeInfos.push_back(nodeInfo);
   }
 
   // reflect the changes on GUI
@@ -280,24 +275,7 @@ ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data,
       BOOST_ASSERT(false);
     }
 
-    // If we haven't got any message from this session yet.
-    if (m_roster[remoteSessionPrefix].hasNick == false) {
-      m_roster[remoteSessionPrefix].userNick = msg.from();
-      m_roster[remoteSessionPrefix].hasNick = true;
-      emit sessionAdded(QString::fromStdString(remoteSessionPrefix.toUri()),
-                        QString::fromStdString(msg.from()),
-                        msg.timestamp());
-
-      emit addInRoster(remoteSessionPrefix.getPrefix(IDENTITY_OFFSET),
-                       Name::Component(m_chatroomName));
-    }
-
-    // If we get a new nick for an existing session, update it.
-    if (m_roster[remoteSessionPrefix].userNick != msg.from()) {
-      m_roster[remoteSessionPrefix].userNick = msg.from();
-      emit nickUpdated(QString::fromStdString(remoteSessionPrefix.toUri()),
-                       QString::fromStdString(msg.from()));
-    }
+    uint64_t seqNo = data->getName().get(-1).toNumber();
 
     // If a timeout event has been scheduled, cancel it.
     if (static_cast<bool>(it->second.timeoutEventId))
@@ -322,7 +300,27 @@ ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data,
     }
 
     // Notify frontend to plot notification on DigestTree.
-    emit messageReceived(QString::fromStdString(remoteSessionPrefix.toUri()));
+
+    // If we haven't got any message from this session yet.
+    if (m_roster[remoteSessionPrefix].hasNick == false) {
+      m_roster[remoteSessionPrefix].userNick = msg.from();
+      m_roster[remoteSessionPrefix].hasNick = true;
+
+      emit messageReceived(QString::fromStdString(remoteSessionPrefix.toUri()),
+                           QString::fromStdString(msg.from()),
+                           seqNo,
+                           msg.timestamp(),
+                           true);
+
+      emit addInRoster(remoteSessionPrefix.getPrefix(IDENTITY_OFFSET),
+                       Name::Component(m_chatroomName));
+    }
+    else
+      emit messageReceived(QString::fromStdString(remoteSessionPrefix.toUri()),
+                           QString::fromStdString(msg.from()),
+                           seqNo,
+                           msg.timestamp(),
+                           false);
   }
 }
 
@@ -369,6 +367,12 @@ ChatDialogBackend::sendMsg(SyncDemo::ChatMessage& msg)
 
   emit syncTreeUpdated(nodeInfos,
                        QString::fromStdString(getHexEncodedDigest(m_sock->getRootDigest())));
+
+  emit messageReceived(QString::fromStdString(sessionName.toUri()),
+                       QString::fromStdString(msg.from()),
+                       nextSequence,
+                       msg.timestamp(),
+                       msg.type() == SyncDemo::ChatMessage::JOIN);
 }
 
 void
@@ -382,11 +386,6 @@ ChatDialogBackend::sendJoin()
 
   m_helloEventId = m_scheduler->scheduleEvent(HELLO_INTERVAL,
                                               bind(&ChatDialogBackend::sendHello, this));
-
-  Name sessionName = m_sock->getLogic().getSessionName();
-  emit sessionAdded(QString::fromStdString(sessionName.toUri()),
-                    QString::fromStdString(msg.from()),
-                    msg.timestamp());
 }
 
 void
