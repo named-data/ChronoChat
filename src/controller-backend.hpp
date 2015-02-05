@@ -77,10 +77,10 @@ private:
                                std::string failureInfo);
 
   void
-  onLocalPrefix(const Interest& interest, Data& data);
+  onLocalPrefix(const ndn::ConstBufferPtr& data);
 
   void
-  onLocalPrefixTimeout(const Interest& interest);
+  onLocalPrefixError(uint32_t code, const std::string& msg);
 
   void
   updateLocalPrefix(const Name& localPrefix);

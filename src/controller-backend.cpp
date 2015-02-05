@@ -11,6 +11,7 @@
 #include "controller-backend.hpp"
 
 #ifndef Q_MOC_RUN
+#include <ndn-cxx/util/segment-fetcher.hpp>
 #include "invitation.hpp"
 #include "logging.h"
 #endif
@@ -232,11 +233,11 @@ ControllerBackend::onInvitationValidationFailed(const shared_ptr<const Interest>
 }
 
 void
-ControllerBackend::onLocalPrefix(const Interest& interest, Data& data)
+ControllerBackend::onLocalPrefix(const ndn::ConstBufferPtr& data)
 {
   Name prefix;
 
-  Block contentBlock = data.getContent();
+  Block contentBlock(tlv::Content, data);
   try {
     contentBlock.parse();
 
@@ -265,7 +266,7 @@ ControllerBackend::onLocalPrefix(const Interest& interest, Data& data)
 }
 
 void
-ControllerBackend::onLocalPrefixTimeout(const Interest& interest)
+ControllerBackend::onLocalPrefixError(uint32_t code, const std::string& msg)
 {
   Name localPrefix("/private/local");
   updateLocalPrefix(localPrefix);
@@ -335,14 +336,15 @@ ControllerBackend::removeChatroom(QString chatroom)
 void
 ControllerBackend::onUpdateLocalPrefixAction()
 {
-  // Name interestName();
-  Interest interest("/localhop/ndn-autoconf/routable-prefixes");
+  Interest interest("/localhop/nfd/rib/routable-prefixes");
   interest.setInterestLifetime(time::milliseconds(1000));
   interest.setMustBeFresh(true);
 
-  m_face.expressInterest(interest,
-                         bind(&ControllerBackend::onLocalPrefix, this, _1, _2),
-                         bind(&ControllerBackend::onLocalPrefixTimeout, this, _1));
+  ndn::util::SegmentFetcher::fetch(m_face,
+                                   interest,
+                                   ndn::util::DontVerifySegment(),
+                                   bind(&ControllerBackend::onLocalPrefix, this, _1),
+                                   bind(&ControllerBackend::onLocalPrefixError, this, _1, _2));
 }
 
 void
