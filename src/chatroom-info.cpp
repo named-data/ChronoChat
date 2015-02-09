@@ -72,7 +72,7 @@ ChatroomInfo::wireEncode(ndn::EncodingImpl<T>& block) const
   totalLength += block.prependVarNumber(tlv::ChatroomPrefix);
 
   // Trust Model
-  totalLength += prependNonNegativeIntegerBlock(block, tlv::TrustModel, m_trustModel);
+  totalLength += ndn::prependNonNegativeIntegerBlock(block, tlv::TrustModel, m_trustModel);
 
   // Chatroom Name
   size_t chatroomNameLength = m_chatroomName.wireEncode(block);

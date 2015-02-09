@@ -382,7 +382,7 @@ ContactStorage::addContact(const Contact& contact)
   sqlite3_bind_int64(stmt, 6, time::toUnixTimestamp(contact.getNotAfter()).count());
   sqlite3_bind_int(stmt, 7, (isIntroducer ? 1 : 0));
 
-  int res = sqlite3_step(stmt);
+  sqlite3_step(stmt);
 
   sqlite3_finalize(stmt);
 
@@ -396,7 +396,7 @@ ContactStorage::addContact(const Contact& contact)
     sqlite3_bind_string(stmt, 1, identity, SQLITE_TRANSIENT);
     sqlite3_bind_string(stmt, 2, it->first, SQLITE_TRANSIENT);
     sqlite3_bind_string(stmt, 3, it->second, SQLITE_TRANSIENT);
-    res = sqlite3_step(stmt);
+    sqlite3_step(stmt);
     sqlite3_finalize(stmt);
   }
 
@@ -410,7 +410,7 @@ ContactStorage::addContact(const Contact& contact)
                          -1, &stmt, 0);
       sqlite3_bind_string(stmt, 1, identity, SQLITE_TRANSIENT);
       sqlite3_bind_string(stmt, 2, it->first.toUri(), SQLITE_TRANSIENT);
-      res = sqlite3_step(stmt);
+      sqlite3_step(stmt);
       sqlite3_finalize(stmt);
       it++;
     }

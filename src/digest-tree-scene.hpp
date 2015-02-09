@@ -19,10 +19,8 @@
 #ifndef Q_MOC_RUN
 #include "tree-layout.hpp"
 #include "chat-dialog-backend.hpp"
-#include <Leaf.hpp>
 #include <ctime>
 #include <vector>
-#include <boost/shared_ptr.hpp>
 #endif
 
 const int FRESHNESS = 60;
@@ -33,7 +31,7 @@ namespace chronos {
 
 class User;
 class DisplayUser;
-typedef boost::shared_ptr<DisplayUser> DisplayUserPtr;
+typedef std::shared_ptr<DisplayUser> DisplayUserPtr;
 typedef QMap<QString, DisplayUserPtr> Roster;
 typedef QMap<QString, DisplayUserPtr>::iterator Roster_iterator;
 typedef QMapIterator<QString, DisplayUserPtr> RosterIterator;

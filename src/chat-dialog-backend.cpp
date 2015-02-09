@@ -120,7 +120,7 @@ ChatDialogBackend::processSyncUpdate(const std::vector<chronosync::MissingDataIn
   std::vector<NodeInfo> nodeInfos;
 
 
-  for (int i = 0; i < updates.size(); i++) {
+  for (size_t i = 0; i < updates.size(); i++) {
     // update roster
     if (m_roster.find(updates[i].session) == m_roster.end()) {
       m_roster[updates[i].session].sessionPrefix = updates[i].session;

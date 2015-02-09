@@ -252,10 +252,10 @@ ContactManager::onDnsSelfEndorseCertValidated(const shared_ptr<const Data>& data
   catch(Block::Error& e) {
     emit contactInfoFetchFailed(QString::fromStdString(identity.toUri()));
   }
-  catch(Data::Error& e) {
+  catch(EndorseCertificate::Error& e) {
     emit contactInfoFetchFailed(QString::fromStdString(identity.toUri()));
   }
-  catch(EndorseCertificate::Error& e) {
+  catch(Data::Error& e) {
     emit contactInfoFetchFailed(QString::fromStdString(identity.toUri()));
   }
 }

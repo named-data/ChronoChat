@@ -43,7 +43,7 @@ DigestTreeScene::processSyncUpdate(const std::vector<chronos::NodeInfo>& nodeInf
   bool rePlot = false;
 
   // Update roster info
-  for (int i = 0; i < nodeInfos.size(); i++) {
+  for (size_t i = 0; i < nodeInfos.size(); i++) {
     Roster_iterator it = m_roster.find(nodeInfos[i].sessionPrefix);
     if (it == m_roster.end()) {
       rePlot = true;
@@ -63,7 +63,7 @@ DigestTreeScene::processSyncUpdate(const std::vector<chronos::NodeInfo>& nodeInf
     plot(m_rootDigest);
   else {
     // No new node, update seqNo & digest
-    for (int i = 0; i < nodeInfos.size(); i++) {
+    for (size_t i = 0; i < nodeInfos.size(); i++) {
       Roster_iterator it = m_roster.find(nodeInfos[i].sessionPrefix);
       if (it != m_roster.end()) {
         DisplayUserPtr p = it.value();
