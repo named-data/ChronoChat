@@ -20,7 +20,7 @@
 
 // INIT_LOGGER("ProfileEditor")
 
-namespace chronos {
+namespace chronochat {
 
 ProfileEditor::ProfileEditor(QWidget *parent)
   : QDialog(parent)
@@ -100,7 +100,7 @@ ProfileEditor::onOkClicked()
   this->hide();
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "profile-editor.moc"

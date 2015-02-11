@@ -1,4 +1,4 @@
-package Chronos;
+package chronochat;
 
 message EndorseInfo
 {

@@ -21,7 +21,7 @@
 #include <memory>
 #endif
 
-namespace chronos {
+namespace chronochat {
 
 static const double Pi = 3.14159265358979323846264338327950288419717;
 static const int NODE_SIZE = 40;
@@ -35,7 +35,7 @@ DigestTreeScene::DigestTreeScene(QWidget *parent)
 }
 
 void
-DigestTreeScene::processSyncUpdate(const std::vector<chronos::NodeInfo>& nodeInfos,
+DigestTreeScene::processSyncUpdate(const std::vector<chronochat::NodeInfo>& nodeInfos,
                                    const QString& digest)
 {
   m_rootDigest = digest;
@@ -284,7 +284,7 @@ DigestTreeScene::reDrawNode(DisplayUserPtr p, QColor rimColor)
                         innerBR.y() + (innerBR.height() - textBR.height())/2);
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "digest-tree-scene.moc"

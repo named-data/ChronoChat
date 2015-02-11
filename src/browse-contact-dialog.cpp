@@ -17,7 +17,7 @@
 #endif
 
 
-namespace chronos {
+namespace chronochat {
 
 using ndn::IdentityCertificate;
 
@@ -131,7 +131,7 @@ BrowseContactDialog::onIdCertReady(const IdentityCertificate& idCert)
   }
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "browse-contact-dialog.moc"

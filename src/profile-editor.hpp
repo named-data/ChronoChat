@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_PROFILE_EDITOR_HPP
-#define CHRONOS_PROFILE_EDITOR_HPP
+#ifndef CHRONOCHAT_PROFILE_EDITOR_HPP
+#define CHRONOCHAT_PROFILE_EDITOR_HPP
 
 #include <QDialog>
 #include <QtSql/QSqlTableModel>
@@ -21,7 +21,7 @@ namespace Ui {
 class ProfileEditor;
 }
 
-namespace chronos {
+namespace chronochat {
 
 class ProfileEditor : public QDialog
 {
@@ -59,6 +59,6 @@ private:
   QString m_identity;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_PROFILE_EDITOR_HPP
+#endif // CHRONOCHAT_PROFILE_EDITOR_HPP

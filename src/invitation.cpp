@@ -14,7 +14,7 @@
 
 #include "logging.h"
 
-namespace chronos{
+namespace chronochat {
 
 using std::string;
 
@@ -76,4 +76,4 @@ Invitation::Invitation(const Invitation& invitation)
 {
 }
 
-} // namespace chronos
+} // namespace chronochat

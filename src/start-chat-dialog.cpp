@@ -11,7 +11,7 @@
 #include "start-chat-dialog.hpp"
 #include "ui_start-chat-dialog.h"
 
-namespace chronos {
+namespace chronochat {
 
 StartChatDialog::StartChatDialog(QWidget *parent)
   : QDialog(parent)
@@ -52,7 +52,7 @@ StartChatDialog::onCancelClicked()
   this->close();
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "start-chat-dialog.moc"

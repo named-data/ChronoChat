@@ -18,7 +18,7 @@
 
 INIT_LOGGER("ChatDialogBackend");
 
-namespace chronos {
+namespace chronochat {
 
 static const time::milliseconds FRESHNESS_PERIOD(60000);
 static const time::seconds HELLO_INTERVAL(60);
@@ -409,7 +409,7 @@ ChatDialogBackend::shutdown()
   m_face->getIoService().stop();
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "chat-dialog-backend.moc"

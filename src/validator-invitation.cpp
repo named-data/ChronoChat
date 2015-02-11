@@ -13,7 +13,7 @@
 
 #include "logging.h"
 
-namespace chronos {
+namespace chronochat {
 
 using std::vector;
 
@@ -156,4 +156,4 @@ ValidatorInvitation::internalCheck(const uint8_t* buf, size_t size,
   return onValidated();
 }
 
-} // namespace chronos
+} // namespace chronochat

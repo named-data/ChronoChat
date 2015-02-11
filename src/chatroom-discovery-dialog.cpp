@@ -1,7 +1,7 @@
 #include "chatroom-discovery-dialog.hpp"
 #include "ui_chatroom-discovery-dialog.h"
 
-namespace chronos {
+namespace chronochat {
 
 using ndn::Name;
 
@@ -77,7 +77,7 @@ ChatroomDiscoveryDialog::updateChatroomList()
 }
 
 void
-ChatroomDiscoveryDialog::onDiscoverChatroomChanged(const chronos::ChatroomInfo& info, bool isAdd)
+ChatroomDiscoveryDialog::onDiscoverChatroomChanged(const chronochat::ChatroomInfo& info, bool isAdd)
 {
   if (isAdd)
     m_chatrooms[info.getName()] = info;
@@ -178,7 +178,7 @@ ChatroomDiscoveryDialog::onViewButtonClicked()
   }
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 
 #if WAF

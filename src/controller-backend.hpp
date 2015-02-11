@@ -22,7 +22,7 @@
 #include <ndn-cxx/security/key-chain.hpp>
 #endif
 
-namespace chronos {
+namespace chronochat {
 
 class ControllerBackend : public QThread
 {
@@ -90,7 +90,7 @@ signals:
   invitaionValidated(QString alias, QString chatroom, ndn::Name invitationINterest);
 
   void
-  startChatroomOnInvitation(chronos::Invitation invitation, bool secured);
+  startChatroomOnInvitation(chronochat::Invitation invitation, bool secured);
 
 public slots:
   void
@@ -138,6 +138,6 @@ private:
   QMutex m_mutex;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
 #endif // CHRONOCHAT_CONTROLLER_BACKEND_HPP

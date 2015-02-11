@@ -11,7 +11,7 @@
 #include "setting-dialog.hpp"
 #include "ui_setting-dialog.h"
 
-namespace chronos {
+namespace chronochat {
 
 SettingDialog::SettingDialog(QWidget* parent)
   : QDialog(parent)
@@ -81,7 +81,7 @@ SettingDialog::onCancelClicked()
   this->close();
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "setting-dialog.moc"

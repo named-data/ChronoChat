@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_CONTACT_PANEL_HPP
-#define CHRONOS_CONTACT_PANEL_HPP
+#ifndef CHRONOCHAT_CONTACT_PANEL_HPP
+#define CHRONOCHAT_CONTACT_PANEL_HPP
 
 #include <QDialog>
 #include <QStringListModel>
@@ -25,7 +25,7 @@ namespace Ui {
 class ContactPanel;
 }
 
-namespace chronos {
+namespace chronochat {
 
 class ContactPanel : public QDialog
 {
@@ -139,6 +139,6 @@ private:
   QString     m_currentSelectedContact;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_CONTACT_PANEL_HPP
+#endif // CHRONOCHAT_CONTACT_PANEL_HPP

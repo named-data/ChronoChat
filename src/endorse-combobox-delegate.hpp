@@ -8,14 +8,14 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_ENDORSE_COMBOBOX_DELEGATE_HPP
-#define CHRONOS_ENDORSE_COMBOBOX_DELEGATE_HPP
+#ifndef CHRONOCHAT_ENDORSE_COMBOBOX_DELEGATE_HPP
+#define CHRONOCHAT_ENDORSE_COMBOBOX_DELEGATE_HPP
 
 #include <QItemDelegate>
 #include <string>
 #include <vector>
 
-namespace chronos {
+namespace chronochat {
 
 class EndorseComboBoxDelegate : public QItemDelegate
 {
@@ -48,6 +48,6 @@ private:
 
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_ENDORSE_COMBOBOX_DELEGATE_HPP
+#endif // CHRONOCHAT_ENDORSE_COMBOBOX_DELEGATE_HPP

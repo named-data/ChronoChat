@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_INVITE_LIST_DIALOG_HPP
-#define CHRONOS_INVITE_LIST_DIALOG_HPP
+#ifndef CHRONOCHAT_INVITE_LIST_DIALOG_HPP
+#define CHRONOCHAT_INVITE_LIST_DIALOG_HPP
 
 #include <QDialog>
 #include <QStringListModel>
@@ -21,7 +21,7 @@ namespace Ui {
 class InviteListDialog;
 }
 
-namespace chronos {
+namespace chronochat {
 
 class InviteListDialog : public QDialog
 {
@@ -61,6 +61,6 @@ private:
   QStringList m_contactIdList;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_INVITE_LIST_DIALOG_HPP
+#endif // CHRONOCHAT_INVITE_LIST_DIALOG_HPP

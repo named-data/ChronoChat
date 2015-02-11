@@ -24,7 +24,7 @@
 
 // INIT_LOGGER("ContactPanel");
 
-namespace chronos {
+namespace chronochat {
 
 ContactPanel::ContactPanel(QWidget *parent)
   : QDialog(parent)
@@ -337,7 +337,7 @@ ContactPanel::onAliasChanged(const QString& identity, const QString& alias)
   emit updateAlias(identity, alias);
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "contact-panel.moc"

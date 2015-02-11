@@ -3,8 +3,8 @@
  * COPYRIGHT MSG GOES HERE...
  */
 
-#ifndef CHRONOS_COMMON_HPP
-#define CHRONOS_COMMON_HPP
+#ifndef CHRONOCHAT_COMMON_HPP
+#define CHRONOCHAT_COMMON_HPP
 
 #include "config.h"
 
@@ -39,7 +39,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-namespace chronos {
+namespace chronochat {
 
 using std::size_t;
 
@@ -73,6 +73,6 @@ using namespace ndn::tlv;
 namespace name = ndn::name;
 namespace time = ndn::time;
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_COMMON_HPP
+#endif // CHRONOCHAT_COMMON_HPP

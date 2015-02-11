@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_SETTING_DIALOG_HPP
-#define CHRONOS_SETTING_DIALOG_HPP
+#ifndef CHRONOCHAT_SETTING_DIALOG_HPP
+#define CHRONOCHAT_SETTING_DIALOG_HPP
 
 #include <QDialog>
 
@@ -20,7 +20,7 @@ namespace Ui {
 class SettingDialog;
 }
 
-namespace chronos {
+namespace chronochat {
 
 class SettingDialog : public QDialog
 {
@@ -66,6 +66,6 @@ private:
   QString m_prefix;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_SETTING_DIALOG_HPP
+#endif // CHRONOCHAT_SETTING_DIALOG_HPP

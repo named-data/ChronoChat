@@ -8,12 +8,12 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_ENDORSE_CERTIFICATE_HPP
-#define CHRONOS_ENDORSE_CERTIFICATE_HPP
+#ifndef CHRONOCHAT_ENDORSE_CERTIFICATE_HPP
+#define CHRONOCHAT_ENDORSE_CERTIFICATE_HPP
 
 #include "profile.hpp"
 
-namespace chronos {
+namespace chronochat {
 
 class EndorseCertificate : public ndn::Certificate
 {
@@ -91,6 +91,6 @@ private:
 
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_ENDORSE_CERTIFICATE_HPP
+#endif // CHRONOCHAT_ENDORSE_CERTIFICATE_HPP

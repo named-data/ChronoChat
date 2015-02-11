@@ -8,15 +8,15 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_INVITATION_HPP
-#define CHRONOS_INVITATION_HPP
+#ifndef CHRONOCHAT_INVITATION_HPP
+#define CHRONOCHAT_INVITATION_HPP
 
 
 #include "common.hpp"
 
 #include <ndn-cxx/security/identity-certificate.hpp>
 
-namespace chronos {
+namespace chronochat {
 
 class Invitation
 {
@@ -113,6 +113,6 @@ private:
   uint64_t m_timestamp;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_INVITATION_HPP
+#endif // CHRONOCHAT_INVITATION_HPP

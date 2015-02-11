@@ -22,7 +22,7 @@ namespace Ui {
 class ChatroomDiscoveryViewDialog;
 }
 
-namespace chronos {
+namespace chronochat {
 
 class ChatroomDiscoveryViewDialog : public QDialog
 {
@@ -50,6 +50,6 @@ private:
   Ui::ChatroomDiscoveryViewDialog* ui;
 };
 
-} //namespace chronos
+} //namespace chronochat
 
 #endif // CHRONOCHAT_CHATROOM_DISCOVERY_VIEW_DIALOG_HPP

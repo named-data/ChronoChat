@@ -10,12 +10,12 @@
  *         Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_TREE_LAYOUT_HPP
-#define CHRONOS_TREE_LAYOUT_HPP
+#ifndef CHRONOCHAT_TREE_LAYOUT_HPP
+#define CHRONOCHAT_TREE_LAYOUT_HPP
 
 #include "trust-tree-node.hpp"
 
-namespace chronos {
+namespace chronochat {
 
 class TreeLayout
 {
@@ -100,6 +100,6 @@ public:
   virtual void setMultipleLevelTreeLayout(TrustTreeNodeList& nodeList);
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_TREE_LAYOUT_HPP
+#endif // CHRONOCHAT_TREE_LAYOUT_HPP

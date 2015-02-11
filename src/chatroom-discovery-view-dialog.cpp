@@ -11,7 +11,7 @@
 #include "chatroom-discovery-view-dialog.hpp"
 #include "ui_chatroom-discovery-view-dialog.h"
 
-namespace chronos {
+namespace chronochat {
 
 using ndn::Name;
 
@@ -62,7 +62,7 @@ ChatroomDiscoveryViewDialog::setChatroomParticipants(const std::list<Name>& part
   ui->participantsBrowser->setPlainText(content);
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "chatroom-discovery-view-dialog.moc"

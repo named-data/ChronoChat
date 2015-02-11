@@ -13,7 +13,7 @@
 #include "tree-layout.hpp"
 #include <iostream>
 
-namespace chronos {
+namespace chronochat {
 
 using std::vector;
 using std::map;
@@ -64,4 +64,4 @@ MultipleLevelTreeLayout::setMultipleLevelTreeLayout(TrustTreeNodeList& nodeList)
   }
 }
 
-} // namespace chronos
+} // namespace chronochat

@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 {
   NewApp app(argc, argv);
 
-  chronos::Controller controller;
+  chronochat::Controller controller;
 
   app.setQuitOnLastWindowClosed(false);
 

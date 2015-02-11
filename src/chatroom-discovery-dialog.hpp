@@ -27,7 +27,7 @@ namespace Ui {
 class ChatroomDiscoveryDialog;
 }
 
-namespace chronos {
+namespace chronochat {
 
 class ChatroomDiscoveryDialog : public QDialog
 {
@@ -48,7 +48,7 @@ signals:
 
 public slots:
   void
-  onDiscoverChatroomChanged(const chronos::ChatroomInfo& chatroom, bool isAdd);
+  onDiscoverChatroomChanged(const chronochat::ChatroomInfo& chatroom, bool isAdd);
 
 private slots:
   void
@@ -82,6 +82,6 @@ private:
   ChatroomDiscoveryViewDialog* m_chatroomDiscoveryViewDialog;
 };
 
-} //namespace chronos
+} //namespace chronochat
 
 #endif // CHRONOCHAT_CHATROOM_DISCOVERY_DIALOG_HPP

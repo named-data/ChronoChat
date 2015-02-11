@@ -15,14 +15,14 @@
 #include "chatroom-info.hpp"
 #include <ndn-cxx/util/scheduler.hpp>
 
-namespace chronos {
+namespace chronochat {
 
 class ChatroomDiscoveryLogic : noncopyable
 {
 public:
   typedef function<void(const ChatroomInfo& chatroomName, bool isAdd)> UpdateCallback;
 
-  typedef std::map<Name::Component, chronos::ChatroomInfo> Chatrooms;
+  typedef std::map<Name::Component, chronochat::ChatroomInfo> Chatrooms;
   static const size_t OFFSET_CHATROOM_NAME;
   static const size_t DISCOVERY_INTEREST_NAME_SIZE;
   static const size_t REFRESHING_INTEREST_NAME_SIZE;
@@ -113,6 +113,6 @@ ChatroomDiscoveryLogic::getChatrooms() const
   return m_chatrooms;
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #endif // CHRONOCHAT_CHATROOM_DISCOVERY_LOGIC_HPP

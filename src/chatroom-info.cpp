@@ -10,7 +10,7 @@
  */
 #include "chatroom-info.hpp"
 
-namespace chronos {
+namespace chronochat {
 
 ChatroomInfo::ChatroomInfo()
 {
@@ -233,4 +233,4 @@ ChatroomInfo::setManager(const Name& manager)
   m_manager = manager;
 }
 
-} // namespace chronos
+} // namespace chronochat

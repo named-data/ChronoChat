@@ -11,7 +11,7 @@
 #include "invite-list-dialog.hpp"
 #include "ui_invite-list-dialog.h"
 
-namespace chronos {
+namespace chronochat {
 
 InviteListDialog::InviteListDialog(QWidget* parent)
   :QDialog(parent)
@@ -78,7 +78,7 @@ InviteListDialog::onContactIdListReady(const QStringList& idList)
   m_contactIdList = idList;
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "invite-list-dialog.moc"

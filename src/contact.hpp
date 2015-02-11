@@ -8,15 +8,15 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_CONTACT_HPP
-#define CHRONOS_CONTACT_HPP
+#ifndef CHRONOCHAT_CONTACT_HPP
+#define CHRONOCHAT_CONTACT_HPP
 
 #include "common.hpp"
 #include <ndn-cxx/security/identity-certificate.hpp>
 #include <ndn-cxx/util/regex.hpp>
 #include "endorse-certificate.hpp"
 
-namespace chronos {
+namespace chronochat {
 
 class Contact
 {
@@ -234,6 +234,6 @@ protected:
   TrustScopes m_trustScope;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_CONTACT_HPP
+#endif // CHRONOCHAT_CONTACT_HPP

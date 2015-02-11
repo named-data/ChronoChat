@@ -17,7 +17,7 @@
 #include "logging.h"
 #endif
 
-namespace chronos {
+namespace chronochat {
 
 EndorseComboBoxDelegate::EndorseComboBoxDelegate(QObject* parent)
  : QItemDelegate(parent)
@@ -76,7 +76,7 @@ EndorseComboBoxDelegate::paint(QPainter* painter,
   QApplication::style()->drawControl(QStyle::CE_ItemViewItem, &myOption, painter);
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "endorse-combobox-delegate.moc"

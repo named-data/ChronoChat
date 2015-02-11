@@ -30,9 +30,9 @@
 
 namespace fs = boost::filesystem;
 
-// INIT_LOGGER("chronos.ContactManager");
+// INIT_LOGGER("chronochat.ContactManager");
 
-namespace chronos{
+namespace chronochat {
 
 using std::string;
 using std::map;
@@ -184,7 +184,7 @@ ContactManager::prepareEndorseInfo(const Name& identity)
   // _LOG_DEBUG("prepareEndorseInfo");
   const Profile& profile = m_bufferedContacts[identity].m_selfEndorseCert->getProfile();
 
-  shared_ptr<Chronos::EndorseInfo> endorseInfo = make_shared<Chronos::EndorseInfo>();
+  shared_ptr<chronochat::EndorseInfo> endorseInfo = make_shared<chronochat::EndorseInfo>();
   m_bufferedContacts[identity].m_endorseInfo = endorseInfo;
 
   map<string, int> endorseCount;
@@ -222,7 +222,7 @@ ContactManager::prepareEndorseInfo(const Name& identity)
   }
 
   for (Profile::const_iterator pIt = profile.begin(); pIt != profile.end(); pIt++) {
-    Chronos::EndorseInfo::Endorsement* endorsement = endorseInfo->add_endorsement();
+    chronochat::EndorseInfo::Endorsement* endorsement = endorseInfo->add_endorsement();
     endorsement->set_type(pIt->first);
     endorsement->set_value(pIt->second);
     std::stringstream ss;
@@ -914,7 +914,7 @@ ContactManager::onUpdateEndorseCertificate(const QString& identity)
   publishEndorseCertificateInDNS(*newEndorseCertificate);
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 
 #if WAF

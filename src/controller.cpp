@@ -25,17 +25,17 @@
 #include "logging.h"
 #endif
 
-INIT_LOGGER("chronos.Controller");
+INIT_LOGGER("chronochat.Controller");
 
 Q_DECLARE_METATYPE(ndn::Name)
 Q_DECLARE_METATYPE(ndn::IdentityCertificate)
-Q_DECLARE_METATYPE(Chronos::EndorseInfo)
+Q_DECLARE_METATYPE(chronochat::EndorseInfo)
 Q_DECLARE_METATYPE(ndn::Interest)
 Q_DECLARE_METATYPE(size_t)
-Q_DECLARE_METATYPE(chronos::ChatroomInfo)
-Q_DECLARE_METATYPE(chronos::Invitation)
+Q_DECLARE_METATYPE(chronochat::ChatroomInfo)
+Q_DECLARE_METATYPE(chronochat::Invitation)
 
-namespace chronos {
+namespace chronochat {
 
 using std::string;
 
@@ -53,11 +53,11 @@ Controller::Controller(QWidget* parent)
 {
   qRegisterMetaType<ndn::Name>("ndn.Name");
   qRegisterMetaType<ndn::IdentityCertificate>("ndn.IdentityCertificate");
-  qRegisterMetaType<Chronos::EndorseInfo>("Chronos.EndorseInfo");
+  qRegisterMetaType<chronochat::EndorseInfo>("chronochat.EndorseInfo");
   qRegisterMetaType<ndn::Interest>("ndn.Interest");
   qRegisterMetaType<size_t>("size_t");
-  qRegisterMetaType<chronos::ChatroomInfo>("chronos.Chatroom");
-  qRegisterMetaType<chronos::Invitation>("chronos.Invitation");
+  qRegisterMetaType<chronochat::ChatroomInfo>("chronos.Chatroom");
+  qRegisterMetaType<chronochat::Invitation>("chronos.Invitation");
 
   // Connection to ContactManager
   connect(m_backend.getContactManager(), SIGNAL(warning(const QString&)),
@@ -99,9 +99,9 @@ Controller::Controller(QWidget* parent)
   connect(m_addContactPanel, SIGNAL(addContact(const QString&)),
           m_backend.getContactManager(), SLOT(onAddFetchedContact(const QString&)));
   connect(m_backend.getContactManager(),
-          SIGNAL(contactEndorseInfoReady(const Chronos::EndorseInfo&)),
+          SIGNAL(contactEndorseInfoReady(const chronochat::EndorseInfo&)),
           m_addContactPanel,
-          SLOT(onContactEndorseInfoReady(const Chronos::EndorseInfo&)));
+          SLOT(onContactEndorseInfoReady(const chronochat::EndorseInfo&)));
 
 
   // Connection to BrowseContactDialog
@@ -170,8 +170,8 @@ Controller::Controller(QWidget* parent)
           m_invitationDialog, SLOT(onInvitationReceived(QString, QString, ndn::Name)));
 
   // on invitation accepted:
-  connect(&m_backend, SIGNAL(startChatroomOnInvitation(chronos::Invitation, bool)),
-          this, SLOT(onStartChatroom2(chronos::Invitation, bool)));
+  connect(&m_backend, SIGNAL(startChatroomOnInvitation(chronochat::Invitation, bool)),
+          this, SLOT(onStartChatroom2(chronochat::Invitation, bool)));
 
   m_backend.start();
 
@@ -428,8 +428,8 @@ Controller::addChatDialog(const QString& chatroomName, ChatDialog* chatDialog)
           this, SLOT(onShowChatMessage(const QString&, const QString&, const QString&)));
   connect(chatDialog, SIGNAL(resetIcon()),
           this, SLOT(onResetIcon()));
-  connect(chatDialog, SIGNAL(rosterChanged(const chronos::ChatroomInfo&)),
-          this, SLOT(onRosterChanged(const chronos::ChatroomInfo&)));
+  connect(chatDialog, SIGNAL(rosterChanged(const chronochat::ChatroomInfo&)),
+          this, SLOT(onRosterChanged(const chronochat::ChatroomInfo&)));
   connect(&m_backend, SIGNAL(localPrefixUpdated(const QString&)),
           chatDialog->getBackend(), SLOT(updateRoutingPrefix(const QString&)));
   connect(this, SIGNAL(localPrefixConfigured(const QString&)),
@@ -639,7 +639,7 @@ Controller::onStartChatroom(const QString& chatroomName, bool secured)
 }
 
 void
-Controller::onStartChatroom2(chronos::Invitation invitation, bool secured)
+Controller::onStartChatroom2(chronochat::Invitation invitation, bool secured)
 {
   QString chatroomName = QString::fromStdString(invitation.getChatroom());
   onStartChatroom(chatroomName, secured);
@@ -705,12 +705,12 @@ Controller::onError(const QString& msg)
 }
 
 void
-Controller::onRosterChanged(const chronos::ChatroomInfo& info)
+Controller::onRosterChanged(const chronochat::ChatroomInfo& info)
 {
 
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "controller.moc"

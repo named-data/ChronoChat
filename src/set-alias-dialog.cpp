@@ -11,7 +11,7 @@
 #include "set-alias-dialog.hpp"
 #include "ui_set-alias-dialog.h"
 
-namespace chronos {
+namespace chronochat {
 
 SetAliasDialog::SetAliasDialog(QWidget* parent)
   : QDialog(parent)
@@ -52,7 +52,7 @@ SetAliasDialog::setTargetIdentity(const QString& targetIdentity, const QString& 
   ui->aliasInput->setText(alias);
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "set-alias-dialog.moc"

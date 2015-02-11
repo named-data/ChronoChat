@@ -9,8 +9,8 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#ifndef CHRONOS_DIGEST_TREE_SCENE_HPP
-#define CHRONOS_DIGEST_TREE_SCENE_HPP
+#ifndef CHRONOCHAT_DIGEST_TREE_SCENE_HPP
+#define CHRONOCHAT_DIGEST_TREE_SCENE_HPP
 
 #include <QtGui/QGraphicsScene>
 #include <QColor>
@@ -27,7 +27,7 @@ const int FRESHNESS = 60;
 
 class QGraphicsTextItem;
 
-namespace chronos {
+namespace chronochat {
 
 class User;
 class DisplayUser;
@@ -47,7 +47,7 @@ public:
   DigestTreeScene(QWidget *parent = 0);
 
   void
-  processSyncUpdate(const std::vector<chronos::NodeInfo>& nodeInfos,
+  processSyncUpdate(const std::vector<chronochat::NodeInfo>& nodeInfos,
                     const QString& digest);
 
   void
@@ -73,10 +73,10 @@ public:
 
 private:
   void
-  plotEdge(const std::vector<chronos::TreeLayout::Coordinate>& v, int nodeSize);
+  plotEdge(const std::vector<chronochat::TreeLayout::Coordinate>& v, int nodeSize);
 
   void
-  plotNode(const std::vector<chronos::TreeLayout::Coordinate>& v, QString digest, int nodeSize);
+  plotNode(const std::vector<chronochat::TreeLayout::Coordinate>& v, QString digest, int nodeSize);
 
   void
   reDrawNode(DisplayUserPtr p, QColor rimColor);
@@ -230,6 +230,6 @@ private:
   QGraphicsRectItem* m_nickRectItem;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_DIGEST_TREE_SCENE_HPP
+#endif // CHRONOCHAT_DIGEST_TREE_SCENE_HPP

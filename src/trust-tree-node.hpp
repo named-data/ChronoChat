@@ -8,12 +8,12 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_TRUST_TREE_NODE_HPP
-#define CHRONOS_TRUST_TREE_NODE_HPP
+#ifndef CHRONOCHAT_TRUST_TREE_NODE_HPP
+#define CHRONOCHAT_TRUST_TREE_NODE_HPP
 
 #include "common.hpp"
 
-namespace chronos {
+namespace chronochat {
 
 class TrustTreeNode;
 
@@ -111,6 +111,6 @@ private:
   bool m_visited;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_TRUST_TREE_NODE_HPP
+#endif // CHRONOCHAT_TRUST_TREE_NODE_HPP

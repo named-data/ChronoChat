@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_START_CHAT_DIALOG_HPP
-#define CHRONOS_START_CHAT_DIALOG_HPP
+#ifndef CHRONOCHAT_START_CHAT_DIALOG_HPP
+#define CHRONOCHAT_START_CHAT_DIALOG_HPP
 
 #include <QDialog>
 
@@ -21,7 +21,7 @@ namespace Ui {
 class StartChatDialog;
 }
 
-namespace chronos {
+namespace chronochat {
 
 class StartChatDialog : public QDialog
 {
@@ -50,6 +50,6 @@ private:
   Ui::StartChatDialog* ui;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_START_CHAT_DIALOG_HPP
+#endif // CHRONOCHAT_START_CHAT_DIALOG_HPP

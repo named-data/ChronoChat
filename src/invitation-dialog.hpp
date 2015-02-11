@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_INVITATION_DIALOG_HPP
-#define CHRONOS_INVITATION_DIALOG_HPP
+#ifndef CHRONOCHAT_INVITATION_DIALOG_HPP
+#define CHRONOCHAT_INVITATION_DIALOG_HPP
 
 #include <QDialog>
 
@@ -21,7 +21,7 @@ namespace Ui {
 class InvitationDialog;
 }
 
-namespace chronos{
+namespace chronochat {
 
 class InvitationDialog : public QDialog
 {
@@ -54,6 +54,6 @@ private:
   ndn::Name m_invitationInterest;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_INVITATION_DIALOG_HPP
+#endif // CHRONOCHAT_INVITATION_DIALOG_HPP

@@ -20,7 +20,7 @@
 #include <socket.hpp>
 #endif
 
-namespace chronos {
+namespace chronochat {
 
 class NodeInfo {
 public:
@@ -99,7 +99,7 @@ private:
 
 signals:
   void
-  syncTreeUpdated(std::vector<chronos::NodeInfo> updates, QString digest);
+  syncTreeUpdated(std::vector<chronochat::NodeInfo> updates, QString digest);
 
   void
   chatMessageReceived(QString nick, QString text, time_t timestamp);
@@ -155,6 +155,6 @@ private:
   bool m_shouldResume;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
 #endif // CHRONOCHAT_CHAT_DIALOG_BACKEND_HPP

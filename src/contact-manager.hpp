@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_CONTACT_MANAGER_HPP
-#define CHRONOS_CONTACT_MANAGER_HPP
+#ifndef CHRONOCHAT_CONTACT_MANAGER_HPP
+#define CHRONOCHAT_CONTACT_MANAGER_HPP
 
 #include <QObject>
 
@@ -26,7 +26,7 @@
 #include <boost/thread/recursive_mutex.hpp>
 #endif
 
-namespace chronos{
+namespace chronochat {
 
 typedef function<void(const Interest&)> TimeoutNotify;
 typedef std::vector<shared_ptr<Contact> > ContactList;
@@ -181,7 +181,7 @@ private:
 
 signals:
   void
-  contactEndorseInfoReady(const Chronos::EndorseInfo& endorseInfo);
+  contactEndorseInfoReady(const chronochat::EndorseInfo& endorseInfo);
 
   void
   contactInfoFetchFailed(const QString& identity);
@@ -257,7 +257,7 @@ private:
     shared_ptr<EndorseCertificate> m_selfEndorseCert;
     shared_ptr<EndorseCollection> m_endorseCollection;
     std::vector<shared_ptr<EndorseCertificate> > m_endorseCertList;
-    shared_ptr<Chronos::EndorseInfo> m_endorseInfo;
+    shared_ptr<chronochat::EndorseInfo> m_endorseInfo;
   };
 
   typedef std::map<Name, FetchedInfo> BufferedContacts;
@@ -288,6 +288,6 @@ private:
   int m_idCertCount;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif //CHRONOS_CONTACT_MANAGER_HPP
+#endif // CHRONOCHAT_CONTACT_MANAGER_HPP

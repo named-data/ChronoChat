@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_VALIDATOR_PANEL_HPP
-#define CHRONOS_VALIDATOR_PANEL_HPP
+#ifndef CHRONOCHAT_VALIDATOR_PANEL_HPP
+#define CHRONOCHAT_VALIDATOR_PANEL_HPP
 
 #include "common.hpp"
 
@@ -19,7 +19,7 @@
 
 #include "endorse-certificate.hpp"
 
-namespace chronos {
+namespace chronochat {
 
 class ValidatorPanel : public ndn::Validator
 {
@@ -66,6 +66,6 @@ private:
   std::map<Name, ndn::PublicKey> m_trustAnchors;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_VALIDATOR_PANEL_HPP
+#endif // CHRONOCHAT_VALIDATOR_PANEL_HPP

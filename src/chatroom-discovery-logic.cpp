@@ -12,7 +12,7 @@
 #include "chatroom-discovery-logic.hpp"
 
 
-namespace chronos {
+namespace chronochat {
 
 const size_t ChatroomDiscoveryLogic::OFFSET_CHATROOM_NAME = 4;
 const size_t ChatroomDiscoveryLogic::DISCOVERY_INTEREST_NAME_SIZE = 4;
@@ -219,4 +219,4 @@ ChatroomDiscoveryLogic::addContacts(ChatroomInfo& chatroom)
 }
 
 
-} // namespace chronos
+} // namespace chronochat

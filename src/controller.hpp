@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_CONTROLLER_HPP
-#define CHRONOS_CONTROLLER_HPP
+#ifndef CHRONOCHAT_CONTROLLER_HPP
+#define CHRONOCHAT_CONTROLLER_HPP
 
 #include <QDialog>
 #include <QMenu>
@@ -31,7 +31,7 @@
 #include "controller-backend.hpp"
 #endif
 
-namespace chronos {
+namespace chronochat {
 
 class Controller : public QDialog
 {
@@ -75,7 +75,7 @@ private: // private methods
   addChatDialog(const QString& chatroomName, ChatDialog* chatDialog);
 
   void
-  updateDiscoveryList(const chronos::ChatroomInfo& chatroomName, bool isAdd);
+  updateDiscoveryList(const chronochat::ChatroomInfo& chatroomName, bool isAdd);
 
 signals:
   void
@@ -104,7 +104,7 @@ signals:
                      size_t routingPrefixOffset);
 
   void
-  discoverChatroomChanged(const chronos::ChatroomInfo& chatroomInfo, bool isAdd);
+  discoverChatroomChanged(const chronochat::ChatroomInfo& chatroomInfo, bool isAdd);
 
   void
   addChatroom(QString chatroomName);
@@ -159,7 +159,7 @@ private slots:
   onStartChatroom(const QString& chatroom, bool secured);
 
   void
-  onStartChatroom2(chronos::Invitation invitation, bool secured);
+  onStartChatroom2(chronochat::Invitation invitation, bool secured);
 
   void
   onShowChatMessage(const QString& chatroomName, const QString& from, const QString& data);
@@ -177,7 +177,7 @@ private slots:
   onError(const QString& msg);
 
   void
-  onRosterChanged(const chronos::ChatroomInfo& info);
+  onRosterChanged(const chronochat::ChatroomInfo& info);
 
 private: // private member
   typedef std::map<std::string, QAction*> ChatActionList;
@@ -222,6 +222,6 @@ private: // private member
   ControllerBackend m_backend;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif //CHRONOS_CONTROLLER_HPP
+#endif // CHRONOCHAT_CONTROLLER_HPP

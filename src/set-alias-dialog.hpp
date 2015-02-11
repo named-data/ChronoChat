@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_SET_ALIAS_DIALOG_HPP
-#define CHRONOS_SET_ALIAS_DIALOG_HPP
+#ifndef CHRONOCHAT_SET_ALIAS_DIALOG_HPP
+#define CHRONOCHAT_SET_ALIAS_DIALOG_HPP
 
 #include <QDialog>
 
@@ -21,7 +21,7 @@ namespace Ui {
 class SetAliasDialog;
 }
 
-namespace chronos {
+namespace chronochat {
 
 class SetAliasDialog : public QDialog
 {
@@ -52,6 +52,6 @@ private:
   QString m_targetIdentity;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_SET_ALIAS_DIALOG_HPP
+#endif // CHRONOCHAT_SET_ALIAS_DIALOG_HPP

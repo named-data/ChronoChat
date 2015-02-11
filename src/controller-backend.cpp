@@ -18,7 +18,7 @@
 
 INIT_LOGGER("ControllerBackend");
 
-namespace chronos {
+namespace chronochat {
 
 using std::string;
 
@@ -352,7 +352,7 @@ ControllerBackend::onContactIdListReady(const QStringList& list)
 }
 
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "controller-backend.moc"

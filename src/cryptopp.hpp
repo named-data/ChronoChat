@@ -7,8 +7,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_CRYPTOPP_HPP
-#define CHRONOS_CRYPTOPP_HPP
+#ifndef CHRONOCHAT_CRYPTOPP_HPP
+#define CHRONOCHAT_CRYPTOPP_HPP
 
 // suppress CryptoPP warnings
 #pragma GCC system_header
@@ -20,4 +20,4 @@
 #include <cryptopp/sha.h>
 #include <cryptopp/filters.h>
 
-#endif // CHRONOS_CRYPTOPP_HPP
+#endif // CHRONOCHAT_CRYPTOPP_HPP

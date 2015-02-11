@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_VALIDATOR_INVITATION_HPP
-#define CHRONOS_VALIDATOR_INVITATION_HPP
+#ifndef CHRONOCHAT_VALIDATOR_INVITATION_HPP
+#define CHRONOCHAT_VALIDATOR_INVITATION_HPP
 
 #include "common.hpp"
 
@@ -19,7 +19,7 @@
 
 #include "endorse-certificate.hpp"
 
-namespace chronos {
+namespace chronochat {
 
 class ValidatorInvitation : public ndn::Validator
 {
@@ -87,6 +87,6 @@ private:
   TrustAnchors m_trustAnchors;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif //CHRONOS_VALIDATOR_INVITATION_HPP
+#endif // CHRONOCHAT_VALIDATOR_INVITATION_HPP

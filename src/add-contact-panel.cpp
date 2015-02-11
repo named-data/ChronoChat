@@ -14,7 +14,7 @@
 #ifndef Q_MOC_RUN
 #endif
 
-namespace chronos {
+namespace chronochat {
 
 AddContactPanel::AddContactPanel(QWidget *parent)
   : QDialog(parent)
@@ -74,7 +74,7 @@ AddContactPanel::onAddClicked()
 }
 
 void
-AddContactPanel::onContactEndorseInfoReady(const Chronos::EndorseInfo& endorseInfo)
+AddContactPanel::onContactEndorseInfoReady(const chronochat::EndorseInfo& endorseInfo)
 {
   int entrySize = endorseInfo.endorsement_size();
 
@@ -94,7 +94,7 @@ AddContactPanel::onContactEndorseInfoReady(const Chronos::EndorseInfo& endorseIn
   }
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 
 #if WAF

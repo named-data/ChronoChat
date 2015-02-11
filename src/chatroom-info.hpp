@@ -24,7 +24,7 @@
 #include <boost/concept_check.hpp>
 #include <list>
 
-namespace chronos {
+namespace chronochat {
 
 /** \brief store a chatroom's information with encode and decode method.
     \sa docs/design.rst
@@ -147,6 +147,6 @@ BOOST_CONCEPT_ASSERT((ndn::WireEncodable<ChatroomInfo>));
 BOOST_CONCEPT_ASSERT((ndn::WireDecodable<ChatroomInfo>));
 
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif //CHRONOCHAT_CHATROOM_INFO_HPP
+#endif // CHRONOCHAT_CHATROOM_INFO_HPP

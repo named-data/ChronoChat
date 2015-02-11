@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_ADD_CONTACT_PANEL_HPP
-#define CHRONOS_ADD_CONTACT_PANEL_HPP
+#ifndef CHRONOCHAT_ADD_CONTACT_PANEL_HPP
+#define CHRONOCHAT_ADD_CONTACT_PANEL_HPP
 
 #include <QDialog>
 #include <QTableWidgetItem>
@@ -22,7 +22,7 @@ namespace Ui {
 class AddContactPanel;
 }
 
-namespace chronos {
+namespace chronochat {
 
 class AddContactPanel : public QDialog
 {
@@ -36,7 +36,7 @@ public:
 
 public slots:
   void
-  onContactEndorseInfoReady(const Chronos::EndorseInfo& endorseInfo);
+  onContactEndorseInfoReady(const chronochat::EndorseInfo& endorseInfo);
 
 private slots:
   void
@@ -64,6 +64,6 @@ private:
   QTableWidgetItem* m_endorseHeader;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_ADD_CONTACT_PANEL_HPP
+#endif // CHRONOCHAT_ADD_CONTACT_PANEL_HPP

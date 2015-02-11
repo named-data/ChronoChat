@@ -1,7 +1,7 @@
 #ifndef CHRONOCHAT_CHATROOM_TLV_HPP
 #define CHRONOCHAT_CHATROOM_TLV_HPP
 
-namespace chronos {
+namespace chronochat {
 
 namespace tlv {
 
@@ -16,6 +16,6 @@ enum {
 
 } // namespace tlv
 
-} // namespace chronos
+} // namespace chronochat
 
 #endif // CHRONOCHAT_CHATROOM_TLV_HPP

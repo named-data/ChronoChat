@@ -8,8 +8,8 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_BROWSE_CONTACT_DIALOG_HPP
-#define CHRONOS_BROWSE_CONTACT_DIALOG_HPP
+#ifndef CHRONOCHAT_BROWSE_CONTACT_DIALOG_HPP
+#define CHRONOCHAT_BROWSE_CONTACT_DIALOG_HPP
 
 #include <QDialog>
 #include <QStringListModel>
@@ -26,7 +26,7 @@ namespace Ui {
 class BrowseContactDialog;
 }
 
-namespace chronos {
+namespace chronochat {
 
 class BrowseContactDialog : public QDialog
 {
@@ -89,6 +89,6 @@ private:
   QStringList m_contactCertNameList;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_BROWSE_CONTACT_DIALOG_HPP
+#endif // CHRONOCHAT_BROWSE_CONTACT_DIALOG_HPP

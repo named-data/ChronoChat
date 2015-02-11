@@ -12,7 +12,7 @@
 
 #include "logging.h"
 
-namespace chronos {
+namespace chronochat {
 
 using std::vector;
 
@@ -86,4 +86,4 @@ ValidatorPanel::checkPolicy (const Data& data,
   return;
 }
 
-} // namespace chronos
+} // namespace chronochat

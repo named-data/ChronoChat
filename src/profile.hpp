@@ -8,15 +8,15 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_PROFILE_HPP
-#define CHRONOS_PROFILE_HPP
+#ifndef CHRONOCHAT_PROFILE_HPP
+#define CHRONOCHAT_PROFILE_HPP
 
 #include "common.hpp"
 
 #include <ndn-cxx/security/identity-certificate.hpp>
 #include "profile.pb.h"
 
-namespace chronos {
+namespace chronochat {
 
 class Profile
 {
@@ -111,12 +111,12 @@ private:
   std::map<std::string, std::string> m_entries;
 };
 
-Chronos::ProfileMsg&
-operator<<(Chronos::ProfileMsg& msg, const Profile& profile);
+chronochat::ProfileMsg&
+operator<<(chronochat::ProfileMsg& msg, const Profile& profile);
 
-Chronos::ProfileMsg&
-operator>>(Chronos::ProfileMsg& msg, Profile& profile);
+chronochat::ProfileMsg&
+operator>>(chronochat::ProfileMsg& msg, Profile& profile);
 
-} // namespace chronos
+} // namespace chronochat
 
-#endif // CHRONOS_PROFILE_HPP
+#endif // CHRONOCHAT_PROFILE_HPP

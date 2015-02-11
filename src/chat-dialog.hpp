@@ -34,7 +34,7 @@ namespace Ui {
 class ChatDialog;
 }
 
-namespace chronos {
+namespace chronochat {
 
 class ChatDialog : public QDialog
 {
@@ -117,7 +117,7 @@ signals:
   resetIcon();
 
   void
-  rosterChanged(const chronos::ChatroomInfo& info);
+  rosterChanged(const chronochat::ChatroomInfo& info);
 
 public slots:
   void
@@ -128,7 +128,7 @@ public slots:
 
 private slots:
   void
-  updateSyncTree(std::vector<chronos::NodeInfo> updates, QString rootDigest);
+  updateSyncTree(std::vector<chronochat::NodeInfo> updates, QString rootDigest);
 
   void
   receiveChatMessage(QString nick, QString text, time_t timestamp);
@@ -175,6 +175,6 @@ private:
   QStringListModel* m_rosterModel;
 };
 
-} // namespace chronos
+} // namespace chronochat
 
 #endif // CHRONOCHAT_CHAT_DIALOG_HPP

@@ -11,7 +11,7 @@
 #include "profile.hpp"
 #include "logging.h"
 
-namespace chronos{
+namespace chronochat {
 
 using std::vector;
 using std::string;
@@ -79,7 +79,7 @@ Profile::Profile(const Profile& profile)
 void
 Profile::encode(std::ostream& os) const
 {
-  Chronos::ProfileMsg profileMsg;
+  chronochat::ProfileMsg profileMsg;
   profileMsg << (*this);
   profileMsg.SerializeToOstream(&os);
 }
@@ -87,7 +87,7 @@ Profile::encode(std::ostream& os) const
 void
 Profile::decode(std::istream& is)
 {
-  Chronos::ProfileMsg profileMsg;
+  chronochat::ProfileMsg profileMsg;
   profileMsg.ParseFromIstream(&is);
   profileMsg >> (*this);
 }
@@ -115,27 +115,27 @@ Profile::operator!=(const Profile& profile) const
   return !(*this == profile);
 }
 
-Chronos::ProfileMsg&
-operator<<(Chronos::ProfileMsg& profileMsg, const Profile& profile)
+chronochat::ProfileMsg&
+operator<<(chronochat::ProfileMsg& profileMsg, const Profile& profile)
 {
 ;
   for (map<string, string>::const_iterator it = profile.begin(); it != profile.end(); it++) {
-    Chronos::ProfileMsg::ProfileEntry* profileEntry = profileMsg.add_entry();
+    chronochat::ProfileMsg::ProfileEntry* profileEntry = profileMsg.add_entry();
     profileEntry->set_oid(it->first);
     profileEntry->set_data(it->second);
   }
   return profileMsg;
 }
 
-Chronos::ProfileMsg&
-operator>>(Chronos::ProfileMsg& profileMsg, Profile& profile)
+chronochat::ProfileMsg&
+operator>>(chronochat::ProfileMsg& profileMsg, Profile& profile)
 {
   for (int i = 0; i < profileMsg.entry_size(); i++) {
-    const Chronos::ProfileMsg::ProfileEntry& profileEntry = profileMsg.entry(i);
+    const chronochat::ProfileMsg::ProfileEntry& profileEntry = profileMsg.entry(i);
     profile[profileEntry.oid()] = profileEntry.data();
   }
 
   return profileMsg;
 }
 
-} // namespace chronos
+} // namespace chronochat

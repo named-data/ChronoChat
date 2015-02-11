@@ -8,14 +8,14 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_CONTACT_STORAGE_HPP
-#define CHRONOS_CONTACT_STORAGE_HPP
+#ifndef CHRONOCHAT_CONTACT_STORAGE_HPP
+#define CHRONOCHAT_CONTACT_STORAGE_HPP
 
 #include "contact.hpp"
 #include "endorse-collection.pb.h"
 #include <sqlite3.h>
 
-namespace chronos{
+namespace chronochat {
 
 class ContactStorage
 {
@@ -119,6 +119,6 @@ private:
   sqlite3 *m_db;
 };
 
-}//chronos
+} // namespace chronochat
 
-#endif // CHRONOS_CONTACT_STORAGE_HPP
+#endif // CHRONOCHAT_CONTACT_STORAGE_HPP

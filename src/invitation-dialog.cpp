@@ -11,7 +11,7 @@
 #include "invitation-dialog.hpp"
 #include "ui_invitation-dialog.h"
 
-namespace chronos {
+namespace chronochat {
 
 InvitationDialog::InvitationDialog(QWidget* parent)
   : QDialog(parent)
@@ -61,7 +61,7 @@ InvitationDialog::onCancelClicked()
   m_invitationInterest.clear();
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 #if WAF
 #include "invitation-dialog.moc"

@@ -19,9 +19,9 @@
 
 Q_DECLARE_METATYPE(ndn::Name)
 Q_DECLARE_METATYPE(time_t)
-Q_DECLARE_METATYPE(std::vector<chronos::NodeInfo>)
+Q_DECLARE_METATYPE(std::vector<chronochat::NodeInfo>)
 
-namespace chronos {
+namespace chronochat {
 
 static const Name PRIVATE_PREFIX("/private/local");
 static const uint8_t ROUTING_HINT_SEPARATOR[2] = {0xF0, 0x2E}; // %F0.
@@ -42,7 +42,7 @@ ChatDialog::ChatDialog(const Name& chatroomPrefix,
 {
   qRegisterMetaType<ndn::Name>("ndn::Name");
   qRegisterMetaType<time_t>("time_t");
-  qRegisterMetaType<std::vector<chronos::NodeInfo> >("std::vector<chronos::NodeInfo>");
+  qRegisterMetaType<std::vector<chronochat::NodeInfo> >("std::vector<chronochat::NodeInfo>");
 
   m_scene = new DigestTreeScene(this);
   m_trustScene = new TrustTreeScene(this);
@@ -76,8 +76,8 @@ ChatDialog::ChatDialog(const Name& chatroomPrefix,
   m_rosterModel->setStringList(roster);
 
   // When backend receives a sync update, notify frontend to update sync tree
-  connect(&m_backend, SIGNAL(syncTreeUpdated(std::vector<chronos::NodeInfo>, QString)),
-          this,       SLOT(updateSyncTree(std::vector<chronos::NodeInfo>, QString)));
+  connect(&m_backend, SIGNAL(syncTreeUpdated(std::vector<chronochat::NodeInfo>, QString)),
+          this,       SLOT(updateSyncTree(std::vector<chronochat::NodeInfo>, QString)));
 
   // When backend receives a new chat message, notify frontent to print it out.
   connect(&m_backend, SIGNAL(chatMessageReceived(QString, QString, time_t)),
@@ -335,7 +335,7 @@ ChatDialog::shutdown()
 
 // private slots:
 void
-ChatDialog::updateSyncTree(std::vector<chronos::NodeInfo> updates, QString rootDigest)
+ChatDialog::updateSyncTree(std::vector<chronochat::NodeInfo> updates, QString rootDigest)
 {
   m_scene->processSyncUpdate(updates, rootDigest);
 }
@@ -462,7 +462,7 @@ void ChatDialog::enableSyncTreeDisplay()
   fitView();
 }
 
-} // namespace chronos
+} // namespace chronochat
 
 
 #if WAF

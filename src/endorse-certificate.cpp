@@ -13,7 +13,7 @@
 #include <boost/iostreams/stream.hpp>
 #include <ndn-cxx/encoding/buffer-stream.hpp>
 
-namespace chronos {
+namespace chronochat {
 
 using std::vector;
 using std::string;
@@ -30,8 +30,8 @@ const OID EndorseCertificate::ENDORSE_EXT_OID("1.3.6.1.5.32.2.2");
 
 const vector<string> EndorseCertificate::DEFAULT_ENDORSE_LIST;
 
-Chronos::EndorseExtensionMsg&
-operator<<(Chronos::EndorseExtensionMsg& endorseExtension, const vector<string>& endorseList)
+chronochat::EndorseExtensionMsg&
+operator<<(chronochat::EndorseExtensionMsg& endorseExtension, const vector<string>& endorseList)
 {
   for (vector<string>::const_iterator it = endorseList.begin(); it != endorseList.end(); it++)
     endorseExtension.add_endorseentry()->set_name(*it);
@@ -39,8 +39,8 @@ operator<<(Chronos::EndorseExtensionMsg& endorseExtension, const vector<string>&
   return endorseExtension;
 }
 
-Chronos::EndorseExtensionMsg&
-operator>>(Chronos::EndorseExtensionMsg& endorseExtension, vector<string>& endorseList)
+chronochat::EndorseExtensionMsg&
+operator>>(chronochat::EndorseExtensionMsg& endorseExtension, vector<string>& endorseList)
 {
   for (int i = 0; i < endorseExtension.endorseentry_size(); i ++)
     endorseList.push_back(endorseExtension.endorseentry(i).name());
@@ -72,7 +72,7 @@ EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate
   addExtension(CertificateExtension(PROFILE_EXT_OID, true, *profileStream.buf()));
 
   OBufferStream endorseStream;
-  Chronos::EndorseExtensionMsg endorseExtension;
+  chronochat::EndorseExtensionMsg endorseExtension;
   endorseExtension << m_endorseList;
   endorseExtension.SerializeToOstream(&endorseStream);
   addExtension(CertificateExtension(ENDORSE_EXT_OID, true, *endorseStream.buf()));
@@ -103,7 +103,7 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
   addExtension(CertificateExtension(PROFILE_EXT_OID, true, *profileStream.buf()));
 
   OBufferStream endorseStream;
-  Chronos::EndorseExtensionMsg endorseExtension;
+  chronochat::EndorseExtensionMsg endorseExtension;
   endorseExtension << m_endorseList;
   endorseExtension.SerializeToOstream(&endorseStream);
   addExtension(CertificateExtension(ENDORSE_EXT_OID, true, *endorseStream.buf()));
@@ -138,7 +138,7 @@ EndorseCertificate::EndorseCertificate(const Name& keyName,
   addExtension(CertificateExtension(PROFILE_EXT_OID, true, *profileStream.buf()));
 
   OBufferStream endorseStream;
-  Chronos::EndorseExtensionMsg endorseExtension;
+  chronochat::EndorseExtensionMsg endorseExtension;
   endorseExtension << m_endorseList;
   endorseExtension.SerializeToOstream(&endorseStream);
   addExtension(CertificateExtension(ENDORSE_EXT_OID, true, *endorseStream.buf()));
@@ -174,7 +174,7 @@ EndorseCertificate::EndorseCertificate(const Data& data)
       m_profile.decode(is);
     }
     if (ENDORSE_EXT_OID == it->getOid()) {
-      Chronos::EndorseExtensionMsg endorseExtension;
+      chronochat::EndorseExtensionMsg endorseExtension;
 
       boost::iostreams::stream<boost::iostreams::array_source> is
         (reinterpret_cast<const char*>(it->getValue().buf()), it->getValue().size());
@@ -185,4 +185,4 @@ EndorseCertificate::EndorseCertificate(const Data& data)
   }
 }
 
-} // namespace chronos
+} // namespace chronochat

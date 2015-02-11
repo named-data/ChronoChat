@@ -17,7 +17,7 @@
 
 // INIT_LOGGER ("chronos.ContactStorage");
 
-namespace chronos {
+namespace chronochat {
 
 namespace fs = boost::filesystem;
 
@@ -171,7 +171,7 @@ ContactStorage::ContactStorage(const Name& identity)
 
   int res = sqlite3_open((chronosDir / getDBName()).c_str(), &m_db);
   if (res != SQLITE_OK)
-    throw Error("Chronos DB cannot be open/created");
+    throw Error("chronochat DB cannot be open/created");
 
   initializeTable("SelfProfile", INIT_SP_TABLE);
   initializeTable("SelfEndorse", INIT_SE_TABLE);
@@ -601,4 +601,4 @@ ContactStorage::getDnsData(const string& name, const string& type)
   return data;
 }
 
-} // namespace chronos
+} // namespace chronochat
