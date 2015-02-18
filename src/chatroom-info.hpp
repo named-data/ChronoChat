@@ -7,20 +7,17 @@
  *
  * Author: Mengjin Yan <jane.yan0129@gmail.com>
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ * Author: Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 #ifndef CHRONOCHAT_CHATROOM_INFO_HPP
 #define CHRONOCHAT_CHATROOM_INFO_HPP
 
 #include "common.hpp"
-#include "chatroom-tlv.hpp"
-#include <ndn-cxx/face.hpp>
-#include <ndn-cxx/security/key-chain.hpp>
+#include "tlv.hpp"
 #include <ndn-cxx/name-component.hpp>
-#include <ndn-cxx/util/time.hpp>
 #include <ndn-cxx/util/concepts.hpp>
 #include <ndn-cxx/encoding/block.hpp>
 #include <ndn-cxx/encoding/encoding-buffer.hpp>
-#include <ndn-cxx/exclude.hpp>
 #include <boost/concept_check.hpp>
 #include <list>
 
@@ -142,10 +139,6 @@ ChatroomInfo::getParticipants() const
 {
   return m_participants;
 }
-
-BOOST_CONCEPT_ASSERT((ndn::WireEncodable<ChatroomInfo>));
-BOOST_CONCEPT_ASSERT((ndn::WireDecodable<ChatroomInfo>));
-
 
 } // namespace chronochat
 

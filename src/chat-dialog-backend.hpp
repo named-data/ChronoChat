@@ -16,7 +16,7 @@
 #ifndef Q_MOC_RUN
 #include "common.hpp"
 #include "chatroom-info.hpp"
-#include "chatbuf.pb.h"
+#include "chat-message.hpp"
 #include <mutex>
 #include <socket.hpp>
 #include <boost/thread.hpp>
@@ -82,7 +82,7 @@ private:
   remoteSessionTimeout(const Name& sessionPrefix);
 
   void
-  sendMsg(SyncDemo::ChatMessage& msg);
+  sendMsg(ChatMessage& msg);
 
   void
   sendJoin();
@@ -94,13 +94,13 @@ private:
   sendLeave();
 
   void
-  prepareControlMessage(SyncDemo::ChatMessage& msg,
-                        SyncDemo::ChatMessage::ChatMessageType type);
+  prepareControlMessage(ChatMessage& msg,
+                        ChatMessage::ChatMessageType type);
 
   void
   prepareChatMessage(const QString& text,
                      time_t timestamp,
-                     SyncDemo::ChatMessage &msg);
+                     ChatMessage &msg);
 
   void
   updatePrefixes();

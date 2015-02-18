@@ -6,11 +6,15 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Mengjin Yan <jane.yan0129@gmail.com>
- * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 #include "chatroom-info.hpp"
 
 namespace chronochat {
+
+BOOST_CONCEPT_ASSERT((ndn::WireEncodable<ChatroomInfo>));
+BOOST_CONCEPT_ASSERT((ndn::WireDecodable<ChatroomInfo>));
 
 ChatroomInfo::ChatroomInfo()
 {
@@ -137,33 +141,43 @@ ChatroomInfo::wireDecode(const Block& chatroomWire)
 
   // Chatroom Info
   Block::element_const_iterator i = m_wire.elements_begin();
-  if (i == m_wire.elements_end() || i->type() != tlv::ChatroomName)
-    throw Error("Missing Chatroom Name Info");
+  if (i == m_wire.elements_end())
+    throw Error("Missing Chatroom Name");
+  if (i->type() != tlv::ChatroomName)
+    throw Error("Expect Chatroom Name but get TLV Type " + std::to_string(i->type()));
   m_chatroomName.wireDecode(i->blockFromValue());
   ++i;
 
   // Trust Model
-  if (i == m_wire.elements_end() || i->type() != tlv::TrustModel)
-    throw Error("Missing TrustModel");
+  if (i == m_wire.elements_end())
+    throw Error("Missing Trust Model");
+  if (i->type() != tlv::TrustModel)
+    throw Error("Expect Trust Model but get TLV Type " + std::to_string(i->type()));
   m_trustModel =
       static_cast<TrustModel>(readNonNegativeInteger(*i));
   ++i;
 
   // Chatroom Sync Prefix
-  if (i == m_wire.elements_end() || i->type() != tlv::ChatroomPrefix)
+  if (i == m_wire.elements_end())
     throw Error("Missing Chatroom Prefix");
+  if (i->type() != tlv::ChatroomPrefix)
+    throw Error("Expect Chatroom Prefix but get TLV Type " + std::to_string(i->type()));
   m_syncPrefix.wireDecode(i->blockFromValue());
   ++i;
 
   // Manager Prefix
-  if (i == m_wire.elements_end() || i->type() != tlv::ManagerPrefix)
+  if (i == m_wire.elements_end())
     throw Error("Missing Manager Prefix");
+  if (i->type() != tlv::ManagerPrefix)
+    throw Error("Expect Manager Prefix but get TLV Type " + std::to_string(i->type()));
   m_manager.wireDecode(i->blockFromValue());
   ++i;
 
   // Participants
-  if (i == m_wire.elements_end() || i->type() != tlv::Participants)
+  if (i == m_wire.elements_end())
     throw Error("Missing Participant");
+  if (i->type() != tlv::Participants)
+    throw Error("Expect Participant but get TLV Type " + std::to_string(i->type()));
 
   Block temp = *i;
   temp.parse();
@@ -178,7 +192,7 @@ ChatroomInfo::wireDecode(const Block& chatroomWire)
     throw Error("Unexpected element");
 
   if (m_participants.empty())
-    throw Error("Missing Participant");
+    throw Error("No participant in the chatroom");
 
   ++i;
 

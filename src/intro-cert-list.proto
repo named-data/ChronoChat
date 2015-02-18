@@ -1,6 +1,0 @@
-package chronochat;
-
-message IntroCertListMsg
-{
-  repeated string certname = 1;
-}

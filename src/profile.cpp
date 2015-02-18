@@ -6,6 +6,7 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #include "profile.hpp"
@@ -76,20 +77,111 @@ Profile::Profile(const Profile& profile)
 {
 }
 
-void
-Profile::encode(std::ostream& os) const
+template<bool T>
+size_t
+Profile::wireEncode(ndn::EncodingImpl<T>& block) const
 {
-  chronochat::ProfileMsg profileMsg;
-  profileMsg << (*this);
-  profileMsg.SerializeToOstream(&os);
+  size_t totalLength = 0;
+
+  // Profile := PROFILE-TYPE TLV-LENGTH
+  //             ProfileEntry+
+  //
+  // ProfileEntry := PROFILEENTRY-TYPE TLV-LENGTH
+  //                   Oid
+  //                   EntryData
+  //
+  // Oid := OID-TYPE TLV-LENGTH
+  //            String
+  //
+  // EntryData := ENTRYDATA-TYPE TLV-LENGTH
+  //                  String
+
+  // Entries
+  size_t entryLength = 0;
+  for (map<string, string>::const_reverse_iterator it = m_entries.rbegin();
+       it != m_entries.rend(); it++) {
+    // Entry Data
+    const uint8_t* dataWire = reinterpret_cast<const uint8_t*>(it->second.c_str());
+    entryLength += block.prependByteArrayBlock(tlv::EntryData, dataWire, it->second.length());
+    // Oid
+    const uint8_t* oidWire = reinterpret_cast<const uint8_t*>(it->first.c_str());
+    entryLength += block.prependByteArrayBlock(tlv::Oid, oidWire, it->first.length());
+    entryLength += block.prependVarNumber(entryLength);
+    entryLength += block.prependVarNumber(tlv::ProfileEntry);
+    totalLength += entryLength;
+    entryLength = 0;
+  }
+
+  // Profile
+  totalLength += block.prependVarNumber(totalLength);
+  totalLength += block.prependVarNumber(tlv::Profile);
+
+  return totalLength;
+}
+
+
+
+const Block&
+Profile::wireEncode() const
+{
+  ndn::EncodingEstimator estimator;
+  size_t estimatedSize = wireEncode(estimator);
+
+  ndn::EncodingBuffer buffer(estimatedSize, 0);
+  wireEncode(buffer);
+
+  m_wire = buffer.block();
+  m_wire.parse();
+
+  return m_wire;
 }
 
 void
-Profile::decode(std::istream& is)
+Profile::wireDecode(const Block& profileWire)
 {
-  chronochat::ProfileMsg profileMsg;
-  profileMsg.ParseFromIstream(&is);
-  profileMsg >> (*this);
+  m_wire = profileWire;
+  m_wire.parse();
+
+  if (m_wire.type() != tlv::Profile)
+    throw Error("Unexpected TLV number when decoding profile packet");
+
+  Block::element_const_iterator i = m_wire.elements_begin();
+  if (i == m_wire.elements_end())
+    throw Error("Missing Profile Entry");
+  if (i->type() != tlv::ProfileEntry)
+    throw Error("Expect Profile Entry but get TLV Type " + std::to_string(i->type()));
+
+  while (i != m_wire.elements_end() && i->type() == tlv::ProfileEntry) {
+    Block temp = *i;
+    temp.parse();
+    Block::element_const_iterator j = temp.elements_begin();
+    if (j == temp.elements_end())
+      throw Error("Missing Oid");
+    if (j->type() != tlv::Oid)
+      throw Error("Expect Oid but get TLV Type" + std::to_string(j->type()));
+
+    string Oid = std::string(reinterpret_cast<const char* >(j->value()),
+                             j->value_size());
+    ++j;
+    if (j == temp.elements_end())
+      throw Error("Missing EntryData");
+    if (j->type() != tlv::EntryData)
+      throw Error("Expect EntryData but get TLV Type " + std::to_string(j->type()));
+
+    string EntryData = std::string(reinterpret_cast<const char* >(j->value()),
+                                   j->value_size());
+    ++j;
+    if (j != temp.elements_end()) {
+      throw Error("Unexpected element");
+    }
+    m_entries[Oid] = EntryData;
+    ++i;
+  }
+
+  if (i != m_wire.elements_end()) {
+      throw Error("Unexpected element");
+  }
+
 }
 
 bool
@@ -113,29 +205,6 @@ bool
 Profile::operator!=(const Profile& profile) const
 {
   return !(*this == profile);
-}
-
-chronochat::ProfileMsg&
-operator<<(chronochat::ProfileMsg& profileMsg, const Profile& profile)
-{
-;
-  for (map<string, string>::const_iterator it = profile.begin(); it != profile.end(); it++) {
-    chronochat::ProfileMsg::ProfileEntry* profileEntry = profileMsg.add_entry();
-    profileEntry->set_oid(it->first);
-    profileEntry->set_data(it->second);
-  }
-  return profileMsg;
-}
-
-chronochat::ProfileMsg&
-operator>>(chronochat::ProfileMsg& profileMsg, Profile& profile)
-{
-  for (int i = 0; i < profileMsg.entry_size(); i++) {
-    const chronochat::ProfileMsg::ProfileEntry& profileEntry = profileMsg.entry(i);
-    profile[profileEntry.oid()] = profileEntry.data();
-  }
-
-  return profileMsg;
 }
 
 } // namespace chronochat

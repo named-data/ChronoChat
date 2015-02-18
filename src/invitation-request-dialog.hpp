@@ -8,8 +8,8 @@
  *         Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
-#ifndef CHRONOS_INVITATION_REQUEST_DIALOG_HPP
-#define CHRONOS_INVITATION_REQUEST_DIALOG_HPP
+#ifndef CHRONOCHAT_INVITATION_REQUEST_DIALOG_HPP
+#define CHRONOCHAT_INVITATION_REQUEST_DIALOG_HPP
 
 #include <QDialog>
 
@@ -56,4 +56,4 @@ private:
 
 } // namespace chronochat
 
-#endif // CHRONOS_INVITATION_REQUEST_DIALOG_HPP
+#endif // CHRONOCHAT_INVITATION_REQUEST_DIALOG_HPP

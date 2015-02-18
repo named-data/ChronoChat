@@ -6,6 +6,7 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #ifndef CHRONOCHAT_PROFILE_HPP
@@ -13,13 +14,28 @@
 
 #include "common.hpp"
 
+#include "tlv.hpp"
+#include <ndn-cxx/util/concepts.hpp>
+#include <ndn-cxx/encoding/block.hpp>
+#include <ndn-cxx/encoding/encoding-buffer.hpp>
 #include <ndn-cxx/security/identity-certificate.hpp>
-#include "profile.pb.h"
 
 namespace chronochat {
 
 class Profile
 {
+
+public:
+  class Error : public std::runtime_error
+  {
+  public:
+    explicit
+    Error(const std::string& what)
+      : std::runtime_error(what)
+    {
+    }
+  };
+
 public:
   typedef std::map<std::string, std::string>::iterator iterator;
   typedef std::map<std::string, std::string>::const_iterator const_iterator;
@@ -41,6 +57,12 @@ public:
   ~Profile()
   {
   }
+
+  const Block&
+  wireEncode() const;
+
+  void
+  wireDecode(const Block& profileWire);
 
   std::string&
   operator[](const std::string& profileKey)
@@ -82,12 +104,6 @@ public:
     return m_entries.end();
   }
 
-  void
-  encode(std::ostream& os) const;
-
-  void
-  decode(std::istream& is);
-
   Name
   getIdentityName() const
   {
@@ -101,6 +117,12 @@ public:
   operator!=(const Profile& profile) const;
 
 private:
+  template<bool T>
+  size_t
+  wireEncode(ndn::EncodingImpl<T>& block) const;
+
+
+private:
   static const std::string OID_NAME;
   static const std::string OID_ORG;
   static const std::string OID_GROUP;
@@ -108,14 +130,10 @@ private:
   static const std::string OID_ADVISOR;
   static const std::string OID_EMAIL;
 
+  mutable Block m_wire;
+
   std::map<std::string, std::string> m_entries;
 };
-
-chronochat::ProfileMsg&
-operator<<(chronochat::ProfileMsg& msg, const Profile& profile);
-
-chronochat::ProfileMsg&
-operator>>(chronochat::ProfileMsg& msg, Profile& profile);
 
 } // namespace chronochat
 

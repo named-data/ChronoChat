@@ -6,13 +6,14 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #ifndef CHRONOCHAT_CONTACT_STORAGE_HPP
 #define CHRONOCHAT_CONTACT_STORAGE_HPP
 
 #include "contact.hpp"
-#include "endorse-collection.pb.h"
+#include "endorse-collection.hpp"
 #include <sqlite3.h>
 
 namespace chronochat {

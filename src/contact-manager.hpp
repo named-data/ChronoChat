@@ -6,6 +6,7 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #ifndef CHRONOCHAT_CONTACT_MANAGER_HPP
@@ -18,8 +19,8 @@
 #include "contact-storage.hpp"
 #include "endorse-certificate.hpp"
 #include "profile.hpp"
-#include "endorse-info.pb.h"
-#include "endorse-collection.pb.h"
+#include "endorse-info.hpp"
+#include "endorse-collection.hpp"
 #include <ndn-cxx/security/key-chain.hpp>
 #include <ndn-cxx/security/validator.hpp>
 #include <boost/thread/locks.hpp>
@@ -63,7 +64,7 @@ private:
   fetchCollectEndorse(const Name& identity);
 
   void
-  fetchEndorseCertificateInternal(const Name& identity, int certIndex);
+  fetchEndorseCertificateInternal(const Name& identity, size_t certIndex);
 
   void
   prepareEndorseInfo(const Name& identity);
@@ -97,12 +98,13 @@ private:
   // PROFILE-CERT: endorse-certificate
   void
   onEndorseCertificateInternal(const Interest& interest, Data& data,
-                               const Name& identity, int certIndex, std::string hash);
+                               const Name& identity, size_t certIndex,
+                               std::string hash);
 
   void
   onEndorseCertificateInternalTimeout(const Interest& interest,
                                       const Name& identity,
-                                      int certIndex);
+                                      size_t certIndex);
 
   // Collect endorsement
   void
@@ -181,7 +183,7 @@ private:
 
 signals:
   void
-  contactEndorseInfoReady(const chronochat::EndorseInfo& endorseInfo);
+  contactEndorseInfoReady(const EndorseInfo& endorseInfo);
 
   void
   contactInfoFetchFailed(const QString& identity);
@@ -257,7 +259,7 @@ private:
     shared_ptr<EndorseCertificate> m_selfEndorseCert;
     shared_ptr<EndorseCollection> m_endorseCollection;
     std::vector<shared_ptr<EndorseCertificate> > m_endorseCertList;
-    shared_ptr<chronochat::EndorseInfo> m_endorseInfo;
+    shared_ptr<EndorseInfo> m_endorseInfo;
   };
 
   typedef std::map<Name, FetchedInfo> BufferedContacts;
@@ -282,10 +284,10 @@ private:
   const ndn::RegisteredPrefixId* m_dnsListenerId;
 
   RecLock m_collectCountMutex;
-  int m_collectCount;
+  size_t m_collectCount;
 
   RecLock m_idCertCountMutex;
-  int m_idCertCount;
+  size_t m_idCertCount;
 };
 
 } // namespace chronochat

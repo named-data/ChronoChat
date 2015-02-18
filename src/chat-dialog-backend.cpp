@@ -267,20 +267,23 @@ ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data,
                                    bool needDisplay,
                                    bool isValidated)
 {
-  SyncDemo::ChatMessage msg;
+  ChatMessage msg;
 
-  if (!msg.ParseFromArray(data->getContent().value(), data->getContent().value_size())) {
+  try {
+    msg.wireDecode(data->getContent().blockFromValue());
+  }
+  catch (tlv::Error) {
     _LOG_DEBUG("Errrrr.. Can not parse msg with name: " <<
                data->getName() << ". what is happening?");
     // nasty stuff: as a remedy, we'll form some standard msg for inparsable msgs
-    msg.set_from("inconnu");
-    msg.set_type(SyncDemo::ChatMessage::OTHER);
+    msg.setNick("inconnu");
+    msg.setMsgType(ChatMessage::OTHER);
     return;
   }
 
   Name remoteSessionPrefix = data->getName().getPrefix(-1);
 
-  if (msg.type() == SyncDemo::ChatMessage::LEAVE) {
+  if (msg.getMsgType() == ChatMessage::LEAVE) {
     BackendRoster::iterator it = m_roster.find(remoteSessionPrefix);
 
     if (it != m_roster.end()) {
@@ -290,8 +293,8 @@ ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data,
 
       // notify frontend to remove the remote session (node)
       emit sessionRemoved(QString::fromStdString(remoteSessionPrefix.toUri()),
-                          QString::fromStdString(msg.from()),
-                          msg.timestamp());
+                          QString::fromStdString(msg.getNick()),
+                          msg.getTimestamp());
 
       // remove roster entry
       m_roster.erase(remoteSessionPrefix);
@@ -321,28 +324,28 @@ ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data,
                                       this, remoteSessionPrefix));
 
     // If chat message, notify the frontend
-    if (msg.type() == SyncDemo::ChatMessage::CHAT) {
+    if (msg.getMsgType() == ChatMessage::CHAT) {
       if (isValidated)
-        emit chatMessageReceived(QString::fromStdString(msg.from()),
-                                 QString::fromStdString(msg.data()),
-                                 msg.timestamp());
+        emit chatMessageReceived(QString::fromStdString(msg.getNick()),
+                                 QString::fromStdString(msg.getData()),
+                                 msg.getTimestamp());
       else
-        emit chatMessageReceived(QString::fromStdString(msg.from() + " (Unverified)"),
-                                 QString::fromStdString(msg.data()),
-                                 msg.timestamp());
+        emit chatMessageReceived(QString::fromStdString(msg.getNick() + " (Unverified)"),
+                                 QString::fromStdString(msg.getData()),
+                                 msg.getTimestamp());
     }
 
     // Notify frontend to plot notification on DigestTree.
 
     // If we haven't got any message from this session yet.
     if (m_roster[remoteSessionPrefix].hasNick == false) {
-      m_roster[remoteSessionPrefix].userNick = msg.from();
+      m_roster[remoteSessionPrefix].userNick = msg.getNick();
       m_roster[remoteSessionPrefix].hasNick = true;
 
       emit messageReceived(QString::fromStdString(remoteSessionPrefix.toUri()),
-                           QString::fromStdString(msg.from()),
+                           QString::fromStdString(msg.getNick()),
                            seqNo,
-                           msg.timestamp(),
+                           msg.getTimestamp(),
                            true);
 
       emit addInRoster(remoteSessionPrefix.getPrefix(IDENTITY_OFFSET),
@@ -350,9 +353,9 @@ ChatDialogBackend::processChatData(const ndn::shared_ptr<const ndn::Data>& data,
     }
     else
       emit messageReceived(QString::fromStdString(remoteSessionPrefix.toUri()),
-                           QString::fromStdString(msg.from()),
+                           QString::fromStdString(msg.getNick()),
                            seqNo,
-                           msg.timestamp(),
+                           msg.getTimestamp(),
                            false);
   }
 }
@@ -376,21 +379,14 @@ ChatDialogBackend::remoteSessionTimeout(const Name& sessionPrefix)
 }
 
 void
-ChatDialogBackend::sendMsg(SyncDemo::ChatMessage& msg)
+ChatDialogBackend::sendMsg(ChatMessage& msg)
 {
   // send msg
-  ndn::OBufferStream os;
-  msg.SerializeToOstream(&os);
-
-  if (!msg.IsInitialized()) {
-    _LOG_DEBUG("Errrrr.. msg was not probally initialized " << __FILE__ <<
-               ":" << __LINE__ << ". what is happening?");
-    abort();
-  }
+  ndn::Block buf = msg.wireEncode();
 
   uint64_t nextSequence = m_sock->getLogic().getSeqNo() + 1;
 
-  m_sock->publishData(os.buf()->buf(), os.buf()->size(), FRESHNESS_PERIOD);
+  m_sock->publishData(buf.wire(), buf.size(), FRESHNESS_PERIOD);
 
   std::vector<NodeInfo> nodeInfos;
   Name sessionName = m_sock->getLogic().getSessionName();
@@ -402,10 +398,10 @@ ChatDialogBackend::sendMsg(SyncDemo::ChatMessage& msg)
                        QString::fromStdString(getHexEncodedDigest(m_sock->getRootDigest())));
 
   emit messageReceived(QString::fromStdString(sessionName.toUri()),
-                       QString::fromStdString(msg.from()),
+                       QString::fromStdString(msg.getNick()),
                        nextSequence,
-                       msg.timestamp(),
-                       msg.type() == SyncDemo::ChatMessage::JOIN);
+                       msg.getTimestamp(),
+                       msg.getMsgType() == ChatMessage::JOIN);
 }
 
 void
@@ -413,8 +409,8 @@ ChatDialogBackend::sendJoin()
 {
   m_joined = true;
 
-  SyncDemo::ChatMessage msg;
-  prepareControlMessage(msg, SyncDemo::ChatMessage::JOIN);
+  ChatMessage msg;
+  prepareControlMessage(msg, ChatMessage::JOIN);
   sendMsg(msg);
 
   m_helloEventId = m_scheduler->scheduleEvent(HELLO_INTERVAL,
@@ -425,8 +421,8 @@ ChatDialogBackend::sendJoin()
 void
 ChatDialogBackend::sendHello()
 {
-  SyncDemo::ChatMessage msg;
-  prepareControlMessage(msg, SyncDemo::ChatMessage::HELLO);
+  ChatMessage msg;
+  prepareControlMessage(msg, ChatMessage::HELLO);
   sendMsg(msg);
 
   m_helloEventId = m_scheduler->scheduleEvent(HELLO_INTERVAL,
@@ -436,8 +432,8 @@ ChatDialogBackend::sendHello()
 void
 ChatDialogBackend::sendLeave()
 {
-  SyncDemo::ChatMessage msg;
-  prepareControlMessage(msg, SyncDemo::ChatMessage::LEAVE);
+  ChatMessage msg;
+  prepareControlMessage(msg, ChatMessage::LEAVE);
   sendMsg(msg);
 
   // get my own identity with routable prefix by getPrefix(-2)
@@ -449,27 +445,27 @@ ChatDialogBackend::sendLeave()
 }
 
 void
-ChatDialogBackend::prepareControlMessage(SyncDemo::ChatMessage& msg,
-                                         SyncDemo::ChatMessage::ChatMessageType type)
+ChatDialogBackend::prepareControlMessage(ChatMessage& msg,
+                                         ChatMessage::ChatMessageType type)
 {
-  msg.set_from(m_nick);
-  msg.set_to(m_chatroomName);
+  msg.setNick(m_nick);
+  msg.setChatroomName(m_chatroomName);
   int32_t seconds =
     static_cast<int32_t>(time::toUnixTimestamp(time::system_clock::now()).count() / 1000);
-  msg.set_timestamp(seconds);
-  msg.set_type(type);
+  msg.setTimestamp(seconds);
+  msg.setMsgType(type);
 }
 
 void
 ChatDialogBackend::prepareChatMessage(const QString& text,
                                       time_t timestamp,
-                                      SyncDemo::ChatMessage &msg)
+                                      ChatMessage &msg)
 {
-  msg.set_from(m_nick);
-  msg.set_to(m_chatroomName);
-  msg.set_data(text.toStdString());
-  msg.set_timestamp(timestamp);
-  msg.set_type(SyncDemo::ChatMessage::CHAT);
+  msg.setNick(m_nick);
+  msg.setChatroomName(m_chatroomName);
+  msg.setData(text.toStdString());
+  msg.setTimestamp(timestamp);
+  msg.setMsgType(ChatMessage::CHAT);
 }
 
 void
@@ -502,13 +498,13 @@ ChatDialogBackend::getHexEncodedDigest(ndn::ConstBufferPtr digest)
 void
 ChatDialogBackend::sendChatMessage(QString text, time_t timestamp)
 {
-  SyncDemo::ChatMessage msg;
+  ChatMessage msg;
   prepareChatMessage(text, timestamp, msg);
   sendMsg(msg);
 
-  emit chatMessageReceived(QString::fromStdString(msg.from()),
-                           QString::fromStdString(msg.data()),
-                           msg.timestamp());
+  emit chatMessageReceived(QString::fromStdString(msg.getNick()),
+                           QString::fromStdString(msg.getData()),
+                           msg.getTimestamp());
 }
 
 void

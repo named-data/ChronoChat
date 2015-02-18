@@ -6,12 +6,14 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #include "endorse-certificate.hpp"
-#include "endorse-extension.pb.h"
 #include <boost/iostreams/stream.hpp>
 #include <ndn-cxx/encoding/buffer-stream.hpp>
+#include "endorse-extension.hpp"
+#include <list>
 
 namespace chronochat {
 
@@ -30,20 +32,21 @@ const OID EndorseCertificate::ENDORSE_EXT_OID("1.3.6.1.5.32.2.2");
 
 const vector<string> EndorseCertificate::DEFAULT_ENDORSE_LIST;
 
-chronochat::EndorseExtensionMsg&
-operator<<(chronochat::EndorseExtensionMsg& endorseExtension, const vector<string>& endorseList)
+EndorseExtension&
+operator<<(EndorseExtension& endorseExtension, const vector<string>& endorseList)
 {
-  for (vector<string>::const_iterator it = endorseList.begin(); it != endorseList.end(); it++)
-    endorseExtension.add_endorseentry()->set_name(*it);
+  for (const auto& entry : endorseList)
+    endorseExtension.addEntry(entry);
 
   return endorseExtension;
 }
 
-chronochat::EndorseExtensionMsg&
-operator>>(chronochat::EndorseExtensionMsg& endorseExtension, vector<string>& endorseList)
+EndorseExtension&
+operator>>(EndorseExtension& endorseExtension, vector<string>& endorseList)
 {
-  for (int i = 0; i < endorseExtension.endorseentry_size(); i ++)
-    endorseList.push_back(endorseExtension.endorseentry(i).name());
+  const std::list<string>& endorseEntries = endorseExtension.getEntries();
+  for (const auto& entry: endorseEntries)
+    endorseList.push_back(entry);
 
   return endorseExtension;
 }
@@ -67,15 +70,15 @@ EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate
   addSubjectDescription(CertificateSubjectDescription(OID("2.5.4.41"), m_keyName.toUri()));
   setPublicKeyInfo(kskCertificate.getPublicKeyInfo());
 
-  OBufferStream profileStream;
-  m_profile.encode(profileStream);
-  addExtension(CertificateExtension(PROFILE_EXT_OID, true, *profileStream.buf()));
+  Block profileWire = m_profile.wireEncode();
+  addExtension(CertificateExtension(PROFILE_EXT_OID, true, ndn::Buffer(profileWire.wire(),
+                                                                       profileWire.size())));
 
-  OBufferStream endorseStream;
-  chronochat::EndorseExtensionMsg endorseExtension;
+  EndorseExtension endorseExtension;
   endorseExtension << m_endorseList;
-  endorseExtension.SerializeToOstream(&endorseStream);
-  addExtension(CertificateExtension(ENDORSE_EXT_OID, true, *endorseStream.buf()));
+  Block endorseWire = endorseExtension.wireEncode();
+  addExtension(CertificateExtension(ENDORSE_EXT_OID, true, ndn::Buffer(endorseWire.wire(),
+                                                                       endorseWire.size())));
 
   encode();
 }
@@ -98,15 +101,15 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
   addSubjectDescription(CertificateSubjectDescription(OID("2.5.4.41"), m_keyName.toUri()));
   setPublicKeyInfo(endorseCertificate.getPublicKeyInfo());
 
-  OBufferStream profileStream;
-  m_profile.encode(profileStream);
-  addExtension(CertificateExtension(PROFILE_EXT_OID, true, *profileStream.buf()));
+  Block profileWire = m_profile.wireEncode();
+  addExtension(CertificateExtension(PROFILE_EXT_OID, true, ndn::Buffer(profileWire.wire(),
+                                                                       profileWire.size())));
 
-  OBufferStream endorseStream;
-  chronochat::EndorseExtensionMsg endorseExtension;
+  EndorseExtension endorseExtension;
   endorseExtension << m_endorseList;
-  endorseExtension.SerializeToOstream(&endorseStream);
-  addExtension(CertificateExtension(ENDORSE_EXT_OID, true, *endorseStream.buf()));
+  Block endorseWire = endorseExtension.wireEncode();
+  addExtension(CertificateExtension(ENDORSE_EXT_OID, true, ndn::Buffer(endorseWire.wire(),
+                                                                       endorseWire.size())));
 
   encode();
 }
@@ -133,15 +136,15 @@ EndorseCertificate::EndorseCertificate(const Name& keyName,
   addSubjectDescription(CertificateSubjectDescription(OID("2.5.4.41"), m_keyName.toUri()));
   setPublicKeyInfo(key);
 
-  OBufferStream profileStream;
-  m_profile.encode(profileStream);
-  addExtension(CertificateExtension(PROFILE_EXT_OID, true, *profileStream.buf()));
+  Block profileWire = m_profile.wireEncode();
+  addExtension(CertificateExtension(PROFILE_EXT_OID, true, ndn::Buffer(profileWire.wire(),
+                                                                       profileWire.size())));
 
-  OBufferStream endorseStream;
-  chronochat::EndorseExtensionMsg endorseExtension;
+  EndorseExtension endorseExtension;
   endorseExtension << m_endorseList;
-  endorseExtension.SerializeToOstream(&endorseStream);
-  addExtension(CertificateExtension(ENDORSE_EXT_OID, true, *endorseStream.buf()));
+  Block endorseWire = endorseExtension.wireEncode();
+  addExtension(CertificateExtension(ENDORSE_EXT_OID, true, ndn::Buffer(endorseWire.wire(),
+                                                                       endorseWire.size())));
 
   encode();
 }
@@ -167,18 +170,13 @@ EndorseCertificate::EndorseCertificate(const Data& data)
   m_signer.wireDecode(dataName.get(-2).blockFromValue());
 
 
-  for (ExtensionList::iterator it = m_extensionList.begin() ; it != m_extensionList.end(); it++) {
-    if (PROFILE_EXT_OID == it->getOid()) {
-      boost::iostreams::stream<boost::iostreams::array_source> is
-        (reinterpret_cast<const char*>(it->getValue().buf()), it->getValue().size());
-      m_profile.decode(is);
+  for (const auto& entry : m_extensionList) {
+    if (PROFILE_EXT_OID == entry.getOid()) {
+      m_profile.wireDecode(Block(entry.getValue().buf(), entry.getValue().size()));
     }
-    if (ENDORSE_EXT_OID == it->getOid()) {
-      chronochat::EndorseExtensionMsg endorseExtension;
-
-      boost::iostreams::stream<boost::iostreams::array_source> is
-        (reinterpret_cast<const char*>(it->getValue().buf()), it->getValue().size());
-      endorseExtension.ParseFromIstream(&is);
+    if (ENDORSE_EXT_OID == entry.getOid()) {
+      EndorseExtension endorseExtension;
+      endorseExtension.wireDecode(Block(entry.getValue().buf(), entry.getValue().size()));
 
       endorseExtension >> m_endorseList;
     }

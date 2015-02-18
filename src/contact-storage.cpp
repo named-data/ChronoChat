@@ -6,6 +6,7 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ * Author: Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #include "contact-storage.hpp"
@@ -15,7 +16,7 @@
 #include "logging.h"
 
 
-// INIT_LOGGER ("chronos.ContactStorage");
+// INIT_LOGGER ("chronochat.ContactStorage");
 
 namespace chronochat {
 
@@ -308,9 +309,7 @@ ContactStorage::getCollectEndorse(EndorseCollection& endorseCollection)
       StringSource(sqlite3_column_text(stmt, 1), sqlite3_column_bytes (stmt, 1), true,
                    new HashFilter(hash, new FileSink(ss)));
     }
-    EndorseCollection::Endorsement* endorsement = endorseCollection.add_endorsement();
-    endorsement->set_certname(certName);
-    endorsement->set_hash(ss.str());
+    endorseCollection.addCollectionEntry(Name(certName), ss.str());
   }
 
   sqlite3_finalize(stmt);

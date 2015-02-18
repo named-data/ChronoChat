@@ -15,7 +15,7 @@
 #include <QTableWidgetItem>
 
 #ifndef Q_MOC_RUN
-#include "endorse-info.pb.h"
+#include "endorse-info.hpp"
 #endif
 
 namespace Ui {
@@ -36,7 +36,7 @@ public:
 
 public slots:
   void
-  onContactEndorseInfoReady(const chronochat::EndorseInfo& endorseInfo);
+  onContactEndorseInfoReady(const EndorseInfo& endorseInfo);
 
 private slots:
   void

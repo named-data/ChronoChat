@@ -74,22 +74,21 @@ AddContactPanel::onAddClicked()
 }
 
 void
-AddContactPanel::onContactEndorseInfoReady(const chronochat::EndorseInfo& endorseInfo)
+AddContactPanel::onContactEndorseInfoReady(const EndorseInfo& endorseInfo)
 {
-  int entrySize = endorseInfo.endorsement_size();
-
-  for (int rowCount = 0; rowCount < entrySize; rowCount++) {
+  std::vector<EndorseInfo::Endorsement> endorsements = endorseInfo.getEndorsements();
+  for (size_t rowCount = 0; rowCount < endorsements.size(); rowCount++) {
     ui->infoView->insertRow(rowCount);
     QTableWidgetItem* type =
-      new QTableWidgetItem(QString::fromStdString(endorseInfo.endorsement(rowCount).type()));
+      new QTableWidgetItem(QString::fromStdString(endorsements[rowCount].type));
     ui->infoView->setItem(rowCount, 0, type);
 
     QTableWidgetItem* value =
-      new QTableWidgetItem(QString::fromStdString(endorseInfo.endorsement(rowCount).value()));
+      new QTableWidgetItem(QString::fromStdString(endorsements[rowCount].value));
     ui->infoView->setItem(rowCount, 1, value);
 
     QTableWidgetItem* endorse =
-      new QTableWidgetItem(QString::fromStdString(endorseInfo.endorsement(rowCount).endorse()));
+      new QTableWidgetItem(QString::fromStdString(endorsements[rowCount].count));
     ui->infoView->setItem(rowCount, 2, endorse);
   }
 }

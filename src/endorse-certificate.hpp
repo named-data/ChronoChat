@@ -6,6 +6,7 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #ifndef CHRONOCHAT_ENDORSE_CERTIFICATE_HPP

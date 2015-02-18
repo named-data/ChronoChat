@@ -24,17 +24,10 @@ BOOST_AUTO_TEST_CASE(EncodeDecodeProfile)
   profile["name"] = "Yingdi Yu";
   profile["school"] = "UCLA";
 
-  ndn::OBufferStream os;
-  profile.encode(os);
-
-  ndn::ConstBufferPtr encoded = os.buf();
-
-  boost::iostreams::stream
-    <boost::iostreams::array_source> is(reinterpret_cast<const char*>(encoded->buf()),
-                                        encoded->size ());
+  Block profileWire = profile.wireEncode();
 
   Profile decodedProfile;
-  decodedProfile.decode(is);
+  decodedProfile.wireDecode(profileWire);
 
   BOOST_CHECK_EQUAL(decodedProfile.getIdentityName().toUri(), string("/ndn/ucla/yingdi"));
   BOOST_CHECK_EQUAL(decodedProfile["name"], string("Yingdi Yu"));

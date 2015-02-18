@@ -6,6 +6,7 @@
  * BSD license, See the LICENSE file for more information
  *
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #if __clang__
@@ -156,15 +157,15 @@ ContactManager::fetchCollectEndorse(const Name& identity)
 }
 
 void
-ContactManager::fetchEndorseCertificateInternal(const Name& identity, int certIndex)
+ContactManager::fetchEndorseCertificateInternal(const Name& identity, size_t certIndex)
 {
   shared_ptr<EndorseCollection> endorseCollection =
     m_bufferedContacts[identity].m_endorseCollection;
 
-  if(certIndex >= endorseCollection->endorsement_size())
+  if(certIndex >= endorseCollection->getCollectionEntries().size())
     prepareEndorseInfo(identity);
 
-  Name interestName(endorseCollection->endorsement(certIndex).certname());
+  Name interestName(endorseCollection->getCollectionEntries()[certIndex].certName);
 
   Interest interest(interestName);
   interest.setInterestLifetime(time::milliseconds(1000));
@@ -173,7 +174,7 @@ ContactManager::fetchEndorseCertificateInternal(const Name& identity, int certIn
   m_face.expressInterest(interest,
                          bind(&ContactManager::onEndorseCertificateInternal,
                               this, _1, _2, identity, certIndex,
-                              endorseCollection->endorsement(certIndex).hash()),
+                              endorseCollection->getCollectionEntries()[certIndex].hash),
                          bind(&ContactManager::onEndorseCertificateInternalTimeout,
                               this, _1, identity, certIndex));
 }
@@ -184,16 +185,16 @@ ContactManager::prepareEndorseInfo(const Name& identity)
   // _LOG_DEBUG("prepareEndorseInfo");
   const Profile& profile = m_bufferedContacts[identity].m_selfEndorseCert->getProfile();
 
-  shared_ptr<chronochat::EndorseInfo> endorseInfo = make_shared<chronochat::EndorseInfo>();
+  shared_ptr<EndorseInfo> endorseInfo = make_shared<EndorseInfo>();
   m_bufferedContacts[identity].m_endorseInfo = endorseInfo;
 
-  map<string, int> endorseCount;
+  map<string, size_t> endorseCount;
   for (Profile::const_iterator pIt = profile.begin(); pIt != profile.end(); pIt++) {
     // _LOG_DEBUG("prepareEndorseInfo: profile[" << pIt->first << "]: " << pIt->second);
     endorseCount[pIt->first] = 0;
   }
 
-  int endorseCertCount = 0;
+  size_t endorseCertCount = 0;
 
   vector<shared_ptr<EndorseCertificate> >::const_iterator cIt =
     m_bufferedContacts[identity].m_endorseCertList.begin();
@@ -222,12 +223,9 @@ ContactManager::prepareEndorseInfo(const Name& identity)
   }
 
   for (Profile::const_iterator pIt = profile.begin(); pIt != profile.end(); pIt++) {
-    chronochat::EndorseInfo::Endorsement* endorsement = endorseInfo->add_endorsement();
-    endorsement->set_type(pIt->first);
-    endorsement->set_value(pIt->second);
     std::stringstream ss;
     ss << endorseCount[pIt->first] << "/" << endorseCertCount;
-    endorsement->set_endorse(ss.str());
+    endorseInfo->addEndorsement(pIt->first, pIt->second, ss.str());
   }
 
   emit contactEndorseInfoReady (*endorseInfo);
@@ -283,14 +281,15 @@ void
 ContactManager::onDnsCollectEndorseValidated(const shared_ptr<const Data>& data,
                                              const Name& identity)
 {
-  shared_ptr<EndorseCollection> endorseCollection = make_shared<EndorseCollection>();
-  if (!endorseCollection->ParseFromArray(data->getContent().value(),
-                                         data->getContent().value_size())) {
+  try {
+    shared_ptr<EndorseCollection> endorseCollection =
+      make_shared<EndorseCollection>(data->getContent());
     m_bufferedContacts[identity].m_endorseCollection = endorseCollection;
     fetchEndorseCertificateInternal(identity, 0);
   }
-  else
+  catch (tlv::Error) {
     prepareEndorseInfo(identity);
+  }
 }
 
 void
@@ -310,7 +309,8 @@ ContactManager::onDnsCollectEndorseTimeoutNotify(const Interest& interest, const
 
 void
 ContactManager::onEndorseCertificateInternal(const Interest& interest, Data& data,
-                                             const Name& identity, int certIndex, string hash)
+                                             const Name& identity, size_t certIndex,
+                                             string hash)
 {
   std::stringstream ss;
   {
@@ -333,7 +333,7 @@ ContactManager::onEndorseCertificateInternal(const Interest& interest, Data& dat
 void
 ContactManager::onEndorseCertificateInternalTimeout(const Interest& interest,
                                                     const Name& identity,
-                                                    int certIndex)
+                                                    size_t certIndex)
 {
   fetchEndorseCertificateInternal(identity, certIndex+1);
 }
@@ -390,7 +390,7 @@ ContactManager::onDnsEndorseeTimeoutNotify(const Interest& interest)
 void
 ContactManager::decreaseCollectStatus()
 {
-  int count;
+  size_t count;
   {
     boost::recursive_mutex::scoped_lock lock(m_collectCountMutex);
     m_collectCount--;
@@ -413,10 +413,7 @@ ContactManager::publishCollectEndorsedDataInDNS()
   EndorseCollection endorseCollection;
   m_contactStorage->getCollectEndorse(endorseCollection);
 
-  OBufferStream os;
-  endorseCollection.SerializeToOstream(&os);
-
-  data->setContent(os.buf());
+  data->setContent(endorseCollection.wireEncode());
   m_keyChain.signByIdentity(*data, m_identity);
 
   m_contactStorage->updateDnsOthersEndorse(*data);
@@ -449,7 +446,7 @@ ContactManager::onIdentityCertTimeoutNotify(const Interest& interest)
 void
 ContactManager::decreaseIdCertCount()
 {
-  int count;
+  size_t count;
   {
     boost::recursive_mutex::scoped_lock lock(m_idCertCountMutex);
     m_idCertCount--;
@@ -753,7 +750,7 @@ ContactManager::onRefreshBrowseContact()
     std::stringstream response_stream(line1);
     string http_version;
     response_stream >> http_version;
-    unsigned int status_code;
+    size_t status_code;
     response_stream >> status_code;
     string status_message;
     std::getline(response_stream,status_message);

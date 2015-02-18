@@ -20,9 +20,9 @@
 #include <boost/lexical_cast.hpp>
 #include <ndn-cxx/util/random.hpp>
 #include "cryptopp.hpp"
-#include "config.pb.h"
-#include "endorse-info.pb.h"
 #include "logging.h"
+#include "conf.hpp"
+#include "endorse-info.hpp"
 #endif
 
 INIT_LOGGER("chronochat.Controller");
@@ -111,9 +111,9 @@ Controller::Controller(QWidget* parent)
   connect(m_addContactPanel, SIGNAL(addContact(const QString&)),
           m_backend.getContactManager(), SLOT(onAddFetchedContact(const QString&)));
   connect(m_backend.getContactManager(),
-          SIGNAL(contactEndorseInfoReady(const chronochat::EndorseInfo&)),
+          SIGNAL(contactEndorseInfoReady(const EndorseInfo&)),
           m_addContactPanel,
-          SLOT(onContactEndorseInfoReady(const chronochat::EndorseInfo&)));
+          SLOT(onContactEndorseInfoReady(const EndorseInfo&)));
 
   // Connection to BrowseContactDialog
   connect(m_browseContactDialog, SIGNAL(directAddClicked()),
@@ -310,12 +310,21 @@ Controller::loadConf()
   fs::create_directories (chronosDir);
 
   std::ifstream is((chronosDir / "config").c_str ());
-  ChronoChat::Conf conf;
-  if (conf.ParseFromIstream(&is)) {
+  Conf conf;
+  bool hasConfig = true;
+  Block confBlock;
+  try {
+    confBlock = ndn::Block::fromStream(is);
+  }
+  catch (tlv::Error) {
+    hasConfig = false;
+  }
+  if (hasConfig) {
+    conf.wireDecode(confBlock);
     m_identity.clear();
-    m_identity.append(conf.identity());
-    if (conf.has_nick())
-      m_nick = conf.nick();
+    m_identity.append(conf.getIdentity());
+    if (conf.getNick().length() != 0)
+      m_nick = conf.getNick();
     else
       m_nick = m_identity.get(-1).toUri();
   }
@@ -338,11 +347,12 @@ Controller::saveConf()
   fs::create_directories (chronosDir);
 
   std::ofstream os((chronosDir / "config").c_str ());
-  ChronoChat::Conf conf;
-  conf.set_identity(m_identity.toUri());
+  Conf conf;
+  conf.setIdentity(m_identity);
   if (!m_nick.empty())
-    conf.set_nick(m_nick);
-  conf.SerializeToOstream(&os);
+    conf.setNick(m_nick);
+  Block confWire = conf.wireEncode();
+  os.write(reinterpret_cast<const char*>(confWire.wire()), confWire.size());
 
   os.close();
 }
