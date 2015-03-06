@@ -14,6 +14,7 @@
 #endif
 
 #include <boost/test/unit_test.hpp>
+#include <boost/filesystem.hpp>
 
 #include <ndn-cxx/security/key-chain.hpp>
 #include <ndn-cxx/encoding/buffer-stream.hpp>
@@ -22,7 +23,8 @@
 #include "cryptopp.hpp"
 #include "endorse-certificate.hpp"
 
-namespace chronos {
+namespace chronochat {
+namespace tests {
 
 using std::vector;
 using std::string;
@@ -156,7 +158,11 @@ BOOST_AUTO_TEST_CASE(ConstructFromIdCert)
   endorseList.push_back("homepage");
   EndorseCertificate endorseCertificate(*idCert, profile, endorseList);
 
-  KeyChain keyChain("sqlite3", "file");
+  boost::filesystem::path keyChainTmpPath =
+    boost::filesystem::path(TEST_CERT_PATH) / "TestEndorseCertificate";
+  KeyChain keyChain(std::string("sqlite3:").append(keyChainTmpPath.string()),
+                    std::string("tpm-file:").append(keyChainTmpPath.string()));
+
   keyChain.signWithSha256(endorseCertificate);
   const Block& endorseDataBlock = endorseCertificate.wireEncode();
 
@@ -190,7 +196,11 @@ BOOST_AUTO_TEST_CASE(ConstructFromEndorseCert)
   Name signer("/EndorseCertificateTests/Singer/ksk-1234567890");
   EndorseCertificate endorseCertificate(rawEndorse, signer, endorseList);
 
-  KeyChain keyChain("sqlite3", "file");
+  boost::filesystem::path keyChainTmpPath =
+    boost::filesystem::path(TEST_CERT_PATH) / "TestEndorseCertificate";
+  KeyChain keyChain(std::string("sqlite3:").append(keyChainTmpPath.string()),
+                    std::string("tpm-file:").append(keyChainTmpPath.string()));
+
   keyChain.signWithSha256(endorseCertificate);
 
   const Block& endorseDataBlock = endorseCertificate.wireEncode();
@@ -214,4 +224,5 @@ BOOST_AUTO_TEST_CASE(ConstructFromEndorseCert)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // namespace chronos
+} // namespace tests
+} // namespace chronochat

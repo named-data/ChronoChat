@@ -11,7 +11,8 @@
 #include "cryptopp.hpp"
 #include <boost/filesystem.hpp>
 
-namespace chronos {
+namespace chronochat {
+namespace tests {
 
 using std::string;
 namespace fs = boost::filesystem;
@@ -32,4 +33,5 @@ BOOST_AUTO_TEST_CASE(InitializeTable)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // namespace chronos
+} // namespace tests
+} // namespace chronochat

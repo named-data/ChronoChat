@@ -2,9 +2,9 @@
 #include <boost/test/unit_test.hpp>
 #include <ndn-cxx/encoding/block.hpp>
 
-namespace chronos {
+namespace chronochat {
 
-namespace test {
+namespace tests {
 
 using std::string;
 
@@ -353,6 +353,6 @@ BOOST_AUTO_TEST_CASE(DecodeChatroomError)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // namespace test
+} // namespace tests
 
-} // namespace chronos
+} // namespace chronochat

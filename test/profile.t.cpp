@@ -10,7 +10,8 @@
 #include "profile.hpp"
 #include <ndn-cxx/encoding/buffer-stream.hpp>
 
-namespace chronos {
+namespace chronochat {
+namespace tests {
 
 using std::string;
 
@@ -42,4 +43,5 @@ BOOST_AUTO_TEST_CASE(EncodeDecodeProfile)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // namespace chronos
+} // namespace tests
+} // namespace chronochat
