@@ -9,6 +9,7 @@
  */
 
 #include <QApplication>
+#include <QTextCodec>
 // #include <QSystemTrayIcon>
 
 #include "controller.hpp"
@@ -41,6 +42,9 @@ public:
 int main(int argc, char *argv[])
 {
   NewApp app(argc, argv);
+
+  QTextCodec::setCodecForCStrings(QTextCodec::codecForName("UTF-8"));
+  QTextCodec::setCodecForTr(QTextCodec::codecForName("UTF-8"));
 
   chronochat::Controller controller;
 
