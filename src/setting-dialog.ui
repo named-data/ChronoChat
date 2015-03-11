@@ -74,7 +74,7 @@
          </font>
         </property>
         <property name="text">
-         <string>routbale prefix:</string>
+         <string>routable prefix:</string>
         </property>
        </widget>
       </item>
