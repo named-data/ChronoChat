@@ -262,24 +262,12 @@ ChatDialog::appendControlMessage(const QString& nick,
 QString
 ChatDialog::formatTime(time_t timestamp)
 {
-  struct tm *tm_time = localtime(&timestamp);
-  int hour = tm_time->tm_hour;
-  QString amOrPM;
-  if (hour > 12) {
-    hour -= 12;
-    amOrPM = "PM";
-  }
-  else {
-    amOrPM = "AM";
-    if (hour == 0) {
-      hour = 12;
-    }
-  }
+  struct tm* localTime = localtime(&timestamp);
 
-  char textTime[12];
-  sprintf(textTime, "%d:%02d:%02d %s",
-          hour, tm_time->tm_min, tm_time->tm_sec, amOrPM.toStdString().c_str());
-  return QString(textTime);
+  return QString("%1:%2:%3")
+           .arg(localTime->tm_hour, 2, 10, QChar('0'))
+           .arg(localTime->tm_min, 2, 10, QChar('0'))
+           .arg(localTime->tm_sec, 2, 10, QChar('0'));
 }
 
 void
