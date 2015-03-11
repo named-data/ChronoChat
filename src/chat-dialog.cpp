@@ -341,6 +341,7 @@ ChatDialog::addSession(QString sessionPrefix, QString nick, time_t timestamp)
   appendControlMessage(nick, "enters room", timestamp);
   m_scene->updateNick(sessionPrefix, nick);
   m_rosterModel->setStringList(m_scene->getRosterList());
+  fitView();
 }
 
 void
@@ -349,6 +350,7 @@ ChatDialog::removeSession(QString sessionPrefix, QString nick, time_t timestamp)
   appendControlMessage(nick, "leaves room", timestamp);
   m_scene->removeNode(sessionPrefix);
   m_rosterModel->setStringList(m_scene->getRosterList());
+  fitView();
 }
 
 void
@@ -393,6 +395,7 @@ ChatDialog::updateLabels(Name newChatPrefix)
       "QLabel {color: Green; font-size: 12px; font: bold \"Verdana\";}");
   }
   ui->prefixLabel->setText(chatPrefix);
+  fitView();
 }
 
 void

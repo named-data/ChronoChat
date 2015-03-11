@@ -485,13 +485,13 @@ ChatDialogBackend::updateRoutingPrefix(const QString& localRoutingPrefix)
     // Update localPrefix
     m_localRoutingPrefix = newLocalRoutingPrefix;
 
-    updatePrefixes();
-
     m_mutex.lock();
     m_shouldResume = true;
     m_mutex.unlock();
 
     close();
+
+    updatePrefixes();
 
     m_face->getIoService().stop();
   }
