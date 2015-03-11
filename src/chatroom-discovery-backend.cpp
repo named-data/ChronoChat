@@ -61,14 +61,15 @@ ChatroomDiscoveryBackend::run()
 
     m_face->getIoService().run();
 
-    m_mutex.lock();
-    shouldResume = m_shouldResume;
-    m_shouldResume = false;
-    m_mutex.unlock();
+    {
+      std::lock_guard<std::mutex>lock(m_mutex);
+      shouldResume = m_shouldResume;
+      m_shouldResume = false;
+    }
 
   } while (shouldResume);
 
-  std::cerr << "Bye!" << std::endl;
+  std::cerr << "DiscoveryBackend: Bye!" << std::endl;
 }
 
 void
@@ -273,9 +274,10 @@ ChatroomDiscoveryBackend::updateRoutingPrefix(const QString& routingPrefix)
 
     updatePrefixes();
 
-    m_mutex.lock();
-    m_shouldResume = true;
-    m_mutex.unlock();
+    {
+      std::lock_guard<std::mutex>lock(m_mutex);
+      m_shouldResume = true;
+    }
 
     close();
 
@@ -403,9 +405,10 @@ ChatroomDiscoveryBackend::onIdentityUpdated(const QString& identity)
   m_userDiscoveryPrefix.append(m_identity).append("CHRONOCHAT-DISCOVERYDATA");
   updatePrefixes();
 
-  m_mutex.lock();
-  m_shouldResume = true;
-  m_mutex.unlock();
+  {
+    std::lock_guard<std::mutex>lock(m_mutex);
+    m_shouldResume = true;
+  }
 
   close();
 
@@ -439,9 +442,10 @@ ChatroomDiscoveryBackend::onWaitForChatroomInfo(const QString& chatroomName)
 void
 ChatroomDiscoveryBackend::shutdown()
 {
-  m_mutex.lock();
-  m_shouldResume = false;
-  m_mutex.unlock();
+  {
+    std::lock_guard<std::mutex>lock(m_mutex);
+    m_shouldResume = false;
+  }
 
   close();
 

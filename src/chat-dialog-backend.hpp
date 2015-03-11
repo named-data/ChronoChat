@@ -11,12 +11,12 @@
 #define CHRONOCHAT_CHAT_DIALOG_BACKEND_HPP
 
 #include <QThread>
-#include <QMutex>
 
 #ifndef Q_MOC_RUN
 #include "common.hpp"
 #include "chatroom-info.hpp"
 #include "chatbuf.pb.h"
+#include <mutex>
 #include <socket.hpp>
 #endif
 
@@ -165,7 +165,7 @@ private:
 
   BackendRoster m_roster;                // User roster
 
-  QMutex m_mutex;
+  std::mutex m_mutex;
   bool m_shouldResume;
 };
 

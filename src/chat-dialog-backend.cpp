@@ -65,10 +65,11 @@ ChatDialogBackend::run()
 
     m_face->getIoService().run();
 
-    m_mutex.lock();
-    shouldResume = m_shouldResume;
-    m_shouldResume = false;
-    m_mutex.unlock();
+    {
+      std::lock_guard<std::mutex>lock(m_mutex);
+      shouldResume = m_shouldResume;
+      m_shouldResume = false;
+    }
 
   } while (shouldResume);
 
@@ -486,9 +487,10 @@ ChatDialogBackend::updateRoutingPrefix(const QString& localRoutingPrefix)
     // Update localPrefix
     m_localRoutingPrefix = newLocalRoutingPrefix;
 
-    m_mutex.lock();
-    m_shouldResume = true;
-    m_mutex.unlock();
+    {
+      std::lock_guard<std::mutex>lock(m_mutex);
+      m_shouldResume = true;
+    }
 
     close();
 
@@ -501,9 +503,10 @@ ChatDialogBackend::updateRoutingPrefix(const QString& localRoutingPrefix)
 void
 ChatDialogBackend::shutdown()
 {
-  m_mutex.lock();
-  m_shouldResume = false;
-  m_mutex.unlock();
+  {
+    std::lock_guard<std::mutex>lock(m_mutex);
+    m_shouldResume = false;
+  }
 
   close();
 

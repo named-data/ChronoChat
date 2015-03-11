@@ -11,14 +11,14 @@
 #ifndef CHRONOCHAT_CHATROOM_DISCOVERY_BACKEND_HPP
 #define CHRONOCHAT_CHATROOM_DISCOVERY_BACKEND_HPP
 
-#include <ndn-cxx/util/scheduler.hpp>
-#include <boost/random.hpp>
 #include <QThread>
-#include <QMutex>
 
 #ifndef Q_MOC_RUN
 #include "common.hpp"
 #include "chatroom-info.hpp"
+#include <ndn-cxx/util/scheduler.hpp>
+#include <boost/random.hpp>
+#include <mutex>
 #include <socket.hpp>
 #endif
 
@@ -224,7 +224,7 @@ private:
   shared_ptr<chronosync::Socket> m_sock; // SyncSocket
 
   ChatroomList m_chatroomList;
-  QMutex m_mutex;
+  std::mutex m_mutex;
 
   bool m_shouldResume;
 };
