@@ -55,7 +55,7 @@ def configure(conf):
 def build (bld):
     feature_list = 'qt4 cxx'
     if bld.env["WITH_TESTS"]:
-        feature_list += ' cxxshlib'
+        feature_list += ' cxxstlib'
     else:
         feature_list += ' cxxprogram'
 

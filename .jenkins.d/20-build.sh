@@ -18,3 +18,7 @@ sudo ./waf -j1 --color=yes distclean
 
 # Cleanup
 sudo ./waf -j1 --color=yes distclean
+
+# Configure/build in optimized mode with tests
+./waf -j1 --color=yes configure --with-tests
+./waf -j1 --color=yes build
