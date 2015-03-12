@@ -138,6 +138,8 @@ private:
   QStringList m_rosterList;
   QString     m_chatroom;
   QString     m_participant;
+
+  bool m_isParticipant;
 };
 
 } // namespace chronochat

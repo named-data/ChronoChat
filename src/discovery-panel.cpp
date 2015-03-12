@@ -51,6 +51,7 @@ DiscoveryPanel::DiscoveryPanel(QWidget *parent)
   ui->join->setEnabled(false);
   ui->requestInvitation->setEnabled(false);
   ui->InChatroomWarning->clear();
+  m_isParticipant = false;
 }
 
 DiscoveryPanel::~DiscoveryPanel()
@@ -97,6 +98,7 @@ void
 DiscoveryPanel::onChatroomListReady(const QStringList& list)
 {
   m_chatroomList = list;
+  resetPanel();
   m_chatroomListModel->setStringList(m_chatroomList);
 }
 
@@ -111,14 +113,14 @@ DiscoveryPanel::onChatroomInfoReady(const ChatroomInfo& info, bool isParticipant
     {
       ui->TrustModelData->setText(QString("Hierarchical"));
       ui->join->setEnabled(false);
-      ui->requestInvitation->setEnabled(true);
+      ui->requestInvitation->setEnabled(false);
       break;
     }
   case 1:
     {
       ui->TrustModelData->setText(QString("Web Of Trust"));
       ui->join->setEnabled(false);
-      ui->requestInvitation->setEnabled(true);
+      ui->requestInvitation->setEnabled(false);
       break;
     }
   case 0:
@@ -136,7 +138,8 @@ DiscoveryPanel::onChatroomInfoReady(const ChatroomInfo& info, bool isParticipant
     }
   }
   ui->InChatroomWarning->clear();
-  if (isParticipant) {
+  m_isParticipant = isParticipant;
+  if (m_isParticipant) {
     ui->join->setEnabled(false);
     ui->requestInvitation->setEnabled(false);
     ui->InChatroomWarning->setText(QString("You are already in this chatroom"));
@@ -190,6 +193,9 @@ void
 DiscoveryPanel::onSelectedParticipantChanged(const QItemSelection &selected,
                                              const QItemSelection &deselected)
 {
+  if (m_isParticipant)
+    return;
+
   QModelIndexList items = selected.indexes();
   QString participant = m_rosterListModel->data(items.first(), Qt::DisplayRole).toString();
 
@@ -201,10 +207,8 @@ DiscoveryPanel::onSelectedParticipantChanged(const QItemSelection &selected,
       break;
     }
   }
-  if (!participantFound) {
-    emit warning("This should not happen: DiscoveryPanel::onSelectedParticipantChangeds #1");
-    return;
-  }
+  ui->requestInvitation->setEnabled(true);
+  BOOST_ASSERT(participantFound);
 }
 
 void
