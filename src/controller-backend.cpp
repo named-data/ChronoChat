@@ -292,6 +292,9 @@ ControllerBackend::onRequestResponse(const Interest& interest, Data& data)
   Name::Component chatroomName = interestName.at(i+1);
   Block contentBlock = data.getContent();
   int res = ndn::readNonNegativeInteger(contentBlock);
+  if (m_chatDialogList.contains(QString::fromStdString(chatroomName.toUri())))
+    return;
+
   // if data is true,
   if (res == 1)
     emit startChatroom(QString::fromStdString(chatroomName.toUri()), false);
