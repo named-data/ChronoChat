@@ -311,15 +311,9 @@ Controller::loadConf()
 
   std::ifstream is((chronosDir / "config").c_str ());
   Conf conf;
-  bool hasConfig = true;
   Block confBlock;
   try {
     confBlock = ndn::Block::fromStream(is);
-  }
-  catch (tlv::Error) {
-    hasConfig = false;
-  }
-  if (hasConfig) {
     conf.wireDecode(confBlock);
     m_identity.clear();
     m_identity.append(conf.getIdentity());
@@ -328,12 +322,16 @@ Controller::loadConf()
     else
       m_nick = m_identity.get(-1).toUri();
   }
-  else {
-    m_identity.clear();
-    // TODO: change below to system default;
-    m_identity.append("chronochat-tmp-identity")
-      .append(getRandomString());
-
+  catch (tlv::Error) {
+    try {
+      ndn::KeyChain keyChain;
+      m_identity = keyChain.getDefaultIdentity();
+    }
+    catch (ndn::KeyChain::Error) {
+      m_identity.clear();
+      m_identity.append("chronochat-tmp-identity")
+        .append(getRandomString());
+    }
     m_nick = m_identity.get(-1).toUri();
   }
 }
