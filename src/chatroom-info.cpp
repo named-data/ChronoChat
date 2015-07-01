@@ -27,7 +27,7 @@ ChatroomInfo::ChatroomInfo(const Block& chatroomWire)
 
 template<bool T>
 size_t
-ChatroomInfo::wireEncode(ndn::EncodingImpl<T>& block) const
+ChatroomInfo::wireEncode(ndn::EncodingImpl<T>& encoder) const
 {
   size_t totalLength = 0;
 
@@ -57,36 +57,36 @@ ChatroomInfo::wireEncode(ndn::EncodingImpl<T>& block) const
   size_t participantsLength = 0;
   for (std::list<Name>::const_reverse_iterator it = m_participants.rbegin();
        it != m_participants.rend(); ++it) {
-    participantsLength += it->wireEncode(block);
+    participantsLength += it->wireEncode(encoder);
   }
-  participantsLength += block.prependVarNumber(participantsLength);
-  participantsLength += block.prependVarNumber(tlv::Participants);
+  participantsLength += encoder.prependVarNumber(participantsLength);
+  participantsLength += encoder.prependVarNumber(tlv::Participants);
   totalLength += participantsLength;
 
   // Manager Prefix
-  size_t managerLength = m_manager.wireEncode(block);
+  size_t managerLength = m_manager.wireEncode(encoder);
   totalLength += managerLength;
-  totalLength += block.prependVarNumber(managerLength);
-  totalLength += block.prependVarNumber(tlv::ManagerPrefix);
+  totalLength += encoder.prependVarNumber(managerLength);
+  totalLength += encoder.prependVarNumber(tlv::ManagerPrefix);
 
   // Chatroom Sync Prefix
-  size_t chatroomSyncPrefixLength = m_syncPrefix.wireEncode(block);
+  size_t chatroomSyncPrefixLength = m_syncPrefix.wireEncode(encoder);
   totalLength += chatroomSyncPrefixLength;
-  totalLength += block.prependVarNumber(chatroomSyncPrefixLength);
-  totalLength += block.prependVarNumber(tlv::ChatroomPrefix);
+  totalLength += encoder.prependVarNumber(chatroomSyncPrefixLength);
+  totalLength += encoder.prependVarNumber(tlv::ChatroomPrefix);
 
   // Trust Model
-  totalLength += ndn::prependNonNegativeIntegerBlock(block, tlv::TrustModel, m_trustModel);
+  totalLength += prependNonNegativeIntegerBlock(encoder, tlv::TrustModel, m_trustModel);
 
   // Chatroom Name
-  size_t chatroomNameLength = m_chatroomName.wireEncode(block);
+  size_t chatroomNameLength = m_chatroomName.wireEncode(encoder);
   totalLength += chatroomNameLength;
-  totalLength += block.prependVarNumber(chatroomNameLength);
-  totalLength += block.prependVarNumber(tlv::ChatroomName);
+  totalLength += encoder.prependVarNumber(chatroomNameLength);
+  totalLength += encoder.prependVarNumber(tlv::ChatroomName);
 
   // Chatroom Info
-  totalLength += block.prependVarNumber(totalLength);
-  totalLength += block.prependVarNumber(tlv::ChatroomInfo);
+  totalLength += encoder.prependVarNumber(totalLength);
+  totalLength += encoder.prependVarNumber(tlv::ChatroomInfo);
 
   return totalLength;
 }

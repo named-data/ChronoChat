@@ -97,7 +97,7 @@ public:
 private:
   template<bool T>
   size_t
-  wireEncode(ndn::EncodingImpl<T>& block) const;
+  wireEncode(ndn::EncodingImpl<T>& encoder) const;
 
 private:
   mutable Block m_wire;

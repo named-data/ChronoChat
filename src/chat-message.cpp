@@ -25,7 +25,7 @@ ChatMessage::ChatMessage(const Block& chatMsgWire)
 
 template<bool T>
 size_t
-ChatMessage::wireEncode(ndn::EncodingImpl<T>& block) const
+ChatMessage::wireEncode(ndn::EncodingImpl<T>& encoder) const
 {
   // ChatMessage := CHAT-MESSAGE-TYPE TLV-LENGTH
   //                  Nick
@@ -52,29 +52,29 @@ ChatMessage::wireEncode(ndn::EncodingImpl<T>& block) const
   size_t totalLength = 0;
 
   // Timestamp
-  totalLength += ndn::prependNonNegativeIntegerBlock(block, tlv::Timestamp, m_timestamp);
+  totalLength += prependNonNegativeIntegerBlock(encoder, tlv::Timestamp, m_timestamp);
 
   // ChatData
   if (m_msgType == CHAT) {
     const uint8_t* dataWire = reinterpret_cast<const uint8_t*>(m_data.c_str());
-    totalLength += block.prependByteArrayBlock(tlv::ChatData, dataWire, m_data.length());
+    totalLength += encoder.prependByteArrayBlock(tlv::ChatData, dataWire, m_data.length());
   }
 
   // ChatMessageType
-  totalLength += ndn::prependNonNegativeIntegerBlock(block, tlv::ChatMessageType, m_msgType);
+  totalLength += prependNonNegativeIntegerBlock(encoder, tlv::ChatMessageType, m_msgType);
 
   // ChatroomName
   const uint8_t* chatroomWire = reinterpret_cast<const uint8_t*>(m_chatroomName.c_str());
-  totalLength += block.prependByteArrayBlock(tlv::ChatroomName, chatroomWire,
-                                             m_chatroomName.length());
+  totalLength += encoder.prependByteArrayBlock(tlv::ChatroomName, chatroomWire,
+                                               m_chatroomName.length());
 
   // Nick
   const uint8_t* nickWire = reinterpret_cast<const uint8_t*>(m_nick.c_str());
-  totalLength += block.prependByteArrayBlock(tlv::Nick, nickWire, m_nick.length());
+  totalLength += encoder.prependByteArrayBlock(tlv::Nick, nickWire, m_nick.length());
 
   // Chat Message
-  totalLength += block.prependVarNumber(totalLength);
-  totalLength += block.prependVarNumber(tlv::ChatMessage);
+  totalLength += encoder.prependVarNumber(totalLength);
+  totalLength += encoder.prependVarNumber(tlv::ChatMessage);
 
   return totalLength;
 }
