@@ -23,6 +23,7 @@
 #include "validator-invitation.hpp"
 #include <ndn-cxx/security/key-chain.hpp>
 #include <ndn-cxx/util/in-memory-storage-persistent.hpp>
+#include <ndn-cxx/security/validator-null.hpp>
 #include <boost/thread.hpp>
 #include <mutex>
 #endif
@@ -166,6 +167,7 @@ private:
   // Security related;
   ndn::KeyChain m_keyChain;
   ValidatorInvitation m_validator;
+  ndn::ValidatorNull m_nullValidator;
 
   // RegisteredPrefixId
   const ndn::RegisteredPrefixId* m_invitationListenerId;

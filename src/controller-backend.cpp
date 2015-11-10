@@ -386,7 +386,7 @@ ControllerBackend::onUpdateLocalPrefixAction()
 
   ndn::util::SegmentFetcher::fetch(m_face,
                                    interest,
-                                   ndn::util::DontVerifySegment(),
+                                   m_nullValidator,
                                    bind(&ControllerBackend::onLocalPrefix, this, _1),
                                    bind(&ControllerBackend::onLocalPrefixError, this, _1, _2));
 }
