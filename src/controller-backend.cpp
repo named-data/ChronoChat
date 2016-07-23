@@ -1,7 +1,7 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
- *                     Yingdi Yu
+ * Copyright (c) 2013-2016, Regents of the University of California
+ *                          Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -465,9 +465,9 @@ ControllerBackend::onInvitationRequestResponded(const ndn::Name& invitationRespo
 {
   shared_ptr<Data> response = make_shared<Data>(invitationResponseName);
   if (accepted)
-    response->setContent(ndn::nonNegativeIntegerBlock(tlv::Content, 1));
+    response->setContent(ndn::makeNonNegativeIntegerBlock(tlv::Content, 1));
   else
-    response->setContent(ndn::nonNegativeIntegerBlock(tlv::Content, 0));
+    response->setContent(ndn::makeNonNegativeIntegerBlock(tlv::Content, 0));
 
   m_keyChain.signByIdentity(*response, m_identity);
   m_ims.insert(*response);
