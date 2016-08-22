@@ -1,7 +1,7 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
- *                     Yingdi Yu
+ * Copyright (c) 2013-2016, Regents of the University of California
+ *                          Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -14,6 +14,7 @@
 #include <QFile>
 
 #ifndef Q_MOC_RUN
+#include <boost/iostreams/stream.hpp>
 #include <ndn-cxx/util/io.hpp>
 #include <ndn-cxx/security/validator-regex.hpp>
 #include "logging.h"
