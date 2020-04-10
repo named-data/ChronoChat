@@ -5,7 +5,7 @@ ChronoChat is a multiparty chat application that demostrates our synchronization
 
 Note that after you click to close ChronoChat, it will keep running on your system tray. To restore it to normal size window, you have to click on the system tray icon (normally on the upper right corner of your screen). Clicking on the dock won't work for now and is still on the to-do list (because I'm using qt for gui, not the native Cocoa framework).
 
-## Known Issues
+## Known issues
 ---------------
 
 1. When you switch to a new room, you'll temporarily see yourself in two nodes for a minute or so. It won't affect others, just yourself. Hopefully it's not so disturbing.
