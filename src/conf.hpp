@@ -60,7 +60,7 @@ public:
   setNick(const std::string& nick);
 
 private:
-  template<bool T>
+  template<ndn::encoding::Tag T>
   size_t
   wireEncode(ndn::EncodingImpl<T>& block) const;
 

@@ -23,7 +23,7 @@ Conf::Conf(const Block& confWire)
   this->wireDecode(confWire);
 }
 
-template<bool T>
+template<ndn::encoding::Tag T>
 size_t
 Conf::wireEncode(ndn::EncodingImpl<T>& block) const
 {

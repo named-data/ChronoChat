@@ -95,7 +95,7 @@ public:
   setManager(const Name& manager);
 
 private:
-  template<bool T>
+  template<ndn::encoding::Tag T>
   size_t
   wireEncode(ndn::EncodingImpl<T>& encoder) const;
 

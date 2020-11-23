@@ -60,7 +60,7 @@ public:
   addEndorsement(const std::string& type, const std::string& value, const std::string& count);
 
 private:
-  template<bool T>
+  template<ndn::encoding::Tag T>
   size_t
   wireEncode(ndn::EncodingImpl<T>& block) const;
 

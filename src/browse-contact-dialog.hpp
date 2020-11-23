@@ -17,7 +17,7 @@
 #include <QTableWidgetItem>
 
 #ifndef Q_MOC_RUN
-#include <ndn-cxx/security/identity-certificate.hpp>
+#include <ndn-cxx/security/certificate.hpp>
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #endif
@@ -61,7 +61,7 @@ public slots:
   onNameListReady(const QStringList& nameList);
 
   void
-  onIdCertReady(const ndn::IdentityCertificate& idCert);
+  onIdCertReady(const ndn::security::Certificate & idCert);
 
 signals:
   void

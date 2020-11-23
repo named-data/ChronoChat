@@ -14,7 +14,7 @@
 
 #include "common.hpp"
 
-#include <ndn-cxx/security/identity-certificate.hpp>
+#include <ndn-cxx/security/certificate.hpp>
 
 namespace chronochat {
 
@@ -58,7 +58,7 @@ public:
   Invitation(const Name& inviteeNameSpace,
              const std::string& chatroom,
              const Name& inviterRoutingPrefix,
-             const ndn::IdentityCertificate& inviterCertificate);
+             const ndn::security::Certificate& inviterCertificate);
 
   Invitation(const Invitation& invitation);
 
@@ -85,7 +85,7 @@ public:
     return m_inviterRoutingPrefix;
   }
 
-  const ndn::IdentityCertificate&
+  const ndn::security::Certificate&
   getInviterCertificate() const
   {
     return m_inviterCertificate;
@@ -109,7 +109,7 @@ private:
   Name m_inviteeNameSpace;
   std::string m_chatroom;
   Name m_inviterRoutingPrefix;
-  ndn::IdentityCertificate m_inviterCertificate;
+  ndn::security::Certificate m_inviterCertificate;
   uint64_t m_timestamp;
 };
 

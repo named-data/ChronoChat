@@ -18,7 +18,7 @@
 #include "chatroom-info.hpp"
 #include <boost/random.hpp>
 #include <mutex>
-#include <socket.hpp>
+#include <ChronoSync/socket.hpp>
 #include <boost/thread.hpp>
 #endif
 
@@ -30,13 +30,13 @@ public:
   Name chatroomPrefix;
   ChatroomInfo info;
   // For a chatroom's user to check whether his own chatroom is alive
-  ndn::EventId localChatroomTimeoutEventId;
+  ndn::scheduler::EventId localChatroomTimeoutEventId;
   // If the manager no longer exist, set a random timer to compete for manager
-  ndn::EventId managerSelectionTimeoutEventId;
+  ndn::scheduler::EventId managerSelectionTimeoutEventId;
   // For a user to check the status of the chatroom that he is not in.
-  ndn::EventId remoteChatroomTimeoutEventId;
+  ndn::scheduler::EventId remoteChatroomTimeoutEventId;
   // If the user is manager, he will need the helloEventId to keep track of hello message
-  ndn::EventId helloTimeoutEventId;
+  ndn::scheduler::EventId helloTimeoutEventId;
   // To tell whether the user is in this chatroom
   bool isParticipant;
   // To tell whether the user is the manager
@@ -75,7 +75,7 @@ private:
   processSyncUpdate(const std::vector<chronosync::MissingDataInfo>& updates);
 
   void
-  processChatroomData(const ndn::shared_ptr<const ndn::Data>& data);
+  processChatroomData(const ndn::Data& data);
 
   void
   localSessionTimeout(const Name::Component& chatroomName);
@@ -228,7 +228,7 @@ private:
   shared_ptr<ndn::Face> m_face;
 
   unique_ptr<ndn::Scheduler> m_scheduler;            // scheduler
-  ndn::EventId m_refreshPanelId;
+  ndn::scheduler::EventId m_refreshPanelId;
   shared_ptr<chronosync::Socket> m_sock; // SyncSocket
 
   ChatroomList m_chatroomList;

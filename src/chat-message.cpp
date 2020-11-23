@@ -23,7 +23,7 @@ ChatMessage::ChatMessage(const Block& chatMsgWire)
   this->wireDecode(chatMsgWire);
 }
 
-template<bool T>
+template<ndn::encoding::Tag T>
 size_t
 ChatMessage::wireEncode(ndn::EncodingImpl<T>& encoder) const
 {

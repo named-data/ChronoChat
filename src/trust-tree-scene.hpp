@@ -11,7 +11,7 @@
 #ifndef CHRONOCHAT_TRUST_TREE_SCENE_HPP
 #define CHRONOCHAT_TRUST_TREE_SCENE_HPP
 
-#include <QtGui/QGraphicsScene>
+#include <QGraphicsScene>
 #include <QColor>
 #include <QMap>
 
@@ -29,7 +29,7 @@ class TrustTreeScene : public QGraphicsScene
   Q_OBJECT
 
 public:
-  TrustTreeScene(QWidget* parent = 0);
+  TrustTreeScene(QObject* parent = 0);
 
   void
   plotTrustTree(chronochat::TrustTreeNodeList& nodeList);

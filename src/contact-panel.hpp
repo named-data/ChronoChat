@@ -14,6 +14,7 @@
 #include <QDialog>
 #include <QStringListModel>
 #include <QSqlTableModel>
+#include <QItemSelection>
 
 #include "set-alias-dialog.hpp"
 #include "endorse-combobox-delegate.hpp"

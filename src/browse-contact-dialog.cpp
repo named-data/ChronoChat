@@ -19,7 +19,7 @@
 
 namespace chronochat {
 
-using ndn::IdentityCertificate;
+using ndn::security::Certificate;
 
 BrowseContactDialog::BrowseContactDialog(QWidget *parent)
   : QDialog(parent)
@@ -106,7 +106,7 @@ BrowseContactDialog::onNameListReady(const QStringList& qNameList)
 }
 
 void
-BrowseContactDialog::onIdCertReady(const IdentityCertificate& idCert)
+BrowseContactDialog::onIdCertReady(const Certificate& idCert)
 {
   Profile profile(idCert);
 

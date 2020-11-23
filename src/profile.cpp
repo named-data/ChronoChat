@@ -11,6 +11,7 @@
 
 #include "profile.hpp"
 #include "logging.h"
+#include <ndn-cxx/security/additional-description.hpp>
 
 namespace chronochat {
 
@@ -18,8 +19,7 @@ using std::vector;
 using std::string;
 using std::map;
 
-using ndn::IdentityCertificate;
-using ndn::CertificateSubjectDescription;
+using ndn::security::Certificate;
 
 const std::string Profile::OID_NAME("2.5.4.41");
 const std::string Profile::OID_ORG("2.5.4.11");
@@ -28,33 +28,34 @@ const std::string Profile::OID_HOMEPAGE("2.5.4.3");
 const std::string Profile::OID_ADVISOR("2.5.4.80");
 const std::string Profile::OID_EMAIL("1.2.840.113549.1.9.1");
 
-Profile::Profile(const IdentityCertificate& identityCertificate)
+Profile::Profile(const Certificate& identityCertificate)
 {
-  Name keyName = IdentityCertificate::certificateNameToPublicKeyName(identityCertificate.getName());
+  Name keyName = identityCertificate.getKeyName();
 
-  m_entries[string("IDENTITY")] = keyName.getPrefix(-1).toUri();
+  m_entries[string("IDENTITY")] = keyName.getPrefix(-2).toUri();
 
-  const vector<CertificateSubjectDescription>& subList =
-    identityCertificate.getSubjectDescriptionList();
+  auto additionalWire = identityCertificate.getSignatureInfo().getCustomTlv(tlv::AdditionalDescription);
+  if (additionalWire) {
+    ndn::security::AdditionalDescription additional(*additionalWire);
 
-  for (vector<CertificateSubjectDescription>::const_iterator it = subList.begin();
-       it != subList.end(); it++) {
-    const string oidStr = it->getOidString();
-    string valueStr = it->getValue();
-    if (oidStr == OID_NAME)
-      m_entries["name"] = valueStr;
-    else if (oidStr == OID_ORG)
-      m_entries["institution"] = valueStr;
-    else if (oidStr == OID_GROUP)
-      m_entries["group"] = valueStr;
-    else if (oidStr == OID_HOMEPAGE)
-      m_entries["homepage"] = valueStr;
-    else if (oidStr == OID_ADVISOR)
-      m_entries["advisor"] = valueStr;
-    else if (oidStr == OID_EMAIL)
-      m_entries["email"] = valueStr;
-    else
-      m_entries[oidStr] = valueStr;
+    for (auto it = additional.begin(); it != additional.end(); it++) {
+      const string oidStr = it->first;
+      string valueStr = it->second;
+      if (oidStr == OID_NAME)
+        m_entries["name"] = valueStr;
+      else if (oidStr == OID_ORG)
+        m_entries["institution"] = valueStr;
+      else if (oidStr == OID_GROUP)
+        m_entries["group"] = valueStr;
+      else if (oidStr == OID_HOMEPAGE)
+        m_entries["homepage"] = valueStr;
+      else if (oidStr == OID_ADVISOR)
+        m_entries["advisor"] = valueStr;
+      else if (oidStr == OID_EMAIL)
+        m_entries["email"] = valueStr;
+      else
+        m_entries[oidStr] = valueStr;
+    }
   }
 }
 
@@ -77,7 +78,12 @@ Profile::Profile(const Profile& profile)
 {
 }
 
-template<bool T>
+Profile::Profile(const Block& profileWire)
+{
+  this->wireDecode(profileWire);
+}
+
+template<ndn::encoding::Tag T>
 size_t
 Profile::wireEncode(ndn::EncodingImpl<T>& block) const
 {

@@ -1,0 +1,27 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  linux:
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }} build
+
+    strategy:
+      matrix:
+        os: [Ubuntu-18.04, Ubuntu-20.04]
+
+    env:
+      NODE_LABELS: "Linux Ubuntu ${{ matrix.os }}"
+      WAF_JOBS: 2
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Run build script
+      run: |
+        ./.jenkins

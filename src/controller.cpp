@@ -28,7 +28,7 @@
 INIT_LOGGER("chronochat.Controller");
 
 Q_DECLARE_METATYPE(ndn::Name)
-Q_DECLARE_METATYPE(ndn::IdentityCertificate)
+Q_DECLARE_METATYPE(ndn::security::Certificate)
 Q_DECLARE_METATYPE(chronochat::EndorseInfo)
 Q_DECLARE_METATYPE(ndn::Interest)
 Q_DECLARE_METATYPE(size_t)
@@ -57,8 +57,8 @@ Controller::Controller(QWidget* parent)
   , m_discoveryPanel(new DiscoveryPanel(this))
 {
   qRegisterMetaType<ndn::Name>("ndn.Name");
-  qRegisterMetaType<ndn::IdentityCertificate>("ndn.IdentityCertificate");
-  qRegisterMetaType<chronochat::EndorseInfo>("chronochat.EndorseInfo");
+  qRegisterMetaType<ndn::security::Certificate>("ndn.security.v2.Certificate");
+  qRegisterMetaType<chronochat::EndorseInfo>("EndorseInfo");
   qRegisterMetaType<ndn::Interest>("ndn.Interest");
   qRegisterMetaType<size_t>("size_t");
   qRegisterMetaType<chronochat::ChatroomInfo>("chronochat.Chatroom");
@@ -126,8 +126,8 @@ Controller::Controller(QWidget* parent)
           m_browseContactDialog, SLOT(onIdCertNameListReady(const QStringList&)));
   connect(m_backend.getContactManager(), SIGNAL(nameListReady(const QStringList&)),
           m_browseContactDialog, SLOT(onNameListReady(const QStringList&)));
-  connect(m_backend.getContactManager(), SIGNAL(idCertReady(const ndn::IdentityCertificate&)),
-          m_browseContactDialog, SLOT(onIdCertReady(const ndn::IdentityCertificate&)));
+  connect(m_backend.getContactManager(), SIGNAL(idCertReady(const ndn::security::Certificate&)),
+          m_browseContactDialog, SLOT(onIdCertReady(const ndn::security::Certificate&)));
 
   // Connection to ContactPanel
   connect(m_contactPanel, SIGNAL(waitForContactList()),
@@ -322,15 +322,15 @@ Controller::loadConf()
     else
       m_nick = m_identity.get(-1).toUri();
   }
-  catch (tlv::Error) {
+  catch (tlv::Error&) {
     try {
       ndn::KeyChain keyChain;
-      m_identity = keyChain.getDefaultIdentity();
+      m_identity = keyChain.getPib().getDefaultIdentity().getName();
     }
-    catch (ndn::KeyChain::Error) {
+    catch (ndn::security::pib::Pib::Error&) {
       m_identity.clear();
       m_identity.append("chronochat-tmp-identity")
-        .append(getRandomString());
+                .append(getRandomString());
     }
     m_nick = m_identity.get(-1).toUri();
   }
@@ -423,8 +423,8 @@ Controller::createTrayIcon()
 void
 Controller::updateMenu()
 {
-  QMenu* menu = new QMenu(this);
-  QMenu* closeMenu = 0;
+  m_trayIconMenu->clear();
+  QMenu* menu = m_trayIconMenu;
 
   menu->addAction(m_startChatroom);
   menu->addAction(m_chatroomDiscoveryAction);
@@ -448,23 +448,18 @@ Controller::updateMenu()
   menu->addAction(m_updateLocalPrefixAction);
   menu->addSeparator();
   menu->addAction(m_minimizeAction);
-  closeMenu = menu->addMenu("Close chatroom");
+  m_closeMenu = menu->addMenu("Close chatroom");
   {
     ChatActionList::const_iterator it = m_closeActionList.begin();
     ChatActionList::const_iterator end = m_closeActionList.end();
     if (it == end)
-      closeMenu->setEnabled(false);
+      m_closeMenu->setEnabled(false);
     else
       for (; it != end; it++)
-        closeMenu->addAction(it->second);
+        m_closeMenu->addAction(it->second);
   }
   menu->addSeparator();
   menu->addAction(m_quitAction);
-
-  m_trayIcon->setContextMenu(menu);
-  delete m_trayIconMenu;
-  m_trayIconMenu = menu;
-  m_closeMenu = closeMenu;
 }
 
 string
@@ -616,6 +611,7 @@ Controller::onSettingsAction()
 void
 Controller::onProfileEditorAction()
 {
+  m_profileEditor->resetPanel();
   m_profileEditor->show();
   m_profileEditor->raise();
 }
@@ -770,6 +766,8 @@ Controller::onResetIcon()
 void
 Controller::onRemoveChatDialog(const QString& chatroomName)
 {
+  emit removeChatroom(chatroomName);
+
   ChatDialogList::iterator it = m_chatDialogList.find(chatroomName.toStdString());
   if (it != m_chatDialogList.end()) {
     ChatDialog* deletedChat = it->second;
@@ -804,7 +802,7 @@ Controller::onNfdError()
   if (m_isInConnectionDetection)
     return;
   // begin a thread
-  
+
   m_isInConnectionDetection = true;
   m_nfdConnectionChecker = new NfdConnectionChecker(this);
 

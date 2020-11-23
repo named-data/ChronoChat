@@ -19,11 +19,7 @@ if has Ubuntu $NODE_LABELS; then
     sudo apt-get -qq -y install build-essential
     sudo apt-get -qq -y install libssl-dev libsqlite3-dev
 
-    if has Ubuntu-12.04 $NODE_LABELS; then
-        sudo apt-get install -qq -y libboost1.48-all-dev
-    else
-        sudo apt-get install -qq -y libboost-all-dev
-    fi
-
-    sudo apt-get install -qq -y qt4-dev-tools protobuf-compiler libprotobuf-dev libqt4-sql-sqlite
+    sudo apt-get -qq -y install libprotobuf-dev protobuf-compiler libevent-dev libcrypto++-dev
+    sudo apt-get -qq -y install libboost-all-dev
+    sudo apt-get -qq -y install qt5-default
 fi

@@ -60,7 +60,7 @@ public:
   addCollectionEntry(const Name& certName, const std::string& hash);
 
 private:
-  template<bool T>
+  template<ndn::encoding::Tag T>
   size_t
   wireEncode(ndn::EncodingImpl<T>& block) const;
 

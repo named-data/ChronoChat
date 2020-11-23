@@ -24,7 +24,7 @@ EndorseInfo::EndorseInfo(const Block& endorseWire)
   this->wireDecode(endorseWire);
 }
 
-template<bool T>
+template<ndn::encoding::Tag T>
 size_t
 EndorseInfo::wireEncode(ndn::EncodingImpl<T>& block) const
 {

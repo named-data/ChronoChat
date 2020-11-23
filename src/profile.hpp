@@ -18,7 +18,7 @@
 #include <ndn-cxx/util/concepts.hpp>
 #include <ndn-cxx/encoding/block.hpp>
 #include <ndn-cxx/encoding/encoding-buffer.hpp>
-#include <ndn-cxx/security/identity-certificate.hpp>
+#include <ndn-cxx/security/certificate.hpp>
 
 namespace chronochat {
 
@@ -44,7 +44,7 @@ public:
   {
   }
 
-  Profile(const ndn::IdentityCertificate& identityCertificate);
+  Profile(const ndn::security::Certificate& identityCertificate);
 
   Profile(const Name& identityName);
 
@@ -53,6 +53,8 @@ public:
           const std::string& institution);
 
   Profile(const Profile& profile);
+
+  Profile(const Block& profileWire);
 
   ~Profile()
   {
@@ -117,7 +119,7 @@ public:
   operator!=(const Profile& profile) const;
 
 private:
-  template<bool T>
+  template<ndn::encoding::Tag T>
   size_t
   wireEncode(ndn::EncodingImpl<T>& block) const;
 

@@ -6,64 +6,50 @@
  */
 
 #include <ndn-cxx/security/key-chain.hpp>
+#include <ndn-cxx/security/signing-helpers.hpp>
+#include <ndn-cxx/util/io.hpp>
+#include <iostream>
 
 using namespace ndn;
+using ndn::security::Certificate;
+using ndn::security::pib::Identity;
+using ndn::security::pib::Key;
+
+void
+generateCertificate(KeyChain& keyChain, Name name) {
+  try {
+    keyChain.getPib().getIdentity(name);
+  } catch (ndn::security::pib::Pib::Error&) {
+    Identity id = keyChain.createIdentity(name);
+    Key key = id.getDefaultKey();
+    Certificate cert = Certificate(key.getDefaultCertificate());
+
+    ndn::SignatureInfo signatureInfo;
+    signatureInfo.setValidityPeriod(ndn::security::ValidityPeriod(
+      time::system_clock::now(), time::system_clock::now() + time::days(7300)));
+
+    keyChain.sign(cert, security::signingByIdentity("/ndn/test").setSignatureInfo(signatureInfo));
+    keyChain.setDefaultCertificate(key, cert);
+
+    std::cout << "Generated cert " << cert.getName() << " with KeyLocator " << cert.getKeyLocator().value() << std::endl;
+  }
+}
 
 int
 main()
 {
-  KeyChain keyChain("sqlite3", "file");
-  std::vector<CertificateSubjectDescription> subjectDescription;
+  KeyChain keyChain;
 
-  Name root("/ndn");
-  Name rootCertName = keyChain.createIdentity(root);
+  // Root certificate
+  generateCertificate(keyChain, "/ndn/test");
 
-  Name test("/ndn/test");
-  Name testKeyName = keyChain.generateRsaKeyPairAsDefault(test, true);
-  shared_ptr<IdentityCertificate> testCert =
-    keyChain.prepareUnsignedIdentityCertificate(testKeyName, root,
-                                                time::system_clock::now(),
-                                                time::system_clock::now() + time::days(7300),
-                                                subjectDescription);
-  keyChain.signByIdentity(*testCert, root);
-  keyChain.addCertificateAsIdentityDefault(*testCert);
+  // Test certificates
+  generateCertificate(keyChain, "/ndn/test/alice");
+  generateCertificate(keyChain, "/ndn/test/bob");
+  generateCertificate(keyChain, "/ndn/test/cathy");
 
-  Name alice("/ndn/test/alice");
-  if(!keyChain.doesIdentityExist(alice))
-    {
-      Name aliceKeyName = keyChain.generateRsaKeyPairAsDefault(alice, true);
-      shared_ptr<IdentityCertificate> aliceCert =
-        keyChain.prepareUnsignedIdentityCertificate(aliceKeyName, test,
-                                                    time::system_clock::now(),
-                                                    time::system_clock::now() + time::days(7300),
-                                                    subjectDescription);
-      keyChain.signByIdentity(*aliceCert, test);
-      keyChain.addCertificateAsIdentityDefault(*aliceCert);
-    }
-
-  Name bob("/ndn/test/bob");
-  if(!keyChain.doesIdentityExist(bob))
-    {
-      Name bobKeyName = keyChain.generateRsaKeyPairAsDefault(bob, true);
-      shared_ptr<IdentityCertificate> bobCert =
-        keyChain.prepareUnsignedIdentityCertificate(bobKeyName, test,
-                                                    time::system_clock::now(),
-                                                    time::system_clock::now() + time::days(7300),
-                                                    subjectDescription);
-      keyChain.signByIdentity(*bobCert, test);
-      keyChain.addCertificateAsIdentityDefault(*bobCert);
-    }
-
-  Name cathy("/ndn/test/cathy");
-  if(!keyChain.doesIdentityExist(cathy))
-    {
-      Name cathyKeyName = keyChain.generateRsaKeyPairAsDefault(cathy, true);
-      shared_ptr<IdentityCertificate> cathyCert =
-        keyChain.prepareUnsignedIdentityCertificate(cathyKeyName, test,
-                                                    time::system_clock::now(),
-                                                    time::system_clock::now() + time::days(7300),
-                                                    subjectDescription);
-      keyChain.signByIdentity(*cathyCert, test);
-      keyChain.addCertificateAsIdentityDefault(*cathyCert);
-    }
+  std::ofstream file("security/test-anchor.cert");
+  ndn::io::saveBlock(keyChain.getPib().getIdentity("/ndn/test")
+                             .getDefaultKey().getDefaultCertificate().wireEncode(),
+                     file);
 }

@@ -12,9 +12,10 @@
 #define CHRONOCHAT_CONTACT_HPP
 
 #include "common.hpp"
-#include <ndn-cxx/security/identity-certificate.hpp>
+#include <ndn-cxx/security/certificate.hpp>
 #include <ndn-cxx/util/regex.hpp>
 #include "endorse-certificate.hpp"
+#include "profile.hpp"
 
 namespace chronochat {
 
@@ -24,39 +25,51 @@ public:
   typedef std::map<Name, shared_ptr<ndn::Regex> >::const_iterator const_iterator;
   typedef std::map<Name, shared_ptr<ndn::Regex> >::iterator iterator;
 
-  Contact(const ndn::IdentityCertificate& identityCertificate,
+  Contact(const ndn::security::Certificate& identityCertificate,
           bool isIntroducer = false,
           const std::string& alias = "")
-    : m_notBefore(identityCertificate.getNotBefore())
-    , m_notAfter(identityCertificate.getNotAfter())
+    : m_notBefore(time::system_clock::now())
+    , m_notAfter(time::system_clock::now() + time::days(3650))
     , m_isIntroducer(isIntroducer)
     , m_profile(identityCertificate)
   {
+    m_keyName = identityCertificate.getKeyName();
+    m_namespace = m_keyName.getPrefix(-2);
+    m_publicKey = identityCertificate.getPublicKey();
+
     m_name = m_profile.get("name");
+    m_name = m_name.empty() ? m_namespace.toUri() : m_name;
     m_alias = alias.empty() ? m_name : alias;
     m_institution = m_profile.get("institution");
 
-    m_keyName = identityCertificate.getPublicKeyName();
-    m_namespace = m_keyName.getPrefix(-1);
-    m_publicKey = identityCertificate.getPublicKeyInfo();
+    try {
+      m_notBefore = identityCertificate.getValidityPeriod().getPeriod().first;
+      m_notAfter = identityCertificate.getValidityPeriod().getPeriod().second;
+    } catch (tlv::Error&) {}
   }
 
   Contact(const EndorseCertificate& endorseCertificate,
           bool isIntroducer = false,
           const std::string& alias = "")
-    : m_notBefore(endorseCertificate.getNotBefore())
-    , m_notAfter(endorseCertificate.getNotAfter())
+    : m_notBefore(time::system_clock::now())
+    , m_notAfter(time::system_clock::now() + time::days(3650))
     , m_isIntroducer(isIntroducer)
   {
     m_profile = endorseCertificate.getProfile();
 
+    m_keyName = endorseCertificate.getKeyName().getPrefix(-1).append("KEY");
+    m_namespace = m_keyName.getPrefix(-3);
+    m_publicKey = endorseCertificate.getPublicKey();
+
     m_name = m_profile.get("name");
+    m_name = m_name.empty() ? m_namespace.toUri() : m_name;
     m_alias = alias.empty() ? m_name : alias;
     m_institution = m_profile.get("institution");
 
-    m_keyName = endorseCertificate.getPublicKeyName();;
-    m_namespace = m_keyName.getPrefix(-1);
-    m_publicKey = endorseCertificate.getPublicKeyInfo();
+    try {
+      m_notBefore = endorseCertificate.getValidityPeriod().getPeriod().first;
+      m_notAfter = endorseCertificate.getValidityPeriod().getPeriod().second;
+    } catch (tlv::Error&) {}
   }
 
   Contact(const Name& identity,
@@ -64,7 +77,7 @@ public:
           const Name& keyName,
           const time::system_clock::TimePoint& notBefore,
           const time::system_clock::TimePoint& notAfter,
-          const ndn::PublicKey& key,
+          const ndn::Buffer& key,
           bool isIntroducer)
     : m_namespace(identity)
     , m_alias(alias)
@@ -126,7 +139,7 @@ public:
     return m_keyName;
   }
 
-  const ndn::PublicKey&
+  const ndn::Buffer&
   getPublicKey() const
   {
     return m_publicKey;
@@ -224,7 +237,7 @@ protected:
   std::string m_name;
   std::string m_institution;
   Name m_keyName;
-  ndn::PublicKey m_publicKey;
+  ndn::Buffer m_publicKey;
   time::system_clock::TimePoint m_notBefore;
   time::system_clock::TimePoint m_notAfter;
 

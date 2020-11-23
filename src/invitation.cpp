@@ -18,7 +18,7 @@ namespace chronochat {
 
 using std::string;
 
-using ndn::IdentityCertificate;
+using ndn::security::Certificate;
 
 const size_t  Invitation::NAME_SIZE_MIN         = 7;
 const ssize_t Invitation::SIGNATURE             = -1;
@@ -51,7 +51,7 @@ Invitation::Invitation(const Name& interestName)
 Invitation::Invitation(const Name& inviteeNameSpace,
                        const string& chatroom,
                        const Name& inviterRoutingPrefix,
-                       const IdentityCertificate& inviterCertificate)
+                       const Certificate& inviterCertificate)
   : m_inviteeNameSpace(inviteeNameSpace)
   , m_chatroom(chatroom)
   , m_inviterRoutingPrefix(inviterRoutingPrefix)

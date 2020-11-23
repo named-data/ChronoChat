@@ -13,6 +13,7 @@
 
 #include <QDialog>
 #include <QStringListModel>
+#include <QItemSelection>
 
 #ifndef Q_MOC_RUN
 #include "chatroom-info.hpp"

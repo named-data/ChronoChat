@@ -25,7 +25,7 @@ ChatroomInfo::ChatroomInfo(const Block& chatroomWire)
   this->wireDecode(chatroomWire);
 }
 
-template<bool T>
+template<ndn::encoding::Tag T>
 size_t
 ChatroomInfo::wireEncode(ndn::EncodingImpl<T>& encoder) const
 {

@@ -11,7 +11,6 @@
  */
 
 #include "tree-layout.hpp"
-#include <iostream>
 
 namespace chronochat {
 

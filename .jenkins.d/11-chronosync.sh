@@ -11,9 +11,9 @@ sudo rm -f /usr/local/lib/pkgconfig/ChronoSync*
 git submodule init
 git submodule update
 pushd ChronoSync >/dev/null
-sudo ./waf -j1 --color=yes distclean
-./waf -j1 --color=yes configure
-./waf -j1 --color=yes build
-sudo ./waf install -j1 --color=yes
+sudo ./waf --color=yes distclean
+./waf --color=yes configure
+./waf --color=yes build
+sudo ./waf install --color=yes
 sudo ldconfig || true
 popd >/dev/null

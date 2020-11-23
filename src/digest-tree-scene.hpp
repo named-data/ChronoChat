@@ -12,7 +12,7 @@
 #ifndef CHRONOCHAT_DIGEST_TREE_SCENE_HPP
 #define CHRONOCHAT_DIGEST_TREE_SCENE_HPP
 
-#include <QtGui/QGraphicsScene>
+#include <QGraphicsScene>
 #include <QColor>
 #include <QMap>
 
@@ -44,7 +44,7 @@ class DigestTreeScene : public QGraphicsScene
   Q_OBJECT
 
 public:
-  DigestTreeScene(QWidget *parent = 0);
+  DigestTreeScene(QObject *parent = 0);
 
   void
   processSyncUpdate(const std::vector<chronochat::NodeInfo>& nodeInfos,

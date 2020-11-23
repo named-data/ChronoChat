@@ -42,6 +42,7 @@ NfdConnectionChecker::run()
                               [&] (const Interest& interest, const Data& data) {
                                 m_face->shutdown();
                               },
+                              NULL,
                               [] (const Interest& interest) {});
       m_face->processEvents(time::milliseconds::zero(), true);
     }

@@ -13,22 +13,17 @@
 
 #ifndef Q_MOC_RUN
 #include <ndn-cxx/util/segment-fetcher.hpp>
+#include <ndn-cxx/security/signing-helpers.hpp>
+#include <ndn-cxx/security/certificate-fetcher-offline.hpp>
 #include "invitation.hpp"
-#include "logging.h"
+#include <iostream>
 #endif
-
-
-INIT_LOGGER("ControllerBackend");
 
 namespace chronochat {
 
 using std::string;
 
 using ndn::Face;
-using ndn::IdentityCertificate;
-using ndn::OnInterestValidated;
-using ndn::OnInterestValidationFailed;
-
 
 static const ndn::Name::Component ROUTING_HINT_SEPARATOR =
   ndn::name::Component::fromEscapedString("%F0%2E");
@@ -39,7 +34,6 @@ ControllerBackend::ControllerBackend(QObject* parent)
   : QThread(parent)
   , m_shouldResume(false)
   , m_contactManager(m_face)
-  , m_invitationListenerId(0)
 {
   // connection to contact manager
   connect(this, SIGNAL(identityUpdated(const QString&)),
@@ -48,6 +42,7 @@ ControllerBackend::ControllerBackend(QObject* parent)
   connect(&m_contactManager, SIGNAL(contactIdListReady(const QStringList&)),
           this, SLOT(onContactIdListReady(const QStringList&)));
 
+  m_validator = make_shared<ndn::security::ValidatorNull>();
 }
 
 ControllerBackend::~ControllerBackend()
@@ -141,31 +136,32 @@ ControllerBackend::setInvitationListener()
   invitationPrefix.append(m_identity).append("CHRONOCHAT-INVITATION");
   requestPrefix.append(m_identity).append("CHRONOCHAT-INVITATION-REQUEST");
 
-  const ndn::RegisteredPrefixId* invitationListenerId =
-    m_face.setInterestFilter(invitationPrefix,
+  auto invitationListenerId =
+    make_shared<ndn::RegisteredPrefixHandle>(m_face.setInterestFilter(invitationPrefix,
                              bind(&ControllerBackend::onInvitationInterest,
                                   this, _1, _2, offset),
                              bind(&ControllerBackend::onInvitationRegisterFailed,
-                                  this, _1, _2));
+                                  this, _1, _2)));
 
   if (m_invitationListenerId != 0) {
-    m_face.unregisterPrefix(m_invitationListenerId,
-                            bind(&ControllerBackend::onInvitationPrefixReset, this),
-                            bind(&ControllerBackend::onInvitationPrefixResetFailed, this, _1));
+    invitationListenerId->unregister(
+      bind(&ControllerBackend::onInvitationPrefixReset, this),
+      bind(&ControllerBackend::onInvitationPrefixResetFailed, this, _1));
   }
 
   m_invitationListenerId = invitationListenerId;
 
-  const ndn::RegisteredPrefixId* requestListenerId =
-    m_face.setInterestFilter(requestPrefix,
-                             bind(&ControllerBackend::onInvitationRequestInterest,
-                                  this, _1, _2, offset),
-                             [] (const Name& prefix, const std::string& failInfo) {});
+  auto requestListenerId =
+    make_shared<ndn::RegisteredPrefixHandle>(
+      m_face.setInterestFilter(requestPrefix,
+                               bind(&ControllerBackend::onInvitationRequestInterest,
+                                    this, _1, _2, offset),
+                               [] (const Name& prefix, const std::string& failInfo) {}));
 
   if (m_requestListenerId != 0) {
-    m_face.unregisterPrefix(m_requestListenerId,
-                            []{},
-                            [] (const std::string& failInfo) {});
+    m_requestListenerId->unregister(
+      []{},
+      [] (const std::string& failInfo) {});
   }
 
   m_requestListenerId = requestListenerId;
@@ -210,11 +206,10 @@ ControllerBackend::onInvitationInterest(const ndn::Name& prefix,
     return;
   }
 
-  OnInterestValidated onValidated = bind(&ControllerBackend::onInvitationValidated, this, _1);
-  OnInterestValidationFailed onFailed = bind(&ControllerBackend::onInvitationValidationFailed,
-                                             this, _1, _2);
-
-  m_validator.validate(*invitationInterest, onValidated, onFailed);
+  m_validator->validate(
+    *invitationInterest,
+    bind(&ControllerBackend::onInvitationValidated, this, _1),
+    bind(&ControllerBackend::onInvitationValidationFailed, this, _1, _2));
 }
 
 void
@@ -248,20 +243,20 @@ ControllerBackend::onInvitationRequestInterest(const ndn::Name& prefix,
 }
 
 void
-ControllerBackend::onInvitationValidated(const shared_ptr<const Interest>& interest)
+ControllerBackend::onInvitationValidated(const Interest& interest)
 {
-  Invitation invitation(interest->getName());
+  Invitation invitation(interest.getName());
   // Should be obtained via a method of ContactManager.
-  string alias = invitation.getInviterCertificate().getPublicKeyName().getPrefix(-1).toUri();
+  string alias = invitation.getInviterCertificate().getKeyName().getPrefix(-1).toUri();
 
   emit invitationValidated(QString::fromStdString(alias),
                            QString::fromStdString(invitation.getChatroom()),
-                           interest->getName());
+                           interest.getName());
 }
 
 void
-ControllerBackend::onInvitationValidationFailed(const shared_ptr<const Interest>& interest,
-                                                string failureInfo)
+ControllerBackend::onInvitationValidationFailed(const Interest& interest,
+                                                const ndn::security::ValidationError& failureInfo)
 {
   // _LOG_DEBUG("Invitation: " << interest->getName() <<
   //            " cannot not be validated due to: " << failureInfo);
@@ -317,7 +312,7 @@ ControllerBackend::updateLocalPrefix(const Name& localPrefix)
 }
 
 void
-ControllerBackend::onRequestResponse(const Interest& interest, Data& data)
+ControllerBackend::onRequestResponse(const Interest& interest, const Data& data)
 {
   size_t i;
   Name interestName = interest.getName();
@@ -344,6 +339,7 @@ ControllerBackend::onRequestTimeout(const Interest& interest, int& resendTimes)
   if (resendTimes < MAXIMUM_REQUEST)
     m_face.expressInterest(interest,
                            bind(&ControllerBackend::onRequestResponse, this, _1, _2),
+                           bind(&ControllerBackend::onRequestTimeout, this, _1, resendTimes + 1),
                            bind(&ControllerBackend::onRequestTimeout, this, _1, resendTimes + 1));
   else
     emit invitationRequestResult("Invitation request times out.");
@@ -384,11 +380,11 @@ ControllerBackend::onUpdateLocalPrefixAction()
   interest.setInterestLifetime(time::milliseconds(1000));
   interest.setMustBeFresh(true);
 
-  ndn::util::SegmentFetcher::fetch(m_face,
-                                   interest,
-                                   m_nullValidator,
-                                   bind(&ControllerBackend::onLocalPrefix, this, _1),
-                                   bind(&ControllerBackend::onLocalPrefixError, this, _1, _2));
+  auto fetcher = ndn::util::SegmentFetcher::start(m_face,
+                                                  interest,
+                                                  m_nullValidator);
+  fetcher->onComplete.connect(bind(&ControllerBackend::onLocalPrefix, this, _1));
+  fetcher->onError.connect(bind(&ControllerBackend::onLocalPrefixError, this, _1, _2));
 }
 
 void
@@ -411,7 +407,7 @@ void
 ControllerBackend::onInvitationResponded(const ndn::Name& invitationName, bool accepted)
 {
   shared_ptr<Data> response = make_shared<Data>();
-  shared_ptr<IdentityCertificate> chatroomCert;
+  shared_ptr<ndn::security::Certificate> chatroomCert;
 
   // generate reply;
   if (accepted) {
@@ -422,8 +418,8 @@ ControllerBackend::onInvitationResponded(const ndn::Name& invitationName, bool a
 
     // We should create a particular certificate for this chatroom,
     //but let's use default one for now.
-    chatroomCert
-      = m_keyChain.getCertificate(m_keyChain.getDefaultCertificateNameForIdentity(m_identity));
+    chatroomCert = make_shared<ndn::security::Certificate>(
+      m_keyChain.createIdentity(m_identity).getDefaultKey().getDefaultCertificate());
 
     response->setContent(chatroomCert->wireEncode());
     response->setFreshnessPeriod(time::milliseconds(1000));
@@ -433,7 +429,7 @@ ControllerBackend::onInvitationResponded(const ndn::Name& invitationName, bool a
     response->setFreshnessPeriod(time::milliseconds(1000));
   }
 
-  m_keyChain.signByIdentity(*response, m_identity);
+  m_keyChain.sign(*response, ndn::security::signingByIdentity(m_identity));
 
   // Check if we need a wrapper
   Name invitationRoutingPrefix = getInvitationRoutingPrefix();
@@ -451,7 +447,7 @@ ControllerBackend::onInvitationResponded(const ndn::Name& invitationName, bool a
     wrappedData->setContent(response->wireEncode());
     wrappedData->setFreshnessPeriod(time::milliseconds(1000));
 
-    m_keyChain.signByIdentity(*wrappedData, m_identity);
+    m_keyChain.sign(*wrappedData, ndn::security::signingByIdentity(m_identity));
     m_face.put(*wrappedData);
   }
 
@@ -469,7 +465,8 @@ ControllerBackend::onInvitationRequestResponded(const ndn::Name& invitationRespo
   else
     response->setContent(ndn::makeNonNegativeIntegerBlock(tlv::Content, 0));
 
-  m_keyChain.signByIdentity(*response, m_identity);
+  response->setFreshnessPeriod(time::milliseconds(1000));
+  m_keyChain.sign(*response, ndn::security::signingByIdentity(m_identity));
   m_ims.insert(*response);
   m_face.put(*response);
 }
@@ -491,6 +488,7 @@ ControllerBackend::onSendInvitationRequest(const QString& chatroomName, const QS
   interest.getNonce();
   m_face.expressInterest(interest,
                          bind(&ControllerBackend::onRequestResponse, this, _1, _2),
+                         bind(&ControllerBackend::onRequestTimeout, this, _1, 0),
                          bind(&ControllerBackend::onRequestTimeout, this, _1, 0));
 }
 
@@ -500,10 +498,10 @@ ControllerBackend::onContactIdListReady(const QStringList& list)
   ContactList contactList;
 
   m_contactManager.getContactList(contactList);
-  m_validator.cleanTrustAnchor();
+  // m_validator.cleanTrustAnchor();
 
-  for (ContactList::const_iterator it  = contactList.begin(); it != contactList.end(); it++)
-    m_validator.addTrustAnchor((*it)->getPublicKeyName(), (*it)->getPublicKey());
+  // for (ContactList::const_iterator it  = contactList.begin(); it != contactList.end(); it++)
+    // m_validator.addTrustAnchor((*it)->getPublicKeyName(), (*it)->getPublicKey());
 
 }
 

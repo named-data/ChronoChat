@@ -12,6 +12,8 @@
 #include "endorse-certificate.hpp"
 #include <boost/iostreams/stream.hpp>
 #include <ndn-cxx/encoding/buffer-stream.hpp>
+#include <ndn-cxx/security/additional-description.hpp>
+#include <ndn-cxx/security/validity-period.hpp>
 #include "endorse-extension.hpp"
 #include <list>
 
@@ -20,15 +22,8 @@ namespace chronochat {
 using std::vector;
 using std::string;
 
-using ndn::PublicKey;
-using ndn::IdentityCertificate;
-using ndn::CertificateSubjectDescription;
-using ndn::CertificateExtension;
-using ndn::OID;
+using ndn::security::Certificate;
 using ndn::OBufferStream;
-
-const OID EndorseCertificate::PROFILE_EXT_OID("1.3.6.1.5.32.2.1");
-const OID EndorseCertificate::ENDORSE_EXT_OID("1.3.6.1.5.32.2.2");
 
 const vector<string> EndorseCertificate::DEFAULT_ENDORSE_LIST;
 
@@ -51,107 +46,132 @@ operator>>(EndorseExtension& endorseExtension, vector<string>& endorseList)
   return endorseExtension;
 }
 
-EndorseCertificate::EndorseCertificate(const IdentityCertificate& kskCertificate,
+EndorseCertificate::EndorseCertificate(const Certificate& kskCertificate,
                                        const Profile& profile,
                                        const vector<string>& endorseList)
   : Certificate()
   , m_profile(profile)
   , m_endorseList(endorseList)
 {
-  m_keyName = IdentityCertificate::certificateNameToPublicKeyName(kskCertificate.getName());
-  m_signer = m_keyName;
+  setName(kskCertificate.getKeyName().getPrefix(-2)
+                        .append("PROFILE-CERT")
+                        .append("KEY")
+                        .append(kskCertificate.getKeyId())
+                        .append("self")
+                        .appendTimestamp());
 
-  Name dataName = m_keyName;
-  dataName.append("PROFILE-CERT").append(m_signer.wireEncode()).appendVersion();
-  setName(dataName);
+  m_signer = kskCertificate.getKeyName();
 
-  setNotBefore(kskCertificate.getNotBefore());
-  setNotAfter(kskCertificate.getNotAfter());
-  addSubjectDescription(CertificateSubjectDescription(OID("2.5.4.41"), m_keyName.toUri()));
-  setPublicKeyInfo(kskCertificate.getPublicKeyInfo());
+  setMetaInfo(kskCertificate.getMetaInfo());
+  setContent(kskCertificate.getPublicKey().data(), kskCertificate.getPublicKey().size());
 
-  Block profileWire = m_profile.wireEncode();
-  addExtension(CertificateExtension(PROFILE_EXT_OID, true, ndn::Buffer(profileWire.wire(),
-                                                                       profileWire.size())));
+  ndn::security::AdditionalDescription description;
+  description.set("2.5.4.41", getKeyName().toUri());
+  description.set("signer", m_signer.toUri());
 
   EndorseExtension endorseExtension;
   endorseExtension << m_endorseList;
-  Block endorseWire = endorseExtension.wireEncode();
-  addExtension(CertificateExtension(ENDORSE_EXT_OID, true, ndn::Buffer(endorseWire.wire(),
-                                                                       endorseWire.size())));
 
-  encode();
+  ndn::SignatureInfo signatureInfo;
+  signatureInfo.addCustomTlv(description.wireEncode());
+  signatureInfo.addCustomTlv(m_profile.wireEncode());
+
+  if (m_endorseList.size() > 0)
+    signatureInfo.addCustomTlv(endorseExtension.wireEncode());
+
+  try {
+    signatureInfo.setValidityPeriod(kskCertificate.getValidityPeriod());
+  } catch (tlv::Error&) {
+    signatureInfo.setValidityPeriod(ndn::security::ValidityPeriod(
+      time::system_clock::now(), time::system_clock::now() + time::days(3650)));
+  }
+
+  setSignatureInfo(signatureInfo);
 }
 
 EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertificate,
                                        const Name& signer,
                                        const vector<string>& endorseList)
   : Certificate()
-  , m_keyName(endorseCertificate.m_keyName)
   , m_signer(signer)
   , m_profile(endorseCertificate.m_profile)
   , m_endorseList(endorseList)
 {
-  Name dataName = m_keyName;
-  dataName.append("PROFILE-CERT").append(m_signer.wireEncode()).appendVersion();
-  setName(dataName);
+  setName(endorseCertificate.getName()
+                 .getPrefix(-2)
+                 .append(m_signer.wireEncode())
+                 .appendVersion());
 
-  setNotBefore(endorseCertificate.getNotBefore());
-  setNotAfter(endorseCertificate.getNotAfter());
-  addSubjectDescription(CertificateSubjectDescription(OID("2.5.4.41"), m_keyName.toUri()));
-  setPublicKeyInfo(endorseCertificate.getPublicKeyInfo());
+  setMetaInfo(endorseCertificate.getMetaInfo());
+  setContent(endorseCertificate.getPublicKey().data(), endorseCertificate.getPublicKey().size());
 
-  Block profileWire = m_profile.wireEncode();
-  addExtension(CertificateExtension(PROFILE_EXT_OID, true, ndn::Buffer(profileWire.wire(),
-                                                                       profileWire.size())));
+  ndn::security::AdditionalDescription description;
+  description.set("2.5.4.41", getKeyName().toUri());
+  description.set("signer", m_signer.toUri());
 
   EndorseExtension endorseExtension;
   endorseExtension << m_endorseList;
-  Block endorseWire = endorseExtension.wireEncode();
-  addExtension(CertificateExtension(ENDORSE_EXT_OID, true, ndn::Buffer(endorseWire.wire(),
-                                                                       endorseWire.size())));
 
-  encode();
+  ndn::SignatureInfo signatureInfo;
+  signatureInfo.addCustomTlv(description.wireEncode());
+  signatureInfo.addCustomTlv(m_profile.wireEncode());
+
+  if (m_endorseList.size() > 0)
+    signatureInfo.addCustomTlv(endorseExtension.wireEncode());
+
+  try {
+    signatureInfo.setValidityPeriod(endorseCertificate.getValidityPeriod());
+  } catch (tlv::Error&) {
+    signatureInfo.setValidityPeriod(ndn::security::ValidityPeriod(
+      time::system_clock::now(), time::system_clock::now() + time::days(3650)));
+  }
+
+  setSignatureInfo(signatureInfo);
 }
 
 EndorseCertificate::EndorseCertificate(const Name& keyName,
-                                       const PublicKey& key,
+                                       const ndn::Buffer& key,
                                        const time::system_clock::TimePoint& notBefore,
                                        const time::system_clock::TimePoint& notAfter,
+                                       const Name::Component& signerKeyId,
                                        const Name& signer,
                                        const Profile& profile,
                                        const vector<string>& endorseList)
   : Certificate()
-  , m_keyName(keyName)
   , m_signer(signer)
   , m_profile(profile)
   , m_endorseList(endorseList)
 {
-  Name dataName = m_keyName;
-  dataName.append("PROFILE-CERT").append(m_signer.wireEncode()).appendVersion();
-  setName(dataName);
+  setName(keyName.getPrefix(-2)
+                 .append("PROFILE-CERT")
+                 .append("KEY")
+                 .append(signerKeyId)
+                 .append(m_signer.wireEncode())
+                 .appendVersion());
 
-  setNotBefore(notBefore);
-  setNotAfter(notAfter);
-  addSubjectDescription(CertificateSubjectDescription(OID("2.5.4.41"), m_keyName.toUri()));
-  setPublicKeyInfo(key);
+  setContent(key.data(), key.size());
 
-  Block profileWire = m_profile.wireEncode();
-  addExtension(CertificateExtension(PROFILE_EXT_OID, true, ndn::Buffer(profileWire.wire(),
-                                                                       profileWire.size())));
+  ndn::security::AdditionalDescription description;
+  description.set("2.5.4.41", keyName.toUri());
+  description.set("signer", m_signer.toUri());
 
   EndorseExtension endorseExtension;
   endorseExtension << m_endorseList;
-  Block endorseWire = endorseExtension.wireEncode();
-  addExtension(CertificateExtension(ENDORSE_EXT_OID, true, ndn::Buffer(endorseWire.wire(),
-                                                                       endorseWire.size())));
 
-  encode();
+  ndn::SignatureInfo signatureInfo;
+  signatureInfo.addCustomTlv(description.wireEncode());
+  signatureInfo.addCustomTlv(m_profile.wireEncode());
+
+  if (m_endorseList.size() > 0)
+    signatureInfo.addCustomTlv(endorseExtension.wireEncode());
+
+  signatureInfo.setValidityPeriod(ndn::security::ValidityPeriod(notBefore, notAfter));
+
+  setSignatureInfo(signatureInfo);
 }
 
 EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertificate)
   : Certificate(endorseCertificate)
-  , m_keyName(endorseCertificate.m_keyName)
   , m_signer(endorseCertificate.m_signer)
   , m_profile(endorseCertificate.m_profile)
   , m_endorseList(endorseCertificate.m_endorseList)
@@ -161,25 +181,22 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
 EndorseCertificate::EndorseCertificate(const Data& data)
   : Certificate(data)
 {
-  const Name& dataName = data.getName();
 
-  if(dataName.size() < 3 || dataName.get(-3).toUri() != "PROFILE-CERT")
-    throw Error("No PROFILE-CERT component in data name!");
+  auto additionalWire = getSignatureInfo().getCustomTlv(tlv::AdditionalDescription);
+  if (additionalWire) {
+    ndn::security::AdditionalDescription additional(*additionalWire);
+    m_signer = additional.get("signer");
+  }
 
-  m_keyName = dataName.getPrefix(-3);
-  m_signer.wireDecode(dataName.get(-2).blockFromValue());
+  auto profileWire = getSignatureInfo().getCustomTlv(tlv::Profile);
+  if (profileWire) {
+    m_profile = Profile(*profileWire);
+  }
 
-
-  for (const auto& entry : m_extensionList) {
-    if (PROFILE_EXT_OID == entry.getOid()) {
-      m_profile.wireDecode(Block(entry.getValue().buf(), entry.getValue().size()));
-    }
-    if (ENDORSE_EXT_OID == entry.getOid()) {
-      EndorseExtension endorseExtension;
-      endorseExtension.wireDecode(Block(entry.getValue().buf(), entry.getValue().size()));
-
-      endorseExtension >> m_endorseList;
-    }
+  auto endorseExtensionBlock = getSignatureInfo().getCustomTlv(tlv::EndorseExtension);
+  if (endorseExtensionBlock) {
+    EndorseExtension endorseExtension(*endorseExtensionBlock);
+    endorseExtension >> m_endorseList;
   }
 }
 

@@ -7,10 +7,10 @@ import os
 
 def options(opt):
 
-    opt.load(['compiler_c', 'compiler_cxx', 'qt4', 'gnu_dirs'])
+    opt.load(['compiler_c', 'compiler_cxx', 'qt5', 'gnu_dirs'])
 
     opt.load(['default-compiler-flags', 'boost', 'protoc',
-              'doxygen', 'sphinx_build'],
+              'doxygen', 'sphinx_build', 'qt5', 'cryptopp'],
               tooldir=['waf-tools'])
 
     opt = opt.add_option_group('ChronotChat Options')
@@ -22,9 +22,9 @@ def options(opt):
                    help='''Enable log4cxx''')
 
 def configure(conf):
-    conf.load(['compiler_c', 'compiler_cxx', 'qt4',
+    conf.load(['compiler_c', 'compiler_cxx', 'qt5',
                'default-compiler-flags', 'boost', 'protoc', 'gnu_dirs',
-               'doxygen', 'sphinx_build'])
+               'doxygen', 'sphinx_build', 'cryptopp'])
 
     conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'],
                    uselib_store='NDN_CXX', mandatory=True)
@@ -50,10 +50,11 @@ def configure(conf):
                    " (http://redmine.named-data.net/projects/nfd/wiki/Boost_FAQ)")
         return
 
+    conf.check_cryptopp()
     conf.write_config_header('src/config.h')
 
 def build (bld):
-    feature_list = 'qt4 cxx'
+    feature_list = 'qt5 cxx'
     if bld.env["WITH_TESTS"]:
         feature_list += ' cxxstlib'
     else:
@@ -65,7 +66,7 @@ def build (bld):
         defines = "WAF=1",
         source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', '*.qrc', 'logging.cc', 'src/*.proto']),
         includes = "src .",
-        use = "QTCORE QTGUI QTWIDGETS QTSQL NDN_CXX BOOST LOG4CXX SYNC",
+        use = "QT5CORE QT5GUI QT5WIDGETS QT5SQL NDN_CXX BOOST LOG4CXX SYNC CRYPTOPP",
         )
 
     # Unit tests
@@ -77,7 +78,6 @@ def build (bld):
           use = 'BOOST ChronoChat',
           includes = "src .",
           install_path = None,
-          defines = 'TEST_CERT_PATH=\"%s/cert-test\"' %(bld.bldnode),
           )
 
     # Debug tools

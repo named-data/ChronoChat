@@ -10,10 +10,9 @@
 
 #include <QApplication>
 #include <QTextCodec>
-// #include <QSystemTrayIcon>
 
 #include "controller.hpp"
-#include "logging.h"
+#include <iostream>
 #include <ndn-cxx/face.hpp>
 #include <boost/thread/thread.hpp>
 
@@ -42,9 +41,6 @@ public:
 int main(int argc, char *argv[])
 {
   NewApp app(argc, argv);
-
-  QTextCodec::setCodecForCStrings(QTextCodec::codecForName("UTF-8"));
-  QTextCodec::setCodecForTr(QTextCodec::codecForName("UTF-8"));
 
   chronochat::Controller controller;
 

@@ -18,8 +18,9 @@
 #include "chatroom-info.hpp"
 #include "chat-message.hpp"
 #include <mutex>
-#include <socket.hpp>
+#include <ChronoSync/socket.hpp>
 #include <boost/thread.hpp>
+#include <ndn-cxx/security/validator-config.hpp>
 #endif
 
 namespace chronochat {
@@ -35,7 +36,7 @@ public:
   ndn::Name sessionPrefix;
   bool hasNick;
   std::string userNick;
-  ndn::EventId timeoutEventId;
+  ndn::scheduler::EventId timeoutEventId;
 };
 
 class ChatDialogBackend : public QThread
@@ -61,9 +62,6 @@ private:
   void
   initializeSync();
 
-  shared_ptr<ndn::IdentityCertificate>
-  loadTrustAnchor();
-
   void
   exitChatroom();
 
@@ -74,7 +72,7 @@ private:
   processSyncUpdate(const std::vector<chronosync::MissingDataInfo>& updates);
 
   void
-  processChatData(const ndn::shared_ptr<const ndn::Data>& data,
+  processChatData(const ndn::Data& data,
                   bool needDisplay,
                   bool isValidated);
 
@@ -160,24 +158,24 @@ private:
   bool m_isNfdConnected;
   shared_ptr<ndn::Face> m_face;
 
-  Name m_localRoutingPrefix;             // routable local prefix
-  Name m_chatroomPrefix;                 // chatroom sync prefix
-  Name m_userChatPrefix;                 // user chat prefix
-  Name m_routableUserChatPrefix;         // routable user chat prefix
+  Name m_localRoutingPrefix;                                    // routable local prefix
+  Name m_chatroomPrefix;                                        // chatroom sync prefix
+  Name m_userChatPrefix;                                        // user chat prefix
+  Name m_routableUserChatPrefix;                                // routable user chat prefix
 
-  std::string m_chatroomName;            // chatroom name
-  std::string m_nick;                    // user nick
+  std::string m_chatroomName;                                   // chatroom name
+  std::string m_nick;                                           // user nick
 
-  Name m_signingId;                      // signing identity
-  shared_ptr<ndn::Validator> m_validator;// validator
-  shared_ptr<chronosync::Socket> m_sock; // SyncSocket
+  Name m_signingId;                                             // signing identity
+  shared_ptr<ndn::security::ValidatorConfig> m_validator;       // validator
+  shared_ptr<chronosync::Socket> m_sock;                        // SyncSocket
 
-  unique_ptr<ndn::Scheduler> m_scheduler;// scheduler
-  ndn::EventId m_helloEventId;           // event id of timeout
+  unique_ptr<ndn::Scheduler> m_scheduler;                       // scheduler
+  ndn::scheduler::EventId m_helloEventId;                       // event id of timeout
 
-  bool m_joined;                         // true if in a chatroom
+  bool m_joined;                                                // true if in a chatroom
 
-  BackendRoster m_roster;                // User roster
+  BackendRoster m_roster;                                       // User roster
 
   std::mutex m_resumeMutex;
   std::mutex m_nfdConnectionMutex;

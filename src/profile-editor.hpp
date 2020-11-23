@@ -39,6 +39,9 @@ public slots:
   void
   onIdentityUpdated(const QString& identity);
 
+  void
+  resetPanel();
+
 private slots:
   void
   onAddClicked();

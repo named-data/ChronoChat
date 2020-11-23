@@ -23,7 +23,7 @@ EndorseCollection::EndorseCollection(const Block& endorseWire)
   this->wireDecode(endorseWire);
 }
 
-template<bool T>
+template<ndn::encoding::Tag T>
 size_t
 EndorseCollection::wireEncode(ndn::EncodingImpl<T>& block) const
 {

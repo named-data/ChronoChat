@@ -68,7 +68,7 @@ EndorseComboBoxDelegate::paint(QPainter* painter,
                                const QStyleOptionViewItem& option,
                                const QModelIndex& index) const
 {
-  QStyleOptionViewItemV4 myOption = option;
+  QStyleOptionViewItem myOption = option;
   QString text = m_items[index.model()->data(index, Qt::EditRole).toUInt()].c_str();
 
   myOption.text = text;

@@ -40,26 +40,31 @@ ProfileEditor::ProfileEditor(QWidget *parent)
 ProfileEditor::~ProfileEditor()
 {
     delete ui;
-    delete m_tableModel;
+
+    if (m_tableModel)
+      delete m_tableModel;
 }
 
 void
 ProfileEditor::onCloseDBModule()
 {
-  // _LOG_DEBUG("close db module");
   if (m_tableModel) {
     delete m_tableModel;
-    // _LOG_DEBUG("tableModel closed");
+    m_tableModel = 0;
   }
 }
 
 void
 ProfileEditor::onIdentityUpdated(const QString& identity)
 {
-  m_tableModel = new QSqlTableModel();
-
   m_identity = identity;
   ui->identityInput->setText(identity);
+}
+
+void
+ProfileEditor::resetPanel()
+{
+  m_tableModel = new QSqlTableModel();
 
   m_tableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
   m_tableModel->setTable("SelfProfile");

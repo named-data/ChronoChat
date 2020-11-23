@@ -28,7 +28,6 @@
 #include <vector>
 #include <string>
 
-#include <ndn-cxx/common.hpp>
 #include <ndn-cxx/interest.hpp>
 #include <ndn-cxx/data.hpp>
 
@@ -61,7 +60,6 @@ using std::cref;
 using ndn::Interest;
 using ndn::Data;
 using ndn::Name;
-using ndn::Exclude;
 using ndn::Block;
 using ndn::Signature;
 using ndn::KeyLocator;

@@ -11,7 +11,7 @@ Note that after you click to close ChronoChat, it will keep running on your syst
 1. When you switch to a new room, you'll temporarily see yourself in two nodes for a minute or so. It won't affect others, just yourself. Hopefully it's not so disturbing.
 2. Sometimes you may not get the most up-to-date chat history.
 
-## For those who wants (or is forced to) compile from source code
+## For those who want (or is forced to) compile from source code
 -----------------------------------------------------------------
 
 ### Compilation steps for OSX
@@ -48,7 +48,7 @@ If you already cloned repository, you can update submodules this way:
 
 Congratulations! build/ChronoChat.app is ready to use (on a Mac).
 
-### Compilation steps for Ubuntu 12.04, 13.10, 14.04
+### Compilation steps for Ubuntu 18.04, 20.04
 
 1. Configure [NDN PPA repository](http://named-data.net/doc/NFD/current/FAQ.html#how-to-start-using-ndn-ppa-repository-on-ubuntu-linux) and install NFD if you don't have it yet.
 
@@ -56,9 +56,9 @@ Congratulations! build/ChronoChat.app is ready to use (on a Mac).
 
 2. Install ChronoChat dependencies
 
-        sudo apt-get install libprotobuf-dev protobuf-compiler libevent-dev
-        sudo apt-get install libboost1.48-all-dev
-        sudo apt-get install qt4-dev-tools
+        sudo apt-get install libprotobuf-dev protobuf-compiler libevent-dev libcrypto++-dev
+        sudo apt-get install libboost-all-dev
+        sudo apt-get install qt5-default
 
 3. Fetch source code with submodules
 
@@ -82,4 +82,5 @@ If you already cloned repository, you can update submodules this way:
         ./waf configure
         ./waf
 
-Congratulations! build/ChronoChat is ready to use.  Do not forget to start ccnd and configure FIB before using ChronoChat.
+Congratulations! build/ChronoChat is ready to use.  Do not forget to start NFD and configure FIB before using ChronoChat.
+For ease of debugging, you can generate trusted identities in your local TPM using `debug-tools/create-cert`.

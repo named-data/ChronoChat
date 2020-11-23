@@ -13,10 +13,7 @@
 
 #include <boost/filesystem.hpp>
 #include "cryptopp.hpp"
-#include "logging.h"
 
-
-// INIT_LOGGER ("chronochat.ContactStorage");
 
 namespace chronochat {
 
@@ -24,8 +21,6 @@ namespace fs = boost::filesystem;
 
 using std::string;
 using std::vector;
-
-using ndn::PublicKey;
 
 // user's own profile;
 const string INIT_SP_TABLE =
@@ -159,7 +154,7 @@ sqlite3_column_string(sqlite3_stmt* statement, int column)
 static Block
 sqlite3_column_block(sqlite3_stmt* statement, int column)
 {
-  return Block(reinterpret_cast<const char*>(sqlite3_column_blob(statement, column)),
+  return Block(reinterpret_cast<const uint8_t*>(sqlite3_column_blob(statement, column)),
                sqlite3_column_bytes(statement, column));
 }
 
@@ -257,6 +252,27 @@ ContactStorage::addSelfEndorseCertificate(const EndorseCertificate& newEndorseCe
   sqlite3_finalize(stmt);
 }
 
+shared_ptr<EndorseCertificate>
+ContactStorage::getSelfEndorseCertificate()
+{
+  shared_ptr<EndorseCertificate> cert;
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(m_db,
+                     "SELECT endorse_data FROM SelfEndorse where identity=?",
+                      -1, &stmt, 0);
+  sqlite3_bind_string(stmt, 1, m_identity.toUri(), SQLITE_TRANSIENT);
+
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    cert = make_shared<EndorseCertificate>();
+    cert->wireDecode(sqlite3_column_block(stmt, 0));
+  }
+
+  sqlite3_finalize(stmt);
+
+  return cert;
+}
+
 void
 ContactStorage::addEndorseCertificate(const EndorseCertificate& endorseCertificate,
                                       const Name& identity)
@@ -283,7 +299,7 @@ ContactStorage::updateCollectEndorse(const EndorseCertificate& endorseCertificat
   sqlite3_prepare_v2(m_db,
                      "INSERT OR REPLACE INTO CollectEndorse \
                       (endorser, endorse_name, endorse_data) \
-                      VALUES (?, ?, ?, ?)",
+                      VALUES (?, ?, ?)",
                      -1, &stmt, 0);
   sqlite3_bind_string(stmt, 1, endorserName.toUri(), SQLITE_TRANSIENT);
   sqlite3_bind_string(stmt, 2, certName.toUri(), SQLITE_TRANSIENT);
@@ -313,6 +329,27 @@ ContactStorage::getCollectEndorse(EndorseCollection& endorseCollection)
   }
 
   sqlite3_finalize(stmt);
+}
+
+shared_ptr<EndorseCertificate>
+ContactStorage::getCollectEndorseByName(const Name& name)
+{
+  shared_ptr<EndorseCertificate> cert;
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(m_db,
+                     "SELECT endorse_name, endorse_data FROM CollectEndorse where endorse_name=?",
+                      -1, &stmt, 0);
+  sqlite3_bind_string(stmt, 1, name.toUri(), SQLITE_TRANSIENT);
+
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    cert = make_shared<EndorseCertificate>();
+    cert->wireDecode(sqlite3_column_block(stmt, 1));
+  }
+
+  sqlite3_finalize(stmt);
+
+  return cert;
 }
 
 void
@@ -375,8 +412,8 @@ ContactStorage::addContact(const Contact& contact)
   sqlite3_bind_string(stmt, 2, contact.getAlias(), SQLITE_TRANSIENT);
   sqlite3_bind_string(stmt, 3, contact.getPublicKeyName().toUri(), SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 4,
-                    reinterpret_cast<const char*>(contact.getPublicKey().get().buf()),
-                    contact.getPublicKey().get().size(), SQLITE_TRANSIENT);
+                    reinterpret_cast<const char*>(contact.getPublicKey().data()),
+                    contact.getPublicKey().size(), SQLITE_TRANSIENT);
   sqlite3_bind_int64(stmt, 5, time::toUnixTimestamp(contact.getNotBefore()).count());
   sqlite3_bind_int64(stmt, 6, time::toUnixTimestamp(contact.getNotAfter()).count());
   sqlite3_bind_int(stmt, 7, (isIntroducer ? 1 : 0));
@@ -433,7 +470,7 @@ ContactStorage::getContact(const Name& identity) const
   if (sqlite3_step(stmt) == SQLITE_ROW) {
     string alias = sqlite3_column_string(stmt, 0);
     string keyName = sqlite3_column_string(stmt, 1);
-    PublicKey key(sqlite3_column_text(stmt, 2), sqlite3_column_bytes (stmt, 2));
+    ndn::Buffer key(sqlite3_column_text(stmt, 2), sqlite3_column_bytes (stmt, 2));
     time::system_clock::TimePoint notBefore =
       time::fromUnixTimestamp(time::milliseconds(sqlite3_column_int64 (stmt, 3)));
     time::system_clock::TimePoint notAfter =
@@ -444,6 +481,9 @@ ContactStorage::getContact(const Name& identity) const
                                    notBefore, notAfter, key, isIntroducer);
   }
   sqlite3_finalize(stmt);
+
+  if (!static_cast<bool>(contact))
+    return contact;
 
   sqlite3_prepare_v2(m_db,
                      "SELECT profile_type, profile_value FROM ContactProfile \

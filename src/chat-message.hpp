@@ -86,7 +86,7 @@ public:
   setTimestamp(const time_t timestamp);
 
 private:
-  template<bool T>
+  template<ndn::encoding::Tag T>
   size_t
   wireEncode(ndn::EncodingImpl<T>& encoder) const;
 

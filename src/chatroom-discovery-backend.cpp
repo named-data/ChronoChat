@@ -113,11 +113,11 @@ ChatroomDiscoveryBackend::initializeSync()
                                                 this, _1));
 
   // add an timer to refresh front end
-  if (m_refreshPanelId != nullptr) {
-    m_scheduler->cancelEvent(m_refreshPanelId);
+  if (m_refreshPanelId) {
+    m_refreshPanelId.cancel();
   }
-  m_refreshPanelId = m_scheduler->scheduleEvent(REFRESH_INTERVAL,
-                                                [this] { sendChatroomList(); });
+  m_refreshPanelId = m_scheduler->schedule(REFRESH_INTERVAL,
+                                           [this] { sendChatroomList(); });
 }
 
 void
@@ -142,10 +142,10 @@ ChatroomDiscoveryBackend::processSyncUpdate(const std::vector<chronosync::Missin
 }
 
 void
-ChatroomDiscoveryBackend::processChatroomData(const ndn::shared_ptr<const ndn::Data>& data)
+ChatroomDiscoveryBackend::processChatroomData(const ndn::Data& data)
 {
   // extract chatroom name by get(-3)
-  Name::Component chatroomName = data->getName().get(-3);
+  Name::Component chatroomName = data.getName().get(-3);
   auto it = m_chatroomList.find(chatroomName);
   if (it == m_chatroomList.end()) {
     m_chatroomList[chatroomName].chatroomName = chatroomName.toUri();
@@ -163,16 +163,15 @@ ChatroomDiscoveryBackend::processChatroomData(const ndn::shared_ptr<const ndn::D
     }
     else {
       it->second.count = 0;
-      if (m_routableUserDiscoveryPrefix < data->getName()) {
+      if (m_routableUserDiscoveryPrefix < data.getName()) {
         // when two managers exist, the one with "smaller" name take the control
         sendUpdate(chatroomName);
         return;
       }
       else {
-        if (it->second.helloTimeoutEventId != nullptr) {
-          m_scheduler->cancelEvent(it->second.helloTimeoutEventId);
+        if (it->second.helloTimeoutEventId) {
+          it->second.helloTimeoutEventId.cancel();
         }
-        it->second.helloTimeoutEventId = nullptr;
         it->second.isManager = false;
       }
 
@@ -180,35 +179,34 @@ ChatroomDiscoveryBackend::processChatroomData(const ndn::shared_ptr<const ndn::D
   }
 
   else if (it->second.isParticipant) {
-    if (it->second.localChatroomTimeoutEventId != nullptr)
-      m_scheduler->cancelEvent(it->second.localChatroomTimeoutEventId);
+    if (it->second.localChatroomTimeoutEventId)
+      it->second.localChatroomTimeoutEventId.cancel();
 
     // If a user start a random timer it means that he think his own chatroom is not alive
     // But when he receive some packet, it means that this chatroom is alive, so he can
     // cancel the timer
-    if (it->second.managerSelectionTimeoutEventId != nullptr)
-      m_scheduler->cancelEvent(it->second.managerSelectionTimeoutEventId);
-    it->second.managerSelectionTimeoutEventId = nullptr;
+    if (it->second.managerSelectionTimeoutEventId)
+      it->second.managerSelectionTimeoutEventId.cancel();
 
     it->second.localChatroomTimeoutEventId =
-      m_scheduler->scheduleEvent(HELLO_INTERVAL * 3,
-                                 bind(&ChatroomDiscoveryBackend::localSessionTimeout,
-                                      this, chatroomName));
+      m_scheduler->schedule(HELLO_INTERVAL * 3,
+                            bind(&ChatroomDiscoveryBackend::localSessionTimeout,
+                                 this, chatroomName));
   }
   else {
-    if (!data->getContent().empty()) {
+    if (data.hasContent()) {
       ChatroomInfo chatroom;
-      chatroom.wireDecode(data->getContent().blockFromValue());
+      chatroom.wireDecode(data.getContent().blockFromValue());
       it->second.info = chatroom;
     }
 
-    if (it->second.remoteChatroomTimeoutEventId != nullptr)
-      m_scheduler->cancelEvent(it->second.remoteChatroomTimeoutEventId);
+    if (it->second.remoteChatroomTimeoutEventId)
+      it->second.remoteChatroomTimeoutEventId.cancel();
 
     it->second.remoteChatroomTimeoutEventId =
-      m_scheduler->scheduleEvent(HELLO_INTERVAL * 5,
-                                 bind(&ChatroomDiscoveryBackend::remoteSessionTimeout,
-                                      this, chatroomName));
+      m_scheduler->schedule(HELLO_INTERVAL * 5,
+                            bind(&ChatroomDiscoveryBackend::remoteSessionTimeout,
+                                 this, chatroomName));
   }
   // if this is a chatroom that haven't been print on the discovery panel, print it.
   if(!it->second.isPrint) {
@@ -224,9 +222,9 @@ ChatroomDiscoveryBackend::localSessionTimeout(const Name::Component& chatroomNam
   if (it == m_chatroomList.end() || it->second.isParticipant == false)
     return;
   it->second.managerSelectionTimeoutEventId =
-    m_scheduler->scheduleEvent(time::milliseconds(m_rangeUniformRandom()),
-                               bind(&ChatroomDiscoveryBackend::randomSessionTimeout,
-                                    this, chatroomName));
+    m_scheduler->schedule(time::milliseconds(m_rangeUniformRandom()),
+                          bind(&ChatroomDiscoveryBackend::randomSessionTimeout,
+                               this, chatroomName));
 }
 
 void
@@ -252,15 +250,15 @@ ChatroomDiscoveryBackend::sendUpdate(const Name::Component& chatroomName)
   if (it != m_chatroomList.end() && it->second.isManager) {
     ndn::Block buf = it->second.info.wireEncode();
 
-    if (it->second.helloTimeoutEventId != nullptr) {
-      m_scheduler->cancelEvent(it->second.helloTimeoutEventId);
+    if (it->second.helloTimeoutEventId) {
+      it->second.helloTimeoutEventId.cancel();
     }
 
     m_sock->publishData(buf.wire(), buf.size(), FRESHNESS_PERIOD, it->second.chatroomPrefix);
 
     it->second.helloTimeoutEventId =
-      m_scheduler->scheduleEvent(HELLO_INTERVAL,
-                                 bind(&ChatroomDiscoveryBackend::sendUpdate, this, chatroomName));
+      m_scheduler->schedule(HELLO_INTERVAL,
+                            bind(&ChatroomDiscoveryBackend::sendUpdate, this, chatroomName));
     // if this is a chatroom that haven't been print on the discovery panel, print it.
     if(!it->second.isPrint) {
       sendChatroomList();
@@ -318,8 +316,8 @@ ChatroomDiscoveryBackend::onEraseInRoster(ndn::Name sessionPrefix,
     it->second.info.removeParticipant(sessionPrefix);
     if (it->second.info.getParticipants().size() == 0) {
       // Before deleting the chatroom, cancel the hello event timer if exist
-      if (it->second.helloTimeoutEventId != nullptr)
-        m_scheduler->cancelEvent(it->second.helloTimeoutEventId);
+      if (it->second.helloTimeoutEventId)
+        it->second.helloTimeoutEventId.cancel();
 
       m_chatroomList.erase(chatroomName);
       Name prefix = sessionPrefix;
@@ -334,18 +332,16 @@ ChatroomDiscoveryBackend::onEraseInRoster(ndn::Name sessionPrefix,
       it->second.isManager = false;
       it->second.isPrint = false;
       it->second.count = 0;
-      if (it->second.helloTimeoutEventId != nullptr)
-        m_scheduler->cancelEvent(it->second.helloTimeoutEventId);
-      it->second.helloTimeoutEventId = nullptr;
+      if (it->second.helloTimeoutEventId)
+        it->second.helloTimeoutEventId.cancel();
 
-      if (it->second.localChatroomTimeoutEventId != nullptr)
-        m_scheduler->cancelEvent(it->second.localChatroomTimeoutEventId);
-      it->second.localChatroomTimeoutEventId = nullptr;
+      if (it->second.localChatroomTimeoutEventId)
+        it->second.localChatroomTimeoutEventId.cancel();
 
       it->second.remoteChatroomTimeoutEventId =
-      m_scheduler->scheduleEvent(HELLO_INTERVAL * 5,
-                                bind(&ChatroomDiscoveryBackend::remoteSessionTimeout,
-                                     this, chatroomName));
+      m_scheduler->schedule(HELLO_INTERVAL * 5,
+                            bind(&ChatroomDiscoveryBackend::remoteSessionTimeout,
+                                 this, chatroomName));
     }
 
     if (it->second.isManager) {
@@ -381,9 +377,9 @@ ChatroomDiscoveryBackend::onNewChatroomForDiscovery(ndn::Name::Component chatroo
     m_chatroomList[chatroomName].isManager = false;
     m_chatroomList[chatroomName].count = 0;
     m_chatroomList[chatroomName].isPrint = false;
-    m_scheduler->scheduleEvent(time::milliseconds(600),
-                               bind(&ChatroomDiscoveryBackend::randomSessionTimeout, this,
-                                    chatroomName));
+    m_scheduler->schedule(time::milliseconds(600),
+                          bind(&ChatroomDiscoveryBackend::randomSessionTimeout, this,
+                               chatroomName));
   }
   else {
     // Entering an existing chatroom
@@ -391,15 +387,14 @@ ChatroomDiscoveryBackend::onNewChatroomForDiscovery(ndn::Name::Component chatroo
     it->second.isManager = false;
     it->second.chatroomPrefix = newPrefix;
 
-    if (it->second.remoteChatroomTimeoutEventId != nullptr)
-      m_scheduler->cancelEvent(it->second.remoteChatroomTimeoutEventId);
+    if (it->second.remoteChatroomTimeoutEventId)
+     it->second.remoteChatroomTimeoutEventId.cancel();
     it->second.isPrint = false;
-    it->second.remoteChatroomTimeoutEventId = nullptr;
 
     it->second.localChatroomTimeoutEventId =
-      m_scheduler->scheduleEvent(HELLO_INTERVAL * 3,
-                                 bind(&ChatroomDiscoveryBackend::localSessionTimeout,
-                                      this, chatroomName));
+      m_scheduler->schedule(HELLO_INTERVAL * 3,
+                            bind(&ChatroomDiscoveryBackend::localSessionTimeout,
+                                 this, chatroomName));
     emit chatroomInfoRequest(chatroomName.toUri(), false);
   }
 }
@@ -421,18 +416,10 @@ ChatroomDiscoveryBackend::onRespondChatroomInfoRequest(ChatroomInfo chatroomInfo
 void
 ChatroomDiscoveryBackend::onIdentityUpdated(const QString& identity)
 {
-  m_chatroomList.clear();
   m_identity = Name(identity.toStdString());
   m_userDiscoveryPrefix.clear();
   m_userDiscoveryPrefix.append(m_identity).append("CHRONOCHAT-DISCOVERYDATA");
   updatePrefixes();
-
-  {
-    std::lock_guard<std::mutex>lock(m_resumeMutex);
-    m_shouldResume = true;
-  }
-
-  m_face->getIoService().stop();
 }
 
 void
@@ -444,11 +431,11 @@ ChatroomDiscoveryBackend::sendChatroomList()
   }
 
   emit chatroomListReady(chatroomList);
-  if (m_refreshPanelId != nullptr) {
-    m_scheduler->cancelEvent(m_refreshPanelId);
+  if (m_refreshPanelId) {
+    m_refreshPanelId.cancel();
   }
-  m_refreshPanelId = m_scheduler->scheduleEvent(REFRESH_INTERVAL,
-                                                [this] { sendChatroomList(); });
+  m_refreshPanelId = m_scheduler->schedule(REFRESH_INTERVAL,
+                                           [this] { sendChatroomList(); });
 }
 
 void
