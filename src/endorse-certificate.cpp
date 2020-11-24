@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -10,12 +10,12 @@
  */
 
 #include "endorse-certificate.hpp"
+#include "endorse-extension.hpp"
+
 #include <boost/iostreams/stream.hpp>
 #include <ndn-cxx/encoding/buffer-stream.hpp>
 #include <ndn-cxx/security/additional-description.hpp>
 #include <ndn-cxx/security/validity-period.hpp>
-#include "endorse-extension.hpp"
-#include <list>
 
 namespace chronochat {
 
@@ -81,7 +81,7 @@ EndorseCertificate::EndorseCertificate(const Certificate& kskCertificate,
 
   try {
     signatureInfo.setValidityPeriod(kskCertificate.getValidityPeriod());
-  } catch (tlv::Error&) {
+  } catch (const tlv::Error&) {
     signatureInfo.setValidityPeriod(ndn::security::ValidityPeriod(
       time::system_clock::now(), time::system_clock::now() + time::days(3650)));
   }
@@ -121,7 +121,7 @@ EndorseCertificate::EndorseCertificate(const EndorseCertificate& endorseCertific
 
   try {
     signatureInfo.setValidityPeriod(endorseCertificate.getValidityPeriod());
-  } catch (tlv::Error&) {
+  } catch (const tlv::Error&) {
     signatureInfo.setValidityPeriod(ndn::security::ValidityPeriod(
       time::system_clock::now(), time::system_clock::now() + time::days(3650)));
   }

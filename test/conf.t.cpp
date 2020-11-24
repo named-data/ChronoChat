@@ -1,18 +1,18 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
  * Author: Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
-#include <boost/test/unit_test.hpp>
-
 #include "conf.hpp"
+
+#include <boost/test/unit_test.hpp>
 #include <ndn-cxx/encoding/buffer-stream.hpp>
 
-namespace chronochat{
+namespace chronochat {
 namespace tests {
 
 using std::string;

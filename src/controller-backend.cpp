@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013-2016, Regents of the University of California
+ * Copyright (c) 2013-2020, Regents of the University of California
  *                          Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -12,11 +12,14 @@
 #include "controller-backend.hpp"
 
 #ifndef Q_MOC_RUN
+#include <iostream>
+#include <boost/asio.hpp>
+
 #include <ndn-cxx/util/segment-fetcher.hpp>
 #include <ndn-cxx/security/signing-helpers.hpp>
 #include <ndn-cxx/security/certificate-fetcher-offline.hpp>
+
 #include "invitation.hpp"
-#include <iostream>
 #endif
 
 namespace chronochat {
@@ -58,7 +61,7 @@ ControllerBackend::run()
       setInvitationListener();
       m_face.processEvents();
     }
-    catch (std::runtime_error& e) {
+    catch (const std::runtime_error& e) {
       {
         std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
         m_isNfdConnected = false;
@@ -136,35 +139,13 @@ ControllerBackend::setInvitationListener()
   invitationPrefix.append(m_identity).append("CHRONOCHAT-INVITATION");
   requestPrefix.append(m_identity).append("CHRONOCHAT-INVITATION-REQUEST");
 
-  auto invitationListenerId =
-    make_shared<ndn::RegisteredPrefixHandle>(m_face.setInterestFilter(invitationPrefix,
-                             bind(&ControllerBackend::onInvitationInterest,
-                                  this, _1, _2, offset),
-                             bind(&ControllerBackend::onInvitationRegisterFailed,
-                                  this, _1, _2)));
+  m_invitationListenerHandle = m_face.setInterestFilter(invitationPrefix,
+    bind(&ControllerBackend::onInvitationInterest, this, _1, _2, offset),
+    bind(&ControllerBackend::onInvitationRegisterFailed, this, _1, _2));
 
-  if (m_invitationListenerId != 0) {
-    invitationListenerId->unregister(
-      bind(&ControllerBackend::onInvitationPrefixReset, this),
-      bind(&ControllerBackend::onInvitationPrefixResetFailed, this, _1));
-  }
-
-  m_invitationListenerId = invitationListenerId;
-
-  auto requestListenerId =
-    make_shared<ndn::RegisteredPrefixHandle>(
-      m_face.setInterestFilter(requestPrefix,
-                               bind(&ControllerBackend::onInvitationRequestInterest,
-                                    this, _1, _2, offset),
-                               [] (const Name& prefix, const std::string& failInfo) {}));
-
-  if (m_requestListenerId != 0) {
-    m_requestListenerId->unregister(
-      []{},
-      [] (const std::string& failInfo) {});
-  }
-
-  m_requestListenerId = requestListenerId;
+  m_requestListenerHandle = m_face.setInterestFilter(requestPrefix,
+    bind(&ControllerBackend::onInvitationRequestInterest, this, _1, _2, offset),
+    [] (const Name& prefix, const std::string& failInfo) {});
 }
 
 ndn::Name
@@ -173,25 +154,12 @@ ControllerBackend::getInvitationRoutingPrefix()
   return Name("/ndn/broadcast");
 }
 
-void
-ControllerBackend::onInvitationPrefixReset()
-{
-  // _LOG_DEBUG("ControllerBackend::onInvitationPrefixReset");
-}
-
-void
-ControllerBackend::onInvitationPrefixResetFailed(const std::string& failInfo)
-{
-  // _LOG_DEBUG("ControllerBackend::onInvitationPrefixResetFailed: " << failInfo);
-}
-
 
 void
 ControllerBackend::onInvitationInterest(const ndn::Name& prefix,
                                         const ndn::Interest& interest,
                                         size_t routingPrefixOffset)
 {
-  // _LOG_DEBUG("onInvitationInterest: " << interest.getName());
   shared_ptr<Interest> invitationInterest =
     make_shared<Interest>(interest.getName().getSubName(routingPrefixOffset));
 
@@ -201,7 +169,7 @@ ControllerBackend::onInvitationInterest(const ndn::Name& prefix,
       if (m_chatDialogList.contains(QString::fromStdString(invitation.getChatroom())))
         return;
   }
-  catch (Invitation::Error& e) {
+  catch (const Invitation::Error& e) {
     // Cannot parse the invitation;
     return;
   }
@@ -215,7 +183,6 @@ ControllerBackend::onInvitationInterest(const ndn::Name& prefix,
 void
 ControllerBackend::onInvitationRegisterFailed(const Name& prefix, const std::string& failInfo)
 {
-  // _LOG_DEBUG("ControllerBackend::onInvitationRegisterFailed: " << failInfo);
 }
 
 void
@@ -258,8 +225,6 @@ void
 ControllerBackend::onInvitationValidationFailed(const Interest& interest,
                                                 const ndn::security::ValidationError& failureInfo)
 {
-  // _LOG_DEBUG("Invitation: " << interest->getName() <<
-  //            " cannot not be validated due to: " << failureInfo);
 }
 
 void
@@ -288,7 +253,7 @@ ControllerBackend::onLocalPrefix(const ndn::ConstBufferPtr& data)
         prefix = Name("/private/local");
     }
   }
-  catch (Block::Error& e) {
+  catch (const Block::Error& e) {
     prefix = Name("/private/local");
   }
 
@@ -441,8 +406,6 @@ ControllerBackend::onInvitationResponded(const ndn::Name& invitationName, bool a
       .append(ROUTING_HINT_SEPARATOR)
       .append(response->getName());
 
-    // _LOG_DEBUG("onInvitationResponded: prepare reply " << wrappedName);
-
     shared_ptr<Data> wrappedData = make_shared<Data>(wrappedName);
     wrappedData->setContent(response->wireEncode());
     wrappedData->setFreshnessPeriod(time::milliseconds(1000));
@@ -485,6 +448,7 @@ ControllerBackend::onSendInvitationRequest(const QString& chatroomName, const QS
   Interest interest(interestName);
   interest.setInterestLifetime(time::milliseconds(10000));
   interest.setMustBeFresh(true);
+  interest.setCanBePrefix(true);
   interest.getNonce();
   m_face.expressInterest(interest,
                          bind(&ControllerBackend::onRequestResponse, this, _1, _2),
@@ -517,5 +481,4 @@ ControllerBackend::onNfdReconnect()
 
 #if WAF
 #include "controller-backend.moc"
-// #include "controller-backend.cpp.moc"
 #endif

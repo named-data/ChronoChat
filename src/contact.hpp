@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -12,10 +12,11 @@
 #define CHRONOCHAT_CONTACT_HPP
 
 #include "common.hpp"
-#include <ndn-cxx/security/certificate.hpp>
-#include <ndn-cxx/util/regex.hpp>
 #include "endorse-certificate.hpp"
 #include "profile.hpp"
+
+#include <ndn-cxx/security/certificate.hpp>
+#include <ndn-cxx/util/regex.hpp>
 
 namespace chronochat {
 
@@ -45,7 +46,7 @@ public:
     try {
       m_notBefore = identityCertificate.getValidityPeriod().getPeriod().first;
       m_notAfter = identityCertificate.getValidityPeriod().getPeriod().second;
-    } catch (tlv::Error&) {}
+    } catch (const tlv::Error&) {}
   }
 
   Contact(const EndorseCertificate& endorseCertificate,
@@ -69,7 +70,7 @@ public:
     try {
       m_notBefore = endorseCertificate.getValidityPeriod().getPeriod().first;
       m_notAfter = endorseCertificate.getValidityPeriod().getPeriod().second;
-    } catch (tlv::Error&) {}
+    } catch (const tlv::Error&) {}
   }
 
   Contact(const Name& identity,

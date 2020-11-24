@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -91,7 +91,7 @@ public:
     return m_inviterCertificate;
   }
 
-  const uint64_t
+  uint64_t
   getTimestamp() const
   {
     return m_timestamp;

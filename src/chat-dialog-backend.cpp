@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013-2016, Regents of the University of California
+ * Copyright (c) 2013-2020, Regents of the University of California
  *                          Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -68,7 +68,7 @@ ChatDialogBackend::run()
     try {
       m_face->getIoService().run();
     }
-    catch (std::runtime_error& e) {
+    catch (const std::runtime_error& e) {
       {
         std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
         m_isNfdConnected = false;
@@ -131,10 +131,8 @@ ChatDialogBackend::initializeSync()
                         bind(&ChatDialogBackend::sendJoin, this));
 
   // cancel existing hello event if it exists
-  if (m_helloEventId) {
+  if (m_helloEventId)
     m_helloEventId.cancel();
-    m_helloEventId.reset();
-  }
 }
 
 class IoDeviceSource
@@ -229,7 +227,7 @@ ChatDialogBackend::processChatData(const ndn::Data& data,
   try {
     msg.wireDecode(data.getContent().blockFromValue());
   }
-  catch (tlv::Error&) {
+  catch (const tlv::Error&) {
     // nasty stuff: as a remedy, we'll form some standard msg for inparsable msgs
     msg.setNick("inconnu");
     msg.setMsgType(ChatMessage::OTHER);
@@ -243,7 +241,7 @@ ChatDialogBackend::processChatData(const ndn::Data& data,
 
     if (it != m_roster.end()) {
       // cancel timeout event
-      if (static_cast<bool>(it->second.timeoutEventId))
+      if (it->second.timeoutEventId)
         it->second.timeoutEventId.cancel();
 
       // notify frontend to remove the remote session (node)
@@ -267,10 +265,6 @@ ChatDialogBackend::processChatData(const ndn::Data& data,
     }
 
     uint64_t seqNo = data.getName().get(-1).toNumber();
-
-    // If a timeout event has been scheduled, cancel it.
-    if (static_cast<bool>(it->second.timeoutEventId))
-      it->second.timeoutEventId.cancel();
 
     // (Re)schedule another timeout event after 3 HELLO_INTERVAL;
     it->second.timeoutEventId =
@@ -414,7 +408,7 @@ ChatDialogBackend::prepareControlMessage(ChatMessage& msg,
 void
 ChatDialogBackend::prepareChatMessage(const QString& text,
                                       time_t timestamp,
-                                      ChatMessage &msg)
+                                      ChatMessage& msg)
 {
   msg.setNick(m_nick);
   msg.setChatroomName(m_chatroomName);
@@ -514,5 +508,4 @@ ChatDialogBackend::onNfdReconnect()
 
 #if WAF
 #include "chat-dialog-backend.moc"
-// #include "chat-dialog-backend.cpp.moc"
 #endif

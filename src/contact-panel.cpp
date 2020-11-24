@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -17,12 +17,6 @@
 #include <QtSql/QSqlRecord>
 #include <QtSql/QSqlField>
 #include <QtSql/QSqlError>
-
-#ifndef Q_MOC_RUN
-#include "logging.h"
-#endif
-
-// INIT_LOGGER("ContactPanel");
 
 namespace chronochat {
 
@@ -129,15 +123,10 @@ ContactPanel::resetPanel()
 void
 ContactPanel::onCloseDBModule()
 {
-  // _LOG_DEBUG("close db module");
-  if (m_trustScopeModel) {
+  if (m_trustScopeModel)
     delete m_trustScopeModel;
-    // _LOG_DEBUG("trustScopeModel closed");
-  }
-  if (m_endorseDataModel) {
+  if (m_endorseDataModel)
     delete m_endorseDataModel;
-    // _LOG_DEBUG("endorseDataModel closed");
-  }
 }
 
 void
@@ -211,8 +200,8 @@ ContactPanel::onContactInfoReady(const QString& identity,
 
 // private slots
 void
-ContactPanel::onSelectionChanged(const QItemSelection &selected,
-                                 const QItemSelection &deselected)
+ContactPanel::onSelectionChanged(const QItemSelection& selected,
+                                 const QItemSelection& deselected)
 {
   QModelIndexList items = selected.indexes();
   QString alias = m_contactListModel->data(items.first(), Qt::DisplayRole).toString();
@@ -341,5 +330,4 @@ ContactPanel::onAliasChanged(const QString& identity, const QString& alias)
 
 #if WAF
 #include "contact-panel.moc"
-// #include "contact-panel.cpp.moc"
 #endif

@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -101,23 +101,23 @@ ChatMessage::wireDecode(const Block& chatMsgWire)
   m_wire.parse();
 
   if (m_wire.type() != tlv::ChatMessage)
-    throw Error("Unexpected TLV number when decoding chat message packet");
+    NDN_THROW(Error("Unexpected TLV number when decoding chat message packet"));
 
   Block::element_const_iterator i = m_wire.elements_begin();
   if (i == m_wire.elements_end() || i->type() != tlv::Nick)
-    throw Error("Expect Nick but get ...");
+    NDN_THROW(Error("Expect Nick but get ..."));
   m_nick = std::string(reinterpret_cast<const char* >(i->value()),
                        i->value_size());;
   i++;
 
   if (i == m_wire.elements_end() || i->type() != tlv::ChatroomName)
-    throw Error("Expect Chatroom Name but get ...");
+    NDN_THROW(Error("Expect Chatroom Name but get ..."));
   m_chatroomName = std::string(reinterpret_cast<const char* >(i->value()),
                        i->value_size());;
   i++;
 
   if (i == m_wire.elements_end() || i->type() != tlv::ChatMessageType)
-    throw Error("Expect Chat Message Type but get ...");
+    NDN_THROW(Error("Expect Chat Message Type but get ..."));
   m_msgType = static_cast<ChatMessageType>(readNonNegativeInteger(*i));
   i++;
 
@@ -125,19 +125,19 @@ ChatMessage::wireDecode(const Block& chatMsgWire)
     m_data = "";
   else {
     if (i == m_wire.elements_end() || i->type() != tlv::ChatData)
-      throw Error("Expect Chat Data but get ...");
+      NDN_THROW(Error("Expect Chat Data but get ..."));
     m_data = std::string(reinterpret_cast<const char* >(i->value()),
                        i->value_size());;
     i++;
   }
 
   if (i == m_wire.elements_end() || i->type() != tlv::Timestamp)
-    throw Error("Expect Timestamp but get ...");
+    NDN_THROW(Error("Expect Timestamp but get ..."));
   m_timestamp = static_cast<time_t>(readNonNegativeInteger(*i));
   i++;
 
   if (i != m_wire.elements_end()) {
-    throw Error("Unexpected element");
+    NDN_THROW(Error("Unexpected element"));
   }
 
 }
@@ -177,4 +177,4 @@ ChatMessage::setTimestamp(const time_t timestamp)
   m_timestamp = timestamp;
 }
 
-}// namespace chronochat
+} // namespace chronochat

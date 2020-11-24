@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -86,13 +86,13 @@ EndorseCollection::wireDecode(const Block& endorseWire)
   m_entries.clear();
 
   if (m_wire.type() != tlv::EndorseCollection)
-    throw Error("Unexpected TLV number when decoding endorse collection packet");
+    NDN_THROW(Error("Unexpected TLV number when decoding endorse collection packet"));
 
   Block::element_const_iterator i = m_wire.elements_begin();
   if (i == m_wire.elements_end())
-    throw Error("Missing Endorse Collection Entry");
+    NDN_THROW(Error("Missing Endorse Collection Entry"));
   if (i->type() != tlv::EndorseCollectionEntry)
-    throw Error("Expect Endorse Collection Entry but get TLV Type " + std::to_string(i->type()));
+    NDN_THROW(Error("Expect Endorse Collection Entry but get TLV Type " + std::to_string(i->type())));
 
   while (i != m_wire.elements_end() && i->type() == tlv::EndorseCollectionEntry) {
     CollectionEntry entry;
@@ -100,31 +100,30 @@ EndorseCollection::wireDecode(const Block& endorseWire)
     temp.parse();
     Block::element_const_iterator j = temp.elements_begin();
     if (j == temp.elements_end())
-      throw Error("Missing Cert Name");
+      NDN_THROW(Error("Missing Cert Name"));
     if (j->type() != tlv::Name)
-      throw Error("Expect Cert Name but get TLV Type " + std::to_string(j->type()));
+      NDN_THROW(Error("Expect Cert Name but get TLV Type " + std::to_string(j->type())));
 
     entry.certName.wireDecode(*j);
 
     ++j;
     if (j == temp.elements_end())
-      throw Error("Missing Hash");
+      NDN_THROW(Error("Missing Hash"));
     if (j->type() != tlv::Hash)
-      throw Error("Expect Hash but get TLV Type " + std::to_string(j->type()));
+      NDN_THROW(Error("Expect Hash but get TLV Type " + std::to_string(j->type())));
 
     entry.hash = std::string(reinterpret_cast<const char* >(j->value()),
                              j->value_size());
     ++j;
-    if (j != temp.elements_end()) {
-      throw Error("Unexpected element");
-    }
+    if (j != temp.elements_end())
+      NDN_THROW(Error("Unexpected element"));
+
     m_entries.push_back(entry);
     ++i;
   }
 
-  if (i != m_wire.elements_end()) {
-      throw Error("Unexpected element");
-  }
+  if (i != m_wire.elements_end())
+      NDN_THROW(Error("Unexpected element"));
 }
 
 void

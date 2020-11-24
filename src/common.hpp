@@ -1,6 +1,13 @@
-/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
-/**
- * COPYRIGHT MSG GOES HERE...
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2020, Regents of the University of California
+ *                     Yingdi Yu
+ *
+ * BSD license, See the LICENSE file for more information
+ *
+ * Author: Mengjin Yan <jane.yan0129@gmail.com>
+ *         Yingdi Yu <yingdi@cs.ucla.edu>
+ *         Qiuhan Ding <qiuhanding@cs.ucla.edu>
  */
 
 #ifndef CHRONOCHAT_COMMON_HPP
@@ -22,51 +29,33 @@
 
 #include <cstddef>
 #include <list>
-#include <set>
 #include <map>
-#include <queue>
 #include <vector>
 #include <string>
 
+#include <boost/assert.hpp>
+
 #include <ndn-cxx/interest.hpp>
 #include <ndn-cxx/data.hpp>
-
-#include <boost/algorithm/string.hpp>
-#include <boost/asio.hpp>
-#include <boost/assert.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/property_tree/ptree.hpp>
 
 namespace chronochat {
 
 using std::size_t;
 
-using boost::noncopyable;
-
 using std::shared_ptr;
 using std::unique_ptr;
-using std::weak_ptr;
-using std::enable_shared_from_this;
 using std::make_shared;
-using std::static_pointer_cast;
-using std::dynamic_pointer_cast;
-using std::const_pointer_cast;
 using std::function;
 using std::bind;
-using std::ref;
-using std::cref;
 
 using ndn::Interest;
 using ndn::Data;
 using ndn::Name;
 using ndn::Block;
-using ndn::Signature;
-using ndn::KeyLocator;
 
 namespace tlv {
 using namespace ndn::tlv;
-}
+} // namespace tlv
 
 namespace name = ndn::name;
 namespace time = ndn::time;

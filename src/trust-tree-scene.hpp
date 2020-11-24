@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -11,14 +11,14 @@
 #ifndef CHRONOCHAT_TRUST_TREE_SCENE_HPP
 #define CHRONOCHAT_TRUST_TREE_SCENE_HPP
 
-#include <QGraphicsScene>
-#include <QColor>
-#include <QMap>
-
 #ifndef Q_MOC_RUN
 #include "trust-tree-node.hpp"
 #include "tree-layout.hpp"
 #endif
+
+#include <QGraphicsScene>
+#include <QColor>
+#include <QMap>
 
 class QGraphicsTextItem;
 

@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -101,14 +101,14 @@ EndorseInfo::wireDecode(const Block& endorseWire)
   m_endorsements.clear();
 
   if (m_wire.type() != tlv::EndorseInfo)
-    throw Error("Unexpected TLV number when decoding endorse info packet");
+    NDN_THROW(Error("Unexpected TLV number when decoding endorse info packet"));
 
   // Endorsement
   Block::element_const_iterator i = m_wire.elements_begin();
   if (i == m_wire.elements_end())
-    throw Error("Missing Endorsement");
+    NDN_THROW(Error("Missing Endorsement"));
   if (i->type() != tlv::Endorsement)
-    throw Error("Expect Endorsement but get TLV Type " + std::to_string(i->type()));
+    NDN_THROW(Error("Expect Endorsement but get TLV Type " + std::to_string(i->type())));
 
   while (i != m_wire.elements_end() && i->type() == tlv::Endorsement) {
     Endorsement endorsement;
@@ -118,9 +118,9 @@ EndorseInfo::wireDecode(const Block& endorseWire)
 
     // Endorse Type
     if (j == temp.elements_end())
-      throw Error("Missing Endorse Type");
+      NDN_THROW(Error("Missing Endorse Type"));
     if (j->type() != tlv::EndorseType)
-      throw Error("Expect Endorse Type but get TLV Type " + std::to_string(j->type()));
+      NDN_THROW(Error("Expect Endorse Type but get TLV Type " + std::to_string(j->type())));
 
     endorsement.type = std::string(reinterpret_cast<const char* >(j->value()),
                                    j->value_size());;
@@ -128,9 +128,9 @@ EndorseInfo::wireDecode(const Block& endorseWire)
 
     // Endorse Value
     if (j == temp.elements_end())
-      throw Error("Missing Endorse Value");
+      NDN_THROW(Error("Missing Endorse Value"));
     if (j->type() != tlv::EndorseValue)
-      throw Error("Expect Endorse Value but get TLV Type " + std::to_string(j->type()));
+      NDN_THROW(Error("Expect Endorse Value but get TLV Type " + std::to_string(j->type())));
 
     endorsement.value = std::string(reinterpret_cast<const char* >(j->value()),
                                     j->value_size());
@@ -138,23 +138,22 @@ EndorseInfo::wireDecode(const Block& endorseWire)
 
     // Endorse Count
     if (j == temp.elements_end())
-      throw Error("Missing Endorse Count");
+      NDN_THROW(Error("Missing Endorse Count"));
     if (j->type() != tlv::EndorseCount)
-      throw Error("Expect Endorse Count but get TLV Type " + std::to_string(j->type()));
+      NDN_THROW(Error("Expect Endorse Count but get TLV Type " + std::to_string(j->type())));
 
     endorsement.count = std::string(reinterpret_cast<const char* >(j->value()),
                                     j->value_size());
     ++j;
-    if (j != temp.elements_end()) {
-      throw Error("Unexpected element");
-    }
+    if (j != temp.elements_end())
+      NDN_THROW(Error("Unexpected element"));
+
     m_endorsements.push_back(endorsement);
     ++i;
   }
 
-  if (i != m_wire.elements_end()) {
-      throw Error("Unexpected element");
-  }
+  if (i != m_wire.elements_end())
+      NDN_THROW(Error("Unexpected element"));
 }
 
 void

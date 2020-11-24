@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -25,18 +25,20 @@
 
 namespace chronochat {
 
-class NodeInfo {
+class NodeInfo
+{
 public:
   QString sessionPrefix;
   chronosync::SeqNo seqNo;
 };
 
-class UserInfo {
+class UserInfo
+{
 public:
   ndn::Name sessionPrefix;
   bool hasNick;
   std::string userNick;
-  ndn::scheduler::EventId timeoutEventId;
+  ndn::scheduler::ScopedEventId timeoutEventId;
 };
 
 class ChatDialogBackend : public QThread
@@ -98,7 +100,7 @@ private:
   void
   prepareChatMessage(const QString& text,
                      time_t timestamp,
-                     ChatMessage &msg);
+                     ChatMessage& msg);
 
   void
   updatePrefixes();

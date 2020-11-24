@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -137,47 +137,47 @@ ChatroomInfo::wireDecode(const Block& chatroomWire)
   //                   Name+
 
   if (m_wire.type() != tlv::ChatroomInfo)
-    throw Error("Unexpected TLV number when decoding chatroom packet");
+    NDN_THROW(Error("Unexpected TLV number when decoding chatroom packet"));
 
   // Chatroom Info
   Block::element_const_iterator i = m_wire.elements_begin();
   if (i == m_wire.elements_end())
-    throw Error("Missing Chatroom Name");
+    NDN_THROW(Error("Missing Chatroom Name"));
   if (i->type() != tlv::ChatroomName)
-    throw Error("Expect Chatroom Name but get TLV Type " + std::to_string(i->type()));
+    NDN_THROW(Error("Expect Chatroom Name but get TLV Type " + std::to_string(i->type())));
   m_chatroomName.wireDecode(i->blockFromValue());
   ++i;
 
   // Trust Model
   if (i == m_wire.elements_end())
-    throw Error("Missing Trust Model");
+    NDN_THROW(Error("Missing Trust Model"));
   if (i->type() != tlv::TrustModel)
-    throw Error("Expect Trust Model but get TLV Type " + std::to_string(i->type()));
+    NDN_THROW(Error("Expect Trust Model but get TLV Type " + std::to_string(i->type())));
   m_trustModel =
       static_cast<TrustModel>(readNonNegativeInteger(*i));
   ++i;
 
   // Chatroom Sync Prefix
   if (i == m_wire.elements_end())
-    throw Error("Missing Chatroom Prefix");
+    NDN_THROW(Error("Missing Chatroom Prefix"));
   if (i->type() != tlv::ChatroomPrefix)
-    throw Error("Expect Chatroom Prefix but get TLV Type " + std::to_string(i->type()));
+    NDN_THROW(Error("Expect Chatroom Prefix but get TLV Type " + std::to_string(i->type())));
   m_syncPrefix.wireDecode(i->blockFromValue());
   ++i;
 
   // Manager Prefix
   if (i == m_wire.elements_end())
-    throw Error("Missing Manager Prefix");
+    NDN_THROW(Error("Missing Manager Prefix"));
   if (i->type() != tlv::ManagerPrefix)
-    throw Error("Expect Manager Prefix but get TLV Type " + std::to_string(i->type()));
+    NDN_THROW(Error("Expect Manager Prefix but get TLV Type " + std::to_string(i->type())));
   m_manager.wireDecode(i->blockFromValue());
   ++i;
 
   // Participants
   if (i == m_wire.elements_end())
-    throw Error("Missing Participant");
+    NDN_THROW(Error("Missing Participant"));
   if (i->type() != tlv::Participants)
-    throw Error("Expect Participant but get TLV Type " + std::to_string(i->type()));
+    NDN_THROW(Error("Expect Participant but get TLV Type " + std::to_string(i->type())));
 
   Block temp = *i;
   temp.parse();
@@ -189,15 +189,15 @@ ChatroomInfo::wireDecode(const Block& chatroomWire)
     ++j;
   }
   if (j != temp.elements_end())
-    throw Error("Unexpected element");
+    NDN_THROW(Error("Unexpected element"));
 
   if (m_participants.empty())
-    throw Error("No participant in the chatroom");
+    NDN_THROW(Error("No participant in the chatroom"));
 
   ++i;
 
   if (i != m_wire.elements_end()) {
-    throw Error("Unexpected element");
+    NDN_THROW(Error("Unexpected element"));
   }
 }
 

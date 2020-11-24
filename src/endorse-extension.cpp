@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -79,14 +79,14 @@ EndorseExtension::wireDecode(const Block& endorseWire)
   //
 
   if (m_wire.type() != tlv::EndorseExtension)
-    throw Error("Unexpected TLV number when decoding endorse extension packet");
+    NDN_THROW(Error("Unexpected TLV number when decoding endorse extension packet"));
 
   // EntryData
   Block::element_const_iterator i = m_wire.elements_begin();
   if (i == m_wire.elements_end())
-    throw Error("Missing Entry Data");
+    NDN_THROW(Error("Missing Entry Data"));
   if (i->type() != tlv::EntryData)
-    throw Error("Expect Entry Data but get TLV Type " + std::to_string(i->type()));
+    NDN_THROW(Error("Expect Entry Data but get TLV Type " + std::to_string(i->type())));
 
    while (i != m_wire.elements_end() && i->type() == tlv::EntryData) {
      m_entries.push_back(std::string(reinterpret_cast<const char* >(i->value()),
@@ -94,9 +94,8 @@ EndorseExtension::wireDecode(const Block& endorseWire)
      ++i;
   }
 
-  if (i != m_wire.elements_end()) {
-    throw Error("Unexpected element");
-  }
+  if (i != m_wire.elements_end())
+    NDN_THROW(Error("Unexpected element"));
 }
 
 void

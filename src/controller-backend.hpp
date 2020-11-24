@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -55,12 +55,6 @@ private:
 
   ndn::Name
   getInvitationRoutingPrefix();
-
-  void
-  onInvitationPrefixReset();
-
-  void
-  onInvitationPrefixResetFailed(const std::string& failInfo);
 
   void
   onInvitationInterest(const ndn::Name& prefix, const ndn::Interest& interest,
@@ -170,8 +164,8 @@ private:
   ndn::security::ValidatorNull m_nullValidator;
 
   // RegisteredPrefixId
-  shared_ptr<ndn::RegisteredPrefixHandle> m_invitationListenerId;
-  shared_ptr<ndn::RegisteredPrefixHandle> m_requestListenerId;
+  ndn::ScopedRegisteredPrefixHandle m_invitationListenerHandle;
+  ndn::ScopedRegisteredPrefixHandle m_requestListenerHandle;
 
   // ChatRoomList
   QStringList m_chatDialogList;

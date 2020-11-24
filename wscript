@@ -7,34 +7,26 @@ import os
 
 def options(opt):
 
-    opt.load(['compiler_c', 'compiler_cxx', 'qt5', 'gnu_dirs'])
+    opt.load(['compiler_c', 'compiler_cxx', 'gnu_dirs'])
 
-    opt.load(['default-compiler-flags', 'boost', 'protoc',
-              'doxygen', 'sphinx_build', 'qt5', 'cryptopp'],
-              tooldir=['waf-tools'])
+    opt.load(['default-compiler-flags', 'boost',
+              'doxygen', 'sphinx_build', 'qt5_custom', 'cryptopp'],
+              tooldir=['.waf-tools'])
 
-    opt = opt.add_option_group('ChronotChat Options')
+    opt = opt.add_option_group('ChronoChat Options')
 
     opt.add_option('--with-tests', action='store_true', default=False, dest='with_tests',
                    help='''build unit tests''')
 
-    opt.add_option('--with-log4cxx', action='store_true', default=False, dest='log4cxx',
-                   help='''Enable log4cxx''')
-
 def configure(conf):
-    conf.load(['compiler_c', 'compiler_cxx', 'qt5',
-               'default-compiler-flags', 'boost', 'protoc', 'gnu_dirs',
+    conf.load(['compiler_c', 'compiler_cxx', 'qt5_custom',
+               'default-compiler-flags', 'boost', 'gnu_dirs',
                'doxygen', 'sphinx_build', 'cryptopp'])
 
     conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'],
                    uselib_store='NDN_CXX', mandatory=True)
 
-    if conf.options.log4cxx:
-        conf.check_cfg(package='liblog4cxx', args=['--cflags', '--libs'],
-                       uselib_store='LOG4CXX', mandatory=True)
-        conf.define("HAVE_LOG4CXX", 1)
-
-    conf.check_cfg (package='ChronoSync', args=['ChronoSync >= 0.1', '--cflags', '--libs'],
+    conf.check_cfg (package='ChronoSync', args=['ChronoSync >= 0.5', '--cflags', '--libs'],
                     uselib_store='SYNC', mandatory=True)
 
     boost_libs = 'system random thread filesystem'
@@ -43,14 +35,18 @@ def configure(conf):
         conf.define('WITH_TESTS', 1);
         boost_libs += ' unit_test_framework'
 
-    conf.check_boost(lib=boost_libs)
-    if conf.env.BOOST_VERSION_NUMBER < 104800:
-        Logs.error("Minimum required boost version is 1.48.0")
-        Logs.error("Please upgrade your distribution or install custom boost libraries" +
-                   " (http://redmine.named-data.net/projects/nfd/wiki/Boost_FAQ)")
-        return
+    conf.check_boost(lib=boost_libs, mt=True)
+    if conf.env.BOOST_VERSION_NUMBER < 105800:
+        conf.fatal('The minimum supported version of Boost is 1.65.1.\n'
+                   'Please upgrade your distribution or manually install a newer version of Boost.\n'
+                   'For more information, see https://redmine.named-data.net/projects/nfd/wiki/Boost')
+    elif conf.env.BOOST_VERSION_NUMBER < 106501:
+        Logs.warn('WARNING: Using a version of Boost older than 1.65.1 is not officially supported and may not work.\n'
+                  'If you encounter any problems, please upgrade your distribution or manually install a newer version of Boost.\n'
+                  'For more information, see https://redmine.named-data.net/projects/nfd/wiki/Boost')
 
     conf.check_cryptopp()
+    conf.check_compiler_flags()
     conf.write_config_header('src/config.h')
 
 def build (bld):
@@ -64,9 +60,9 @@ def build (bld):
         target = "ChronoChat",
         features = feature_list,
         defines = "WAF=1",
-        source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', '*.qrc', 'logging.cc', 'src/*.proto']),
+        source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', '*.qrc']),
         includes = "src .",
-        use = "QT5CORE QT5GUI QT5WIDGETS QT5SQL NDN_CXX BOOST LOG4CXX SYNC CRYPTOPP",
+        use = "QT5CORE QT5GUI QT5WIDGETS QT5SQL NDN_CXX BOOST SYNC CRYPTOPP",
         )
 
     # Unit tests
@@ -81,10 +77,10 @@ def build (bld):
           )
 
     # Debug tools
-    if bld.env["_DEBUG"]:
-        for app in bld.path.ant_glob('debug-tools/*.cc'):
+    if "_DEBUG" in bld.env["DEFINES"]:
+        for app in bld.path.ant_glob('debug-tools/*.cpp'):
             bld(features=['cxx', 'cxxprogram'],
-                target = '%s' % (str(app.change_ext('','.cc'))),
+                target = '%s' % (str(app.change_ext('','.cpp'))),
                 source = app,
                 use = 'NDN_CXX',
                 includes = "src .",

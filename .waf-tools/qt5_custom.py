@@ -500,7 +500,7 @@ def configure(self):
 	# Qt5 may be compiled with '-reduce-relocations' which requires dependent programs to have -fPIE or -fPIC?
 	frag = '#include <QMap>\nint main(int argc, char **argv) {QMap<int,int> m;return m.keys().size();}\n'
 	uses = 'QT5CORE'
-	for flag in [[], '-fPIE', '-fPIC', '-std=c++11' , ['-std=c++11', '-fPIE'], ['-std=c++11', '-fPIC']]:
+	for flag in [[], '-fPIE', '-fPIC', '-std=c++14' , ['-std=c++14', '-fPIE'], ['-std=c++14', '-fPIC']]:
 		msg = 'See if Qt files compile '
 		if flag:
 			msg += 'with %s' % flag

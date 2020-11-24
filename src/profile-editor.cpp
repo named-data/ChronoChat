@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -13,12 +13,6 @@
 #include <QtSql/QSqlRecord>
 #include <QtSql/QSqlField>
 #include <QtSql/QSqlError>
-
-#ifndef Q_MOC_RUN
-#include "logging.h"
-#endif
-
-// INIT_LOGGER("ProfileEditor")
 
 namespace chronochat {
 
@@ -40,9 +34,7 @@ ProfileEditor::ProfileEditor(QWidget *parent)
 ProfileEditor::~ProfileEditor()
 {
     delete ui;
-
-    if (m_tableModel)
-      delete m_tableModel;
+    delete m_tableModel;
 }
 
 void
@@ -109,5 +101,4 @@ ProfileEditor::onOkClicked()
 
 #if WAF
 #include "profile-editor.moc"
-// #include "profile-editor.cpp.moc"
 #endif

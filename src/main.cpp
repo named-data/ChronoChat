@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -8,10 +8,11 @@
  * Author: Yingdi Yu <yingdi@cs.ucla.edu>
  */
 
+#include "controller.hpp"
+
 #include <QApplication>
 #include <QTextCodec>
 
-#include "controller.hpp"
 #include <iostream>
 #include <ndn-cxx/face.hpp>
 #include <boost/thread/thread.hpp>
@@ -28,9 +29,9 @@ public:
   notify(QObject* receiver, QEvent* event)
   {
     try {
-        return QApplication::notify(receiver, event);
+      return QApplication::notify(receiver, event);
     }
-    catch (std::exception& e) {
+    catch (const std::exception& e) {
       std::cerr << "Exception thrown:" << e.what() << std::endl;
       return false;
     }

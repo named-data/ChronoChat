@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -25,7 +25,7 @@ public:
   class Error : public std::runtime_error
   {
   public:
-    Error(const std::string &what)
+    Error(const std::string& what)
       : std::runtime_error(what)
     {
     }

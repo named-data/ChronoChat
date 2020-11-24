@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -8,10 +8,6 @@
  */
 
 #include "nfd-connection-checker.hpp"
-
-#ifndef Q_MOC_RUN
-
-#endif
 
 namespace chronochat {
 
@@ -38,7 +34,9 @@ NfdConnectionChecker::run()
       m_nfdConnected = true;
     }
     try {
-      m_face->expressInterest(Interest("/localhost/nfd/status"),
+      Interest interest("/localhost/nfd/status");
+      interest.setCanBePrefix(true);
+      m_face->expressInterest(interest,
                               [&] (const Interest& interest, const Data& data) {
                                 m_face->shutdown();
                               },
@@ -46,7 +44,7 @@ NfdConnectionChecker::run()
                               [] (const Interest& interest) {});
       m_face->processEvents(time::milliseconds::zero(), true);
     }
-    catch (std::runtime_error& e) {
+    catch (const std::runtime_error& e) {
       {
         std::lock_guard<std::mutex>lock(m_nfdMutex);
         m_nfdConnected = false;
@@ -73,5 +71,4 @@ NfdConnectionChecker::shutdown()
 
 #if WAF
 #include "nfd-connection-checker.moc"
-// #include "nfd-connection-checker.cpp.moc"
 #endif

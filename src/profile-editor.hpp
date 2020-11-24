@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -14,12 +14,9 @@
 #include <QDialog>
 #include <QtSql/QSqlTableModel>
 
-#ifndef Q_MOC_RUN
-#endif
-
 namespace Ui {
 class ProfileEditor;
-}
+} // namespace Ui
 
 namespace chronochat {
 
@@ -58,7 +55,7 @@ signals:
 
 private:
   Ui::ProfileEditor* ui;
-  QSqlTableModel* m_tableModel;
+  QSqlTableModel* m_tableModel = 0;
   QString m_identity;
 };
 

@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -24,7 +24,8 @@
 
 namespace chronochat {
 
-class ChatroomInfoBackend {
+class ChatroomInfoBackend
+{
 public:
   std::string chatroomName;
   Name chatroomPrefix;
@@ -36,7 +37,7 @@ public:
   // For a user to check the status of the chatroom that he is not in.
   ndn::scheduler::EventId remoteChatroomTimeoutEventId;
   // If the user is manager, he will need the helloEventId to keep track of hello message
-  ndn::scheduler::EventId helloTimeoutEventId;
+  ndn::scheduler::ScopedEventId helloTimeoutEventId;
   // To tell whether the user is in this chatroom
   bool isParticipant;
   // To tell whether the user is the manager
@@ -228,7 +229,7 @@ private:
   shared_ptr<ndn::Face> m_face;
 
   unique_ptr<ndn::Scheduler> m_scheduler;            // scheduler
-  ndn::scheduler::EventId m_refreshPanelId;
+  ndn::scheduler::ScopedEventId m_refreshPanelId;
   shared_ptr<chronosync::Socket> m_sock; // SyncSocket
 
   ChatroomList m_chatroomList;

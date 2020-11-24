@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -10,10 +10,9 @@
  */
 
 #include "contact-storage.hpp"
-
-#include <boost/filesystem.hpp>
 #include "cryptopp.hpp"
 
+#include <boost/filesystem.hpp>
 
 namespace chronochat {
 
@@ -167,7 +166,7 @@ ContactStorage::ContactStorage(const Name& identity)
 
   int res = sqlite3_open((chronosDir / getDBName()).c_str(), &m_db);
   if (res != SQLITE_OK)
-    throw Error("chronochat DB cannot be open/created");
+    NDN_THROW(Error("chronochat DB cannot be open/created"));
 
   initializeTable("SelfProfile", INIT_SP_TABLE);
   initializeTable("SelfEndorse", INIT_SE_TABLE);
@@ -215,9 +214,9 @@ ContactStorage::initializeTable(const string& tableName, const string& sqlCreate
 
   if (!tableExist) {
     char *errmsg = 0;
-    res = sqlite3_exec(m_db, sqlCreateStmt.c_str (), NULL, NULL, &errmsg);
+    res = sqlite3_exec(m_db, sqlCreateStmt.c_str (), nullptr, nullptr, &errmsg);
     if (res != SQLITE_OK && errmsg != 0)
-      throw Error("Init \"error\" in " + tableName);
+      NDN_THROW(Error("Init \"error\" in " + tableName));
   }
 }
 
@@ -396,7 +395,7 @@ void
 ContactStorage::addContact(const Contact& contact)
 {
   if (doesContactExist(contact.getNameSpace()))
-    throw Error("Normal Contact has already existed");
+    NDN_THROW(Error("Normal Contact has already existed"));
 
   string identity = contact.getNameSpace().toUri();
   bool isIntroducer = contact.isIntroducer();

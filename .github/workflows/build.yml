@@ -9,7 +9,7 @@ on:
 jobs:
   linux:
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.os }} build
+    name: ${{ matrix.os }}
 
     strategy:
       matrix:
@@ -17,11 +17,52 @@ jobs:
 
     env:
       NODE_LABELS: "Linux Ubuntu ${{ matrix.os }}"
-      WAF_JOBS: 2
+      WAF_JOBS: 4
+      JOB_NAME: limited-build
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Run build script
       run: |
+        ./.jenkins
+
+  ubuntu-ppa:
+    runs-on: ubuntu-latest
+    name: Ubuntu PPA build
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Run build script
+      run: |
+        sudo apt install -y software-properties-common
+        sudo add-apt-repository ppa:named-data/ppa -y
+        sudo apt update
+        sudo apt-get install nfd libndn-cxx-dev libchronosync-dev
+        sudo apt-get install libcrypto++-dev libboost-all-dev qt5-default
+        ./waf --color=yes configure --debug
+        ./waf --color=yes build -j4
+
+  macos:
+    runs-on: ${{ matrix.os }}
+    continue-on-error: false
+    name: Xcode ${{ matrix.xcode }}
+
+    strategy:
+      matrix:
+        os: [macos-latest]
+        xcode: [11.3.1, 11.7, 12.2]
+
+    env:
+      WAF_JOBS: 4
+      JOB_NAME: limited-build
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Run build script
+      run: |
+        sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
+        export NODE_LABELS="OSX OSX-$(sw_vers -productVersion | cut -d . -f -2)"
         ./.jenkins

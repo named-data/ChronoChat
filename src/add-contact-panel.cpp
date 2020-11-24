@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -10,9 +10,6 @@
 
 #include "add-contact-panel.hpp"
 #include "ui_add-contact-panel.h"
-
-#ifndef Q_MOC_RUN
-#endif
 
 namespace chronochat {
 
@@ -98,5 +95,4 @@ AddContactPanel::onContactEndorseInfoReady(const EndorseInfo& endorseInfo)
 
 #if WAF
 #include "add-contact-panel.moc"
-// #include "add-contact-panel.cpp.moc"
 #endif

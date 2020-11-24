@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -64,7 +64,7 @@ public:
   const Name::Component&
   getName() const;
 
-  const TrustModel
+  TrustModel
   getTrustModel() const;
 
   const Name&
@@ -115,7 +115,7 @@ ChatroomInfo::getName() const
   return m_chatroomName;
 }
 
-inline const ChatroomInfo::TrustModel
+inline ChatroomInfo::TrustModel
 ChatroomInfo::getTrustModel() const
 {
   return m_trustModel;

@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -61,13 +61,13 @@ public:
   const std::string&
   getChatroomName() const;
 
-  const ChatMessageType
+  ChatMessageType
   getMsgType() const;
 
   const std::string&
   getData() const;
 
-  const time_t
+  time_t
   getTimestamp() const;
 
   void
@@ -112,7 +112,7 @@ ChatMessage::getChatroomName() const
   return m_chatroomName;
 }
 
-inline const ChatMessage::ChatMessageType
+inline ChatMessage::ChatMessageType
 ChatMessage::getMsgType() const
 {
   return m_msgType;
@@ -124,7 +124,7 @@ ChatMessage::getData() const
   return m_data;
 }
 
-inline const time_t
+inline time_t
 ChatMessage::getTimestamp() const
 {
   return m_timestamp;
@@ -132,4 +132,4 @@ ChatMessage::getTimestamp() const
 
 } // namespace chronochat
 
-#endif //CHRONOCHAT_CHAT_MESSAGE_HPP
+#endif // CHRONOCHAT_CHAT_MESSAGE_HPP

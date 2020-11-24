@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -11,15 +11,12 @@
 #ifndef CHRONOCHAT_INVITATION_DIALOG_HPP
 #define CHRONOCHAT_INVITATION_DIALOG_HPP
 
-#include <QDialog>
-
-#ifndef Q_MOC_RUN
 #include "common.hpp"
-#endif
+#include <QDialog>
 
 namespace Ui {
 class InvitationDialog;
-}
+} // namespace Ui
 
 namespace chronochat {
 

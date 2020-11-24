@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -165,7 +165,7 @@ DigestTreeScene::plot(QString rootDigest)
 }
 
 void
-DigestTreeScene::plotEdge(const std::vector<TreeLayout::Coordinate> &childNodesCo, int nodeSize)
+DigestTreeScene::plotEdge(const std::vector<TreeLayout::Coordinate>& childNodesCo, int nodeSize)
 {
   int n = childNodesCo.size();
   for (int i = 0; i < n; i++) {
@@ -275,5 +275,4 @@ DigestTreeScene::reDrawNode(DisplayUserPtr p, QColor rimColor)
 
 #if WAF
 #include "digest-tree-scene.moc"
-// #include "digest-tree-scene.cpp.moc"
 #endif

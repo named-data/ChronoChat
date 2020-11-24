@@ -1,13 +1,13 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /**
- * Copyright (C) 2013 Regents of the University of California.
+ * Copyright (C) 2020 Regents of the University of California.
  * @author: Yingdi Yu <yingdi@cs.ucla.edu>
  * See COPYING for copyright and distribution information.
  */
 
-#include <boost/test/unit_test.hpp>
-
 #include "profile.hpp"
+
+#include <boost/test/unit_test.hpp>
 #include <ndn-cxx/encoding/buffer-stream.hpp>
 
 namespace chronochat {

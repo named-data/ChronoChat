@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -40,9 +40,7 @@ public:
   typedef std::map<std::string, std::string>::iterator iterator;
   typedef std::map<std::string, std::string>::const_iterator const_iterator;
 
-  Profile()
-  {
-  }
+  Profile() = default;
 
   Profile(const ndn::security::Certificate& identityCertificate);
 
@@ -56,9 +54,8 @@ public:
 
   Profile(const Block& profileWire);
 
-  ~Profile()
-  {
-  }
+  Profile&
+  operator=(const Profile&) = default;
 
   const Block&
   wireEncode() const;

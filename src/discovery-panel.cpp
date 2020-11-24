@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -105,7 +105,7 @@ DiscoveryPanel::onChatroomInfoReady(const ChatroomInfo& info, bool isParticipant
   ui->NameData->setText(QString::fromStdString(info.getName().toUri()));
   ui->NameSpaceData->setText(QString::fromStdString(info.getSyncPrefix().toUri()));
 
-  switch(info.getTrustModel()) {
+  switch (info.getTrustModel()) {
   case 2:
     {
       ui->TrustModelData->setText(QString("Hierarchical"));
@@ -162,8 +162,8 @@ DiscoveryPanel::onChatroomInfoReady(const ChatroomInfo& info, bool isParticipant
 
 // private slots
 void
-DiscoveryPanel::onSelectedChatroomChanged(const QItemSelection &selected,
-                                          const QItemSelection &deselected)
+DiscoveryPanel::onSelectedChatroomChanged(const QItemSelection& selected,
+                                          const QItemSelection& deselected)
 {
   QModelIndexList items = selected.indexes();
   QString chatroomName = m_chatroomListModel->data(items.first(), Qt::DisplayRole).toString();
@@ -187,8 +187,8 @@ DiscoveryPanel::onSelectedChatroomChanged(const QItemSelection &selected,
 }
 
 void
-DiscoveryPanel::onSelectedParticipantChanged(const QItemSelection &selected,
-                                             const QItemSelection &deselected)
+DiscoveryPanel::onSelectedParticipantChanged(const QItemSelection& selected,
+                                             const QItemSelection& deselected)
 {
   if (m_isParticipant)
     return;
@@ -231,5 +231,4 @@ DiscoveryPanel::onInvitationRequestResult(const std::string& message)
 
 #if WAF
 #include "discovery-panel.moc"
-// #include "discovery-panel.cpp.moc"
 #endif

@@ -1,4 +1,0 @@
-[submodule "ChronoSync"]
-	path = ChronoSync
-	url = git://github.com/named-data/ChronoSync.git
-	branch = master

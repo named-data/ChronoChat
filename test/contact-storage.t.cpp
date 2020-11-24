@@ -1,14 +1,14 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /**
- * Copyright (C) 2013 Regents of the University of California.
+ * Copyright (C) 2020 Regents of the University of California.
  * @author: Yingdi Yu <yingdi@cs.ucla.edu>
  * See COPYING for copyright and distribution information.
  */
 
-#include <boost/test/unit_test.hpp>
-
 #include "contact-storage.hpp"
 #include "cryptopp.hpp"
+
+#include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
 
 namespace chronochat {

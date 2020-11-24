@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -10,14 +10,12 @@
 #ifndef CHRONOCHAT_NFD_CONNECTION_CHECKER_HPP
 #define CHRONOCHAT_NFD_CONNECTION_CHECKER_HPP
 
-#include <QThread>
-
-#ifndef Q_MOC_RUN
 #include "common.hpp"
+
+#include <QThread>
 #include <mutex>
 #include <boost/thread.hpp>
 #include <ndn-cxx/face.hpp>
-#endif
 
 namespace chronochat {
 

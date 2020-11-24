@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -24,7 +24,7 @@
 
 namespace Ui {
 class BrowseContactDialog;
-}
+} // namespace Ui
 
 namespace chronochat {
 
@@ -61,7 +61,7 @@ public slots:
   onNameListReady(const QStringList& nameList);
 
   void
-  onIdCertReady(const ndn::security::Certificate & idCert);
+  onIdCertReady(const ndn::security::Certificate& idCert);
 
 signals:
   void

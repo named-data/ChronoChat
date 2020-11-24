@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -33,7 +33,8 @@ public:
     }
   };
 
-  class Endorsement {
+  class Endorsement
+  {
   public:
     std::string type;
     std::string value;
@@ -78,4 +79,4 @@ EndorseInfo::getEndorsements() const
 
 } // namespace chronochat
 
-#endif //CHRONOCHAT_ENDORSE_INFO_HPP
+#endif // CHRONOCHAT_ENDORSE_INFO_HPP

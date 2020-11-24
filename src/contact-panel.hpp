@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -11,20 +11,20 @@
 #ifndef CHRONOCHAT_CONTACT_PANEL_HPP
 #define CHRONOCHAT_CONTACT_PANEL_HPP
 
+#include "set-alias-dialog.hpp"
+#include "endorse-combobox-delegate.hpp"
+
 #include <QDialog>
 #include <QStringListModel>
 #include <QSqlTableModel>
 #include <QItemSelection>
-
-#include "set-alias-dialog.hpp"
-#include "endorse-combobox-delegate.hpp"
 
 #ifndef Q_MOC_RUN
 #endif
 
 namespace Ui {
 class ContactPanel;
-}
+} // namespace Ui
 
 namespace chronochat {
 

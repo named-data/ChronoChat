@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -10,7 +10,6 @@
 
 #include "chatroom-discovery-backend.hpp"
 #include <QStringList>
-
 
 #ifndef Q_MOC_RUN
 
@@ -63,7 +62,7 @@ ChatroomDiscoveryBackend::run()
     try {
       m_face->getIoService().run();
     }
-    catch (std::runtime_error& e) {
+    catch (const std::runtime_error& e) {
       {
         std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
         m_isNfdConnected = false;
@@ -113,9 +112,6 @@ ChatroomDiscoveryBackend::initializeSync()
                                                 this, _1));
 
   // add an timer to refresh front end
-  if (m_refreshPanelId) {
-    m_refreshPanelId.cancel();
-  }
   m_refreshPanelId = m_scheduler->schedule(REFRESH_INTERVAL,
                                            [this] { sendChatroomList(); });
 }
@@ -124,7 +120,6 @@ void
 ChatroomDiscoveryBackend::close()
 {
   m_scheduler->cancelAllEvents();
-  m_refreshPanelId.reset();
   m_chatroomList.clear();
   m_sock.reset();
 }
@@ -169,9 +164,9 @@ ChatroomDiscoveryBackend::processChatroomData(const ndn::Data& data)
         return;
       }
       else {
-        if (it->second.helloTimeoutEventId) {
+        if (it->second.helloTimeoutEventId)
           it->second.helloTimeoutEventId.cancel();
-        }
+
         it->second.isManager = false;
       }
 
@@ -249,10 +244,6 @@ ChatroomDiscoveryBackend::sendUpdate(const Name::Component& chatroomName)
   auto it = m_chatroomList.find(chatroomName);
   if (it != m_chatroomList.end() && it->second.isManager) {
     ndn::Block buf = it->second.info.wireEncode();
-
-    if (it->second.helloTimeoutEventId) {
-      it->second.helloTimeoutEventId.cancel();
-    }
 
     m_sock->publishData(buf.wire(), buf.size(), FRESHNESS_PERIOD, it->second.chatroomPrefix);
 
@@ -431,9 +422,6 @@ ChatroomDiscoveryBackend::sendChatroomList()
   }
 
   emit chatroomListReady(chatroomList);
-  if (m_refreshPanelId) {
-    m_refreshPanelId.cancel();
-  }
   m_refreshPanelId = m_scheduler->schedule(REFRESH_INTERVAL,
                                            [this] { sendChatroomList(); });
 }

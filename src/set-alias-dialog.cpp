@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013, Regents of the University of California
+ * Copyright (c) 2020, Regents of the University of California
  *                     Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -56,5 +56,4 @@ SetAliasDialog::setTargetIdentity(const QString& targetIdentity, const QString& 
 
 #if WAF
 #include "set-alias-dialog.moc"
-// #include "set-alias-dialog.cpp.moc"
 #endif
