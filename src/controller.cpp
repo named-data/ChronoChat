@@ -10,7 +10,6 @@
  */
 
 #include "controller.hpp"
-#include "cryptopp.hpp"
 #include "conf.hpp"
 #include "endorse-info.hpp"
 
@@ -19,8 +18,13 @@
 #include <QDir>
 #include <QTimer>
 
-#include <boost/filesystem.hpp>
+#include <ndn-cxx/security/transform/buffer-source.hpp>
+#include <ndn-cxx/security/transform/digest-filter.hpp>
+#include <ndn-cxx/security/transform/hex-encode.hpp>
+#include <ndn-cxx/security/transform/stream-sink.hpp>
 #include <ndn-cxx/util/random.hpp>
+
+#include <boost/filesystem.hpp>
 
 Q_DECLARE_METATYPE(ndn::Name)
 Q_DECLARE_METATYPE(ndn::security::Certificate)
@@ -247,7 +251,19 @@ Controller::~Controller()
   saveConf();
 }
 
-// public methods
+static string
+getRandomString()
+{
+  uint32_t r = ndn::random::generateWord32();
+  std::ostringstream ss;
+  {
+    using namespace ndn::security::transform;
+    bufferSource(reinterpret_cast<const uint8_t*>(&r), sizeof(r))
+        >> hexEncode(false)
+        >> streamSink(ss);
+  }
+  return ss.str();
+}
 
 
 // private methods
@@ -256,13 +272,13 @@ Controller::getDBName()
 {
   string dbName("chronos-");
 
-  std::stringstream ss;
+  std::ostringstream ss;
   {
-    using namespace CryptoPP;
-
-    SHA256 hash;
-    StringSource(m_identity.wireEncode().wire(), m_identity.wireEncode().size(), true,
-                 new HashFilter(hash, new HexEncoder(new FileSink(ss), false)));
+    using namespace ndn::security::transform;
+    bufferSource(m_identity.wireEncode().wire(), m_identity.wireEncode().size())
+        >> digestFilter(ndn::DigestAlgorithm::SHA256)
+        >> hexEncode(false)
+        >> streamSink(ss);
   }
   dbName.append(ss.str()).append(".db");
 
@@ -429,8 +445,8 @@ Controller::updateMenu()
   menu->addAction(m_addContactAction);
   menu->addSeparator();
   {
-    ChatActionList::const_iterator it = m_chatActionList.begin();
-    ChatActionList::const_iterator end = m_chatActionList.end();
+    auto it = m_chatActionList.begin();
+    auto end = m_chatActionList.end();
     if (it != end) {
       for (; it != end; it++)
         menu->addAction(it->second);
@@ -442,8 +458,8 @@ Controller::updateMenu()
   menu->addAction(m_minimizeAction);
   m_closeMenu = menu->addMenu("Close chatroom");
   {
-    ChatActionList::const_iterator it = m_closeActionList.begin();
-    ChatActionList::const_iterator end = m_closeActionList.end();
+    auto it = m_closeActionList.begin();
+    auto end = m_closeActionList.end();
     if (it == end)
       m_closeMenu->setEnabled(false);
     else
@@ -452,30 +468,6 @@ Controller::updateMenu()
   }
   menu->addSeparator();
   menu->addAction(m_quitAction);
-}
-
-string
-Controller::getRandomString()
-{
-  uint32_t r = ndn::random::generateWord32();
-  std::stringstream ss;
-  {
-    using namespace CryptoPP;
-    StringSource(reinterpret_cast<uint8_t*>(&r), 4, true,
-                 new HexEncoder(new FileSink(ss), false));
-
-  }
-  // for (int i = 0; i < 8; i++)
-  //   {
-  //     uint32_t t = r & mask;
-  //     if (t < 10)
-  //       ss << static_cast<char>(t + 0x30);
-  //     else
-  //       ss << static_cast<char>(t + 0x57);
-  //     r = r >> 4;
-  //   }
-
-  return ss.str();
 }
 
 void
@@ -529,7 +521,7 @@ void
 Controller::onIdentityUpdated(const QString& identity)
 {
   while (!m_chatDialogList.empty()) {
-    ChatDialogList::const_iterator it = m_chatDialogList.begin();
+    auto it = m_chatDialogList.begin();
     it->second->shutdown();
   }
 
@@ -646,8 +638,8 @@ Controller::onMinimizeAction()
   m_addContactPanel->hide();
   m_discoveryPanel->hide();
 
-  ChatDialogList::iterator it = m_chatDialogList.begin();
-  ChatDialogList::iterator end = m_chatDialogList.end();
+  auto it = m_chatDialogList.begin();
+  auto end = m_chatDialogList.end();
   for (; it != end; it++)
     it->second->hide();
 }
@@ -656,7 +648,7 @@ void
 Controller::onQuitAction()
 {
   while (!m_chatDialogList.empty()) {
-    ChatDialogList::const_iterator it = m_chatDialogList.begin();
+    auto it = m_chatDialogList.begin();
     it->second->shutdown();
   }
 
@@ -732,8 +724,7 @@ Controller::onStartChatroom2(chronochat::Invitation invitation, bool secured)
   QString chatroomName = QString::fromStdString(invitation.getChatroom());
   onStartChatroom(chatroomName, secured);
 
-  ChatDialogList::iterator it = m_chatDialogList.find(chatroomName.toStdString());
-
+  auto it = m_chatDialogList.find(chatroomName.toStdString());
   BOOST_ASSERT(it != m_chatDialogList.end());
   it->second->addSyncAnchor(invitation);
 }
@@ -759,7 +750,7 @@ Controller::onRemoveChatDialog(const QString& chatroomName)
 {
   emit removeChatroom(chatroomName);
 
-  ChatDialogList::iterator it = m_chatDialogList.find(chatroomName.toStdString());
+  auto it = m_chatDialogList.find(chatroomName.toStdString());
   if (it != m_chatDialogList.end()) {
     ChatDialog* deletedChat = it->second;
     if (deletedChat)

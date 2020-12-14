@@ -6,13 +6,15 @@
  */
 
 #include "endorse-certificate.hpp"
-#include "cryptopp.hpp"
 
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
 
-#include <ndn-cxx/security/key-chain.hpp>
 #include <ndn-cxx/encoding/buffer-stream.hpp>
+#include <ndn-cxx/security/key-chain.hpp>
+#include <ndn-cxx/security/transform/base64-decode.hpp>
+#include <ndn-cxx/security/transform/buffer-source.hpp>
+#include <ndn-cxx/security/transform/stream-sink.hpp>
 #include <ndn-cxx/util/time.hpp>
 #include <ndn-cxx/util/io.hpp>
 
@@ -27,8 +29,9 @@ using ndn::security::Certificate;
 
 BOOST_AUTO_TEST_SUITE(TestEndorseCertificate)
 
-std::string
-getTestFile(std::string path) {
+static std::string
+getTestFile(std::string path)
+{
   std::ifstream t(path);
   std::stringstream buffer;
   buffer << t.rdbuf();
@@ -83,8 +86,8 @@ BOOST_AUTO_TEST_CASE(ConstructFromIdCert)
   const std::string testIdKey = getTestFile("test/cert/testid.key");
   ndn::OBufferStream keyOs;
   {
-    using namespace CryptoPP;
-    StringSource(testIdKey, true, new Base64Decoder(new FileSink(keyOs)));
+    using namespace ndn::security::transform;
+    bufferSource(testIdKey) >> base64Decode() >> streamSink(keyOs);
   }
   BOOST_CHECK(idCert->getPublicKey() == *keyOs.buf());
 }

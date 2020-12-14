@@ -1,5 +1,4 @@
-ChronoChat
-==========
+# ChronoChat
 
 ChronoChat is a multiparty chat application that demostrates our synchronization primitive that we call ChronoSync.
 
@@ -12,10 +11,9 @@ Note that after you click to close ChronoChat, it will keep running on your syst
 
 ## Compilation steps
 
-1. On Ubuntu, configure [NDN PPA repository](http://named-data.net/doc/NFD/current/FAQ.html#how-to-start-using-ndn-ppa-repository-on-ubuntu-linux) and install NFD and ChronoSYnc if you don't have it yet, then install dependencies
+1. On Ubuntu, configure the [NDN PPA repository](http://named-data.net/doc/NFD/current/FAQ.html#how-to-start-using-ndn-ppa-repository-on-ubuntu-linux) and install the necessary dependencies
 
-        sudo apt-get install nfd libndn-cxx-dev libchronosync-dev
-        sudo apt-get install libcrypto++-dev libboost-all-dev qt5-default
+        sudo apt install nfd libndn-cxx-dev libchronosync-dev libboost-all-dev libsqlite3-dev qt5-default
 
 2. Fetch source code
 

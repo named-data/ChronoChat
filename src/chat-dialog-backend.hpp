@@ -105,9 +105,6 @@ private:
   void
   updatePrefixes();
 
-  std::string
-  getHexEncodedDigest(ndn::ConstBufferPtr digest);
-
 signals:
   void
   syncTreeUpdated(std::vector<chronochat::NodeInfo> updates, QString digest);

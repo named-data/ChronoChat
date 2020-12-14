@@ -11,40 +11,33 @@
 #include "controller.hpp"
 
 #include <QApplication>
-#include <QTextCodec>
 
+#include <boost/exception/diagnostic_information.hpp>
 #include <iostream>
-#include <ndn-cxx/face.hpp>
-#include <boost/thread/thread.hpp>
 
-class NewApp : public QApplication
+class ChronoChatApp : public QApplication
 {
 public:
-  NewApp(int& argc, char** argv)
-    : QApplication(argc, argv)
-  {
-  }
+  using QApplication::QApplication;
 
   bool
-  notify(QObject* receiver, QEvent* event)
+  notify(QObject* receiver, QEvent* event) final
   {
     try {
       return QApplication::notify(receiver, event);
     }
     catch (const std::exception& e) {
-      std::cerr << "Exception thrown:" << e.what() << std::endl;
+      std::cerr << boost::diagnostic_information(e) << std::endl;
       return false;
     }
-
   }
 };
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
-  NewApp app(argc, argv);
-
+  ChronoChatApp app(argc, argv);
   chronochat::Controller controller;
-
   app.setQuitOnLastWindowClosed(false);
 
   return app.exec();

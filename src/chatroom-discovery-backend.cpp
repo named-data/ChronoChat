@@ -9,19 +9,15 @@
  */
 
 #include "chatroom-discovery-backend.hpp"
+
 #include <QStringList>
-
-#ifndef Q_MOC_RUN
-
-#endif
 
 namespace chronochat {
 
 static const time::milliseconds FRESHNESS_PERIOD(60000);
 static const time::seconds REFRESH_INTERVAL(60);
 static const time::seconds HELLO_INTERVAL(60);
-static const ndn::Name::Component ROUTING_HINT_SEPARATOR =
-  ndn::name::Component::fromEscapedString("%F0%2E");
+static const Name::Component ROUTING_HINT_SEPARATOR = Name::Component::fromEscapedString("%F0%2E");
 // a count enforced when a manager himself find another one publish chatroom data
 static const int MAXIMUM_COUNT = 3;
 static const int IDENTITY_OFFSET = -1;
@@ -93,8 +89,6 @@ ChatroomDiscoveryBackend::run()
     close();
 
   } while (shouldResume);
-
-  std::cerr << "DiscoveryBackend: Bye!" << std::endl;
 }
 
 void

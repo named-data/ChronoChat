@@ -151,12 +151,12 @@ class GccBasicFlags(CompilerFlags):
                               '-Wextra',
                               '-Werror',
                               '-Wcatch-value=2',
-                              # '-Wextra-semi', # prevent noisy output with Qt5
+                              #'-Wextra-semi', # Qt5
                               '-Wnon-virtual-dtor',
                               '-Wno-error=deprecated-declarations', # Bug #3795
                               '-Wno-error=maybe-uninitialized', # Bug #1615
+                              '-Wno-deprecated-copy', # Qt5
                               '-Wno-unused-parameter',
-                              '-Wno-error=deprecated-copy', # Qt5
                               ]
         flags['LINKFLAGS'] += ['-Wl,-O1']
         return flags
@@ -169,8 +169,9 @@ class GccBasicFlags(CompilerFlags):
                               '-Wall',
                               '-Wextra',
                               '-Wcatch-value=2',
-                              '-Wextra-semi',
+                              #'-Wextra-semi', # Qt5
                               '-Wnon-virtual-dtor',
+                              '-Wno-deprecated-copy', # Qt5
                               '-Wno-unused-parameter',
                               ]
         flags['LINKFLAGS'] += ['-Wl,-O1']
@@ -180,7 +181,7 @@ class GccFlags(GccBasicFlags):
     def getDebugFlags(self, conf):
         flags = super(GccFlags, self).getDebugFlags(conf)
         flags['CXXFLAGS'] += ['-fdiagnostics-color',
-                              '-Wredundant-tags',
+                              #'-Wredundant-tags', # Qt5
                               ]
         if platform.machine() == 'armv7l' and self.getCompilerVersion(conf) >= (7, 1, 0):
             flags['CXXFLAGS'] += ['-Wno-psabi'] # Bug #5106
@@ -189,7 +190,7 @@ class GccFlags(GccBasicFlags):
     def getOptimizedFlags(self, conf):
         flags = super(GccFlags, self).getOptimizedFlags(conf)
         flags['CXXFLAGS'] += ['-fdiagnostics-color',
-                              '-Wredundant-tags',
+                              #'-Wredundant-tags', # Qt5
                               ]
         if platform.machine() == 'armv7l' and self.getCompilerVersion(conf) >= (7, 1, 0):
             flags['CXXFLAGS'] += ['-Wno-psabi'] # Bug #5106

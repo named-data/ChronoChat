@@ -8,20 +8,16 @@ if has OSX $NODE_LABELS; then
     fi
 
     if [[ -n $GITHUB_ACTIONS ]]; then
-        # Homebrew doesn't have cryptopp packages, so build from source
-        git clone https://github.com/weidai11/cryptopp/
-        cd cryptopp
-        make -j4
-        make install
-        cd ..
-
-        # Travis images come with a large number of pre-installed
-        # brew packages, don't waste time upgrading all of them
+        # Don't waste time upgrading all pre-installed packages
         for FORMULA in "${FORMULAE[@]}"; do
             brew list --versions "$FORMULA" || brew install "$FORMULA"
         done
 
-        brew link qt --force
+        # Ensure /usr/local/opt/openssl exists
+        brew reinstall openssl
+
+        # Homebrew qt is keg-only, force symlinking it into /usr/local
+        brew link --force qt
     else
         brew update
         brew upgrade
@@ -31,7 +27,7 @@ if has OSX $NODE_LABELS; then
 
 elif has Ubuntu $NODE_LABELS; then
     sudo apt-get -qq update
-    sudo apt-get -qy install g++ pkg-config python3-minimal \
+    sudo apt-get -qy install build-essential pkg-config python3-minimal \
                              libboost-all-dev libssl-dev libsqlite3-dev \
-                             libcrypto++-dev qt5-default
+                             qt5-default
 fi

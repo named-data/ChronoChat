@@ -15,18 +15,16 @@
 
 #ifndef Q_MOC_RUN
 #include <boost/iostreams/stream.hpp>
-#include <ndn-cxx/util/io.hpp>
-#include "cryptopp.hpp"
-#endif
 
-using namespace CryptoPP;
+#include <ndn-cxx/util/io.hpp>
+#include <ndn-cxx/util/string-helper.hpp>
+#endif
 
 namespace chronochat {
 
 static const time::milliseconds FRESHNESS_PERIOD(60000);
 static const time::seconds HELLO_INTERVAL(60);
-static const ndn::Name::Component ROUTING_HINT_SEPARATOR =
-  ndn::name::Component::fromEscapedString("%F0%2E");
+static const Name::Component ROUTING_HINT_SEPARATOR = Name::Component::fromEscapedString("%F0%2E");
 static const int IDENTITY_OFFSET = -3;
 static const int CONNECTION_RETRY_TIMER = 3;
 
@@ -49,10 +47,7 @@ ChatDialogBackend::ChatDialogBackend(const Name& chatroomPrefix,
   updatePrefixes();
 }
 
-
-ChatDialogBackend::~ChatDialogBackend()
-{
-}
+ChatDialogBackend::~ChatDialogBackend() = default;
 
 // protected methods:
 void
@@ -101,8 +96,6 @@ ChatDialogBackend::run()
     close();
 
   } while (shouldResume);
-
-  std::cerr << "Bye!" << std::endl;
 }
 
 // private methods:
@@ -183,7 +176,6 @@ ChatDialogBackend::processSyncUpdate(const std::vector<chronosync::MissingDataIn
 
   std::vector<NodeInfo> nodeInfos;
 
-
   for (size_t i = 0; i < updates.size(); i++) {
     // update roster
     if (m_roster.find(updates[i].session) == m_roster.end()) {
@@ -214,13 +206,11 @@ ChatDialogBackend::processSyncUpdate(const std::vector<chronosync::MissingDataIn
 
   // reflect the changes on GUI
   emit syncTreeUpdated(nodeInfos,
-                       QString::fromStdString(getHexEncodedDigest(m_sock->getRootDigest())));
+                       QString::fromStdString(ndn::toHex(*m_sock->getRootDigest(), false)));
 }
 
 void
-ChatDialogBackend::processChatData(const ndn::Data& data,
-                                   bool needDisplay,
-                                   bool isValidated)
+ChatDialogBackend::processChatData(const ndn::Data& data, bool needDisplay, bool isValidated)
 {
   ChatMessage msg;
 
@@ -344,7 +334,7 @@ ChatDialogBackend::sendMsg(ChatMessage& msg)
   nodeInfos.push_back(nodeInfo);
 
   emit syncTreeUpdated(nodeInfos,
-                       QString::fromStdString(getHexEncodedDigest(m_sock->getRootDigest())));
+                       QString::fromStdString(ndn::toHex(*m_sock->getRootDigest(), false)));
 
   emit messageReceived(QString::fromStdString(sessionName.toUri()),
                        QString::fromStdString(msg.getNick()),
@@ -430,16 +420,6 @@ ChatDialogBackend::updatePrefixes()
       .append(m_userChatPrefix);
 
   emit chatPrefixChanged(m_routableUserChatPrefix);
-}
-
-std::string
-ChatDialogBackend::getHexEncodedDigest(ndn::ConstBufferPtr digest)
-{
-  std::stringstream os;
-
-  CryptoPP::StringSource(digest->data(), digest->size(), true,
-                         new CryptoPP::HexEncoder(new CryptoPP::FileSink(os), false));
-  return os.str();
 }
 
 

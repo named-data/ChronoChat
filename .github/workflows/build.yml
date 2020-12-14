@@ -22,7 +22,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-
     - name: Run build script
       run: |
         ./.jenkins
@@ -33,16 +32,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-
     - name: Run build script
       run: |
-        sudo apt install -y software-properties-common
+        sudo apt-get -qy install software-properties-common
         sudo add-apt-repository ppa:named-data/ppa -y
-        sudo apt update
-        sudo apt-get install nfd libndn-cxx-dev libchronosync-dev
-        sudo apt-get install libcrypto++-dev libboost-all-dev qt5-default
+        sudo apt-get -qq update
+        sudo apt-get -qy install nfd libndn-cxx-dev libchronosync-dev libboost-all-dev libsqlite3-dev qt5-default
         ./waf --color=yes configure --debug
-        ./waf --color=yes build -j4
+        ./waf --color=yes build -j$(nproc)
 
   macos:
     runs-on: ${{ matrix.os }}
@@ -60,7 +57,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-
     - name: Run build script
       run: |
         sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer

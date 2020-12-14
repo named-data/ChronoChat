@@ -6,7 +6,6 @@
  */
 
 #include "contact-storage.hpp"
-#include "cryptopp.hpp"
 
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
@@ -14,12 +13,11 @@
 namespace chronochat {
 namespace tests {
 
-using std::string;
 namespace fs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(TestContactStorage)
 
-const string dbName("chronos-20e9530008b27c661ad3429d1956fa1c509b652dce9273bfe81b7c91819c272c.db");
+const std::string dbName("chronos-20e9530008b27c661ad3429d1956fa1c509b652dce9273bfe81b7c91819c272c.db");
 
 BOOST_AUTO_TEST_CASE(InitializeTable)
 {

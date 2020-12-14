@@ -1,39 +1,39 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
-VERSION='0.5'
-APPNAME='ChronoChat'
 
-from waflib import Configure, Utils, Logs, Context
+from waflib import Context, Logs, Utils
 import os
 
+VERSION = '0.5'
+APPNAME = 'ChronoChat'
+
 def options(opt):
+    opt.load(['compiler_cxx', 'gnu_dirs'])
+    opt.load(['default-compiler-flags',
+              'boost', 'qt5_custom',
+              'doxygen', 'sphinx_build'],
+             tooldir=['.waf-tools'])
 
-    opt.load(['compiler_c', 'compiler_cxx', 'gnu_dirs'])
-
-    opt.load(['default-compiler-flags', 'boost',
-              'doxygen', 'sphinx_build', 'qt5_custom', 'cryptopp'],
-              tooldir=['.waf-tools'])
-
-    opt = opt.add_option_group('ChronoChat Options')
-
-    opt.add_option('--with-tests', action='store_true', default=False, dest='with_tests',
-                   help='''build unit tests''')
+    optgrp = opt.add_option_group('ChronoChat Options')
+    optgrp.add_option('--with-tests', action='store_true', default=False,
+                      help='Build unit tests')
 
 def configure(conf):
-    conf.load(['compiler_c', 'compiler_cxx', 'qt5_custom',
-               'default-compiler-flags', 'boost', 'gnu_dirs',
-               'doxygen', 'sphinx_build', 'cryptopp'])
+    conf.load(['compiler_cxx', 'gnu_dirs',
+               'default-compiler-flags', 'boost', 'qt5_custom',
+               'doxygen', 'sphinx_build'])
 
-    conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'],
-                   uselib_store='NDN_CXX', mandatory=True)
+    conf.env.WITH_TESTS = conf.options.with_tests
 
-    conf.check_cfg (package='ChronoSync', args=['ChronoSync >= 0.5', '--cflags', '--libs'],
-                    uselib_store='SYNC', mandatory=True)
+    pkg_config_path = os.environ.get('PKG_CONFIG_PATH', '%s/pkgconfig' % conf.env.LIBDIR)
+    conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'], uselib_store='NDN_CXX',
+                   pkg_config_path=pkg_config_path)
+    conf.check_cfg(package='ChronoSync', args=['--cflags', '--libs'], uselib_store='SYNC',
+                   pkg_config_path=pkg_config_path)
 
-    boost_libs = 'system random thread filesystem'
-    if conf.options.with_tests:
-        conf.env['WITH_TESTS'] = 1
-        conf.define('WITH_TESTS', 1);
-        boost_libs += ' unit_test_framework'
+    boost_libs = ['system', 'random', 'thread', 'filesystem']
+    if conf.env.WITH_TESTS:
+        boost_libs.append('unit_test_framework')
+        conf.define('WITH_TESTS', 1)
 
     conf.check_boost(lib=boost_libs, mt=True)
     if conf.env.BOOST_VERSION_NUMBER < 105800:
@@ -45,29 +45,28 @@ def configure(conf):
                   'If you encounter any problems, please upgrade your distribution or manually install a newer version of Boost.\n'
                   'For more information, see https://redmine.named-data.net/projects/nfd/wiki/Boost')
 
-    conf.check_cryptopp()
     conf.check_compiler_flags()
     conf.write_config_header('src/config.h')
 
 def build (bld):
     feature_list = 'qt5 cxx'
-    if bld.env["WITH_TESTS"]:
+    if bld.env.WITH_TESTS:
         feature_list += ' cxxstlib'
     else:
         feature_list += ' cxxprogram'
 
-    qt = bld (
+    qt = bld(
         target = "ChronoChat",
         features = feature_list,
         defines = "WAF=1",
         source = bld.path.ant_glob(['src/*.cpp', 'src/*.ui', '*.qrc']),
         includes = "src .",
-        use = "QT5CORE QT5GUI QT5WIDGETS QT5SQL NDN_CXX BOOST SYNC CRYPTOPP",
+        use = "QT5CORE QT5GUI QT5WIDGETS QT5SQL NDN_CXX BOOST SYNC",
         )
 
     # Unit tests
-    if bld.env["WITH_TESTS"]:
-      unittests = bld.program (
+    if bld.env.WITH_TESTS:
+      unittests = bld.program(
           target="unit-tests",
           source = bld.path.ant_glob(['test/**/*.cpp']),
           features=['cxx', 'cxxprogram'],
@@ -87,7 +86,7 @@ def build (bld):
                 install_path = None,
             )
 
-    if not bld.env["WITH_TESTS"]:
+    if not bld.env.WITH_TESTS:
         if Utils.unversioned_sys_platform () == "darwin":
             app_plist = '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
@@ -130,8 +129,6 @@ def build (bld):
             bld.install_files("${DATAROOTDIR}/chronochat",
                               bld.path.ant_glob(['linux/Resources/*']))
 
-
-# docs
 def docs(bld):
     from waflib import Options
     Options.commands = ['doxygen', 'sphinx'] + Options.commands

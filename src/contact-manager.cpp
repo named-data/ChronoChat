@@ -10,20 +10,24 @@
  */
 
 #include "contact-manager.hpp"
+
 #include <QStringList>
 #include <QFile>
 
 #ifndef Q_MOC_RUN
 #include <ndn-cxx/encoding/buffer-stream.hpp>
 #include <ndn-cxx/face.hpp>
+#include <ndn-cxx/security/signing-helpers.hpp>
+#include <ndn-cxx/security/transform/buffer-source.hpp>
+#include <ndn-cxx/security/transform/digest-filter.hpp>
+#include <ndn-cxx/security/transform/stream-sink.hpp>
 #include <ndn-cxx/security/validator.hpp>
 #include <ndn-cxx/security/validator-null.hpp>
-#include <ndn-cxx/security/signing-helpers.hpp>
 #include <ndn-cxx/security/verification-helpers.hpp>
-#include "cryptopp.hpp"
+
 #include <boost/asio.hpp>
-#include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/tokenizer.hpp>
 #endif
 
 namespace fs = boost::filesystem;
@@ -82,10 +86,9 @@ ContactManager::fetchCollectEndorse(const Name& identity)
 void
 ContactManager::fetchEndorseCertificateInternal(const Name& identity, size_t certIndex)
 {
-  shared_ptr<EndorseCollection> endorseCollection =
-    m_bufferedContacts[identity].m_endorseCollection;
+  auto endorseCollection = m_bufferedContacts[identity].m_endorseCollection;
 
-  if(certIndex >= endorseCollection->getCollectionEntries().size())
+  if (certIndex >= endorseCollection->getCollectionEntries().size())
     return prepareEndorseInfo(identity);
 
   Name interestName(endorseCollection->getCollectionEntries()[certIndex].certName);
@@ -114,15 +117,13 @@ ContactManager::prepareEndorseInfo(const Name& identity)
   m_bufferedContacts[identity].m_endorseInfo = endorseInfo;
 
   map<string, size_t> endorseCount;
-  for (Profile::const_iterator pIt = profile.begin(); pIt != profile.end(); pIt++)
+  for (auto pIt = profile.begin(); pIt != profile.end(); pIt++)
     endorseCount[pIt->first] = 0;
 
   size_t endorseCertCount = 0;
 
-  vector<shared_ptr<EndorseCertificate> >::const_iterator cIt =
-    m_bufferedContacts[identity].m_endorseCertList.begin();
-  vector<shared_ptr<EndorseCertificate> >::const_iterator cEnd =
-    m_bufferedContacts[identity].m_endorseCertList.end();
+  auto cIt = m_bufferedContacts[identity].m_endorseCertList.cbegin();
+  auto cEnd = m_bufferedContacts[identity].m_endorseCertList.cend();
 
   for (; cIt != cEnd; cIt++, endorseCertCount++) {
     shared_ptr<Contact> contact = getContact((*cIt)->getSigner());
@@ -140,13 +141,13 @@ ContactManager::prepareEndorseInfo(const Name& identity)
       continue;
 
     const Profile& tmpProfile = (*cIt)->getProfile();
-    const vector<string>& endorseList = (*cIt)->getEndorseList();
-    for (vector<string>::const_iterator eIt = endorseList.begin(); eIt != endorseList.end(); eIt++)
+    const auto& endorseList = (*cIt)->getEndorseList();
+    for (auto eIt = endorseList.begin(); eIt != endorseList.end(); eIt++)
       if (tmpProfile.get(*eIt) == profile.get(*eIt))
         endorseCount[*eIt] += 1;
   }
 
-  for (Profile::const_iterator pIt = profile.begin(); pIt != profile.end(); pIt++) {
+  for (auto pIt = profile.begin(); pIt != profile.end(); pIt++) {
     std::stringstream ss;
     ss << endorseCount[pIt->first] << "/" << endorseCertCount;
     endorseInfo->addEndorsement(pIt->first, pIt->second, ss.str());
@@ -232,23 +233,20 @@ ContactManager::onDnsCollectEndorseTimeoutNotify(const Interest& interest, const
 }
 
 void
-ContactManager::onEndorseCertificateInternal(const Interest& interest, const Data& data,
-                                             const Name& identity, size_t certIndex,
-                                             string hash)
+ContactManager::onEndorseCertificateInternal(const Interest&, const Data& data,
+                                             const Name& identity, size_t certIndex, string hash)
 {
-  std::stringstream ss;
+  std::ostringstream ss;
   {
-    using namespace CryptoPP;
-
-    SHA256 hash;
-    StringSource(data.wireEncode().wire(), data.wireEncode().size(), true,
-                 new HashFilter(hash, new FileSink(ss)));
+    using namespace ndn::security::transform;
+    bufferSource(data.wireEncode().wire(), data.wireEncode().size())
+        >> digestFilter(ndn::DigestAlgorithm::SHA256)
+        >> streamSink(ss);
   }
 
   if (ss.str() == hash) {
-    shared_ptr<EndorseCertificate> endorseCertificate =
-      make_shared<EndorseCertificate>(boost::cref(data));
-    m_bufferedContacts[identity].m_endorseCertList.push_back(endorseCertificate);
+    auto endorseCertificate = make_shared<EndorseCertificate>(data);
+    m_bufferedContacts[identity].m_endorseCertList.push_back(std::move(endorseCertificate));
   }
 
   fetchEndorseCertificateInternal(identity, certIndex+1);
@@ -269,7 +267,7 @@ ContactManager::collectEndorsement()
     boost::recursive_mutex::scoped_lock lock(m_collectCountMutex);
     m_collectCount = m_contactList.size();
 
-    for (ContactList::iterator it  = m_contactList.begin(); it != m_contactList.end(); it++) {
+    for (auto it = m_contactList.begin(); it != m_contactList.end(); it++) {
       Name interestName = (*it)->getNameSpace();
       interestName.append("DNS").append(m_identity.wireEncode()).append("ENDORSEE");
 
@@ -384,8 +382,7 @@ ContactManager::decreaseIdCertCount()
     QStringList certNameList;
     QStringList nameList;
 
-    for(BufferedIdCerts::const_iterator it = m_bufferedIdCerts.begin();
-        it != m_bufferedIdCerts.end(); it++) {
+    for (auto it = m_bufferedIdCerts.begin(); it != m_bufferedIdCerts.end(); it++) {
       certNameList << QString::fromStdString(it->second->getName().toUri());
       Profile profile(*(it->second));
       nameList << QString::fromStdString(profile.get("name"));
@@ -402,7 +399,7 @@ ContactManager::getSignedSelfEndorseCertificate(const Profile& profile)
   auto signCert = m_keyChain.getPib().getIdentity(m_identity)
                             .getDefaultKey().getDefaultCertificate();
   vector<string> endorseList;
-  for (Profile::const_iterator it = profile.begin(); it != profile.end(); it++)
+  for (auto it = profile.begin(); it != profile.end(); it++)
     endorseList.push_back(it->first);
 
   shared_ptr<EndorseCertificate> selfEndorseCertificate =
@@ -639,7 +636,7 @@ ContactManager::onAddFetchedContact(const QString& identity)
 {
   Name identityName(identity.toStdString());
 
-  BufferedContacts::const_iterator it = m_bufferedContacts.find(identityName);
+  auto it = m_bufferedContacts.find(identityName);
   if (it != m_bufferedContacts.end()) {
     Contact contact(*(it->second.m_selfEndorseCert));
 
@@ -750,8 +747,7 @@ ContactManager::onRefreshBrowseContact()
   }
   m_bufferedIdCerts.clear();
 
-  for (vector<string>::const_iterator it = bufferedIdCertNames.begin();
-       it != bufferedIdCertNames.end(); it++) {
+  for (auto it = bufferedIdCertNames.begin(); it != bufferedIdCertNames.end(); it++) {
     Name certName(*it);
 
     Interest interest(certName);
@@ -785,7 +781,7 @@ ContactManager::onAddFetchedContactIdCert(const QString& qCertName)
   Name certName(qCertName.toStdString());
   Name identity = certName.getPrefix(-1);
 
-  BufferedIdCerts::const_iterator it = m_bufferedIdCerts.find(certName);
+  auto it = m_bufferedIdCerts.find(certName);
   if (it != m_bufferedIdCerts.end()) {
     Contact contact(*it->second);
     try {
@@ -811,7 +807,7 @@ ContactManager::onWaitForContactList()
 {
   QStringList aliasList;
   QStringList idList;
-  for (ContactList::const_iterator it = m_contactList.begin(); it != m_contactList.end(); it++) {
+  for (auto it = m_contactList.begin(); it != m_contactList.end(); it++) {
     aliasList << QString((*it)->getAlias().c_str());
     idList << QString((*it)->getNameSpace().toUri().c_str());
   }
@@ -823,7 +819,7 @@ ContactManager::onWaitForContactList()
 void
 ContactManager::onWaitForContactInfo(const QString& identity)
 {
-  for (ContactList::const_iterator it = m_contactList.begin(); it != m_contactList.end(); it++)
+  for (auto it = m_contactList.begin(); it != m_contactList.end(); it++)
     if ((*it)->getNameSpace().toUri() == identity.toStdString())
       emit contactInfoReady(QString((*it)->getNameSpace().toUri().c_str()),
                             QString((*it)->getName().c_str()),

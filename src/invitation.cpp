@@ -10,12 +10,9 @@
 
 #include "invitation.hpp"
 
-#include <ndn-cxx/security/signature-sha256-with-rsa.hpp>
-
 namespace chronochat {
 
 using std::string;
-
 using ndn::security::Certificate;
 
 const size_t  Invitation::NAME_SIZE_MIN         = 7;
