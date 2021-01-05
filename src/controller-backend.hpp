@@ -149,17 +149,17 @@ private slots:
 private:
   bool m_isNfdConnected;
   bool m_shouldResume;
-  ndn::Face m_face;
 
   Name m_identity;  //TODO: set/get
 
   Name m_localPrefix;
 
+  ndn::KeyChain m_keyChain;
+  ndn::Face m_face;
+
   // Contact Manager
   ContactManager m_contactManager;
 
-  // Security related;
-  ndn::KeyChain m_keyChain;
   shared_ptr<ndn::security::Validator> m_validator;
   ndn::security::ValidatorNull m_nullValidator;
 

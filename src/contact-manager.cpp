@@ -44,9 +44,11 @@ using ndn::security::Certificate;
 
 
 ContactManager::ContactManager(Face& face,
+                               ndn::KeyChain& keyChain,
                                QObject* parent)
   : QObject(parent)
   , m_face(face)
+  , m_keyChain(keyChain)
 {
   initializeSecurity();
 }

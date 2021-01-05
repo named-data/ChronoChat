@@ -36,7 +36,8 @@ static const int CONNECTION_RETRY_TIMER = 3;
 ControllerBackend::ControllerBackend(QObject* parent)
   : QThread(parent)
   , m_shouldResume(false)
-  , m_contactManager(m_face)
+  , m_face(nullptr, m_keyChain)
+  , m_contactManager(m_face, m_keyChain)
 {
   // connection to contact manager
   connect(this, SIGNAL(identityUpdated(const QString&)),
