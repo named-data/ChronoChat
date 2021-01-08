@@ -1,7 +1,7 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2020, Regents of the University of California
- *                     Yingdi Yu
+ * Copyright (c) 2013-2021, Regents of the University of California
+ *                          Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -227,7 +227,7 @@ ContactStorage::initializeTable(const string& tableName, const string& sqlCreate
 shared_ptr<Profile>
 ContactStorage::getSelfProfile()
 {
-  shared_ptr<Profile> profile = make_shared<Profile>(m_identity);
+  auto profile = std::make_shared<Profile>(m_identity);
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(m_db, "SELECT profile_type, profile_value FROM SelfProfile",
                      -1, &stmt, nullptr);
@@ -268,7 +268,7 @@ ContactStorage::getSelfEndorseCertificate()
   sqlite3_bind_string(stmt, 1, m_identity.toUri(), SQLITE_TRANSIENT);
 
   if (sqlite3_step(stmt) == SQLITE_ROW) {
-    cert = make_shared<EndorseCertificate>();
+    cert = std::make_shared<EndorseCertificate>();
     cert->wireDecode(sqlite3_column_block(stmt, 0));
   }
 
@@ -347,7 +347,7 @@ ContactStorage::getCollectEndorseByName(const Name& name)
   sqlite3_bind_string(stmt, 1, name.toUri(), SQLITE_TRANSIENT);
 
   if (sqlite3_step(stmt) == SQLITE_ROW) {
-    cert = make_shared<EndorseCertificate>();
+    cert = std::make_shared<EndorseCertificate>();
     cert->wireDecode(sqlite3_column_block(stmt, 1));
   }
 
@@ -481,8 +481,8 @@ ContactStorage::getContact(const Name& identity) const
       time::fromUnixTimestamp(time::milliseconds(sqlite3_column_int64 (stmt, 4)));
     int isIntroducer = sqlite3_column_int (stmt, 5);
 
-    contact = make_shared<Contact>(identity, alias, Name(keyName),
-                                   notBefore, notAfter, key, isIntroducer);
+    contact = std::make_shared<Contact>(identity, alias, Name(keyName),
+                                        notBefore, notAfter, key, isIntroducer);
   }
   sqlite3_finalize(stmt);
 
@@ -617,7 +617,7 @@ ContactStorage::getDnsData(const Name& dataName)
   sqlite3_bind_string(stmt, 1, dataName.toUri(), SQLITE_TRANSIENT);
 
   if (sqlite3_step(stmt) == SQLITE_ROW) {
-    data = make_shared<Data>();
+    data = std::make_shared<Data>();
     data->wireDecode(sqlite3_column_block(stmt, 0));
   }
   sqlite3_finalize(stmt);
@@ -637,7 +637,7 @@ ContactStorage::getDnsData(const string& name, const string& type)
   sqlite3_bind_string(stmt, 2, type, SQLITE_TRANSIENT);
 
   if (sqlite3_step(stmt) == SQLITE_ROW) {
-    data = make_shared<Data>();
+    data = std::make_shared<Data>();
     data->wireDecode(sqlite3_column_block(stmt, 0));
   }
   sqlite3_finalize(stmt);

@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013-2020, Regents of the University of California
+ * Copyright (c) 2013-2021, Regents of the University of California
  *                          Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -45,12 +45,10 @@ ControllerBackend::ControllerBackend(QObject* parent)
   connect(&m_contactManager, SIGNAL(contactIdListReady(const QStringList&)),
           this, SLOT(onContactIdListReady(const QStringList&)));
 
-  m_validator = make_shared<ndn::security::ValidatorNull>();
+  m_validator = std::make_shared<ndn::security::ValidatorNull>();
 }
 
-ControllerBackend::~ControllerBackend()
-{
-}
+ControllerBackend::~ControllerBackend() = default;
 
 void
 ControllerBackend::run()
@@ -160,8 +158,7 @@ ControllerBackend::onInvitationInterest(const ndn::Name& prefix,
                                         const ndn::Interest& interest,
                                         size_t routingPrefixOffset)
 {
-  shared_ptr<Interest> invitationInterest =
-    make_shared<Interest>(interest.getName().getSubName(routingPrefixOffset));
+  auto invitationInterest = std::make_shared<Interest>(interest.getName().getSubName(routingPrefixOffset));
 
   // check if the chatroom already exists;
   try {
@@ -371,7 +368,7 @@ ControllerBackend::onIdentityChanged(const QString& identity)
 void
 ControllerBackend::onInvitationResponded(const ndn::Name& invitationName, bool accepted)
 {
-  shared_ptr<Data> response = make_shared<Data>();
+  auto response = std::make_shared<Data>();
   shared_ptr<ndn::security::Certificate> chatroomCert;
 
   // generate reply;
@@ -383,7 +380,7 @@ ControllerBackend::onInvitationResponded(const ndn::Name& invitationName, bool a
 
     // We should create a particular certificate for this chatroom,
     //but let's use default one for now.
-    chatroomCert = make_shared<ndn::security::Certificate>(
+    chatroomCert = std::make_shared<ndn::security::Certificate>(
       m_keyChain.createIdentity(m_identity).getDefaultKey().getDefaultCertificate());
 
     response->setContent(chatroomCert->wireEncode());
@@ -406,7 +403,7 @@ ControllerBackend::onInvitationResponded(const ndn::Name& invitationName, bool a
       .append(ROUTING_HINT_SEPARATOR)
       .append(response->getName());
 
-    shared_ptr<Data> wrappedData = make_shared<Data>(wrappedName);
+    auto wrappedData = std::make_shared<Data>(wrappedName);
     wrappedData->setContent(response->wireEncode());
     wrappedData->setFreshnessPeriod(time::milliseconds(1000));
 
@@ -422,7 +419,7 @@ void
 ControllerBackend::onInvitationRequestResponded(const ndn::Name& invitationResponseName,
                                                 bool accepted)
 {
-  shared_ptr<Data> response = make_shared<Data>(invitationResponseName);
+  auto response = std::make_shared<Data>(invitationResponseName);
   if (accepted)
     response->setContent(ndn::makeNonNegativeIntegerBlock(tlv::Content, 1));
   else
@@ -466,7 +463,6 @@ ControllerBackend::onContactIdListReady(const QStringList& list)
 
   // for (ContactList::const_iterator it  = contactList.begin(); it != contactList.end(); it++)
     // m_validator.addTrustAnchor((*it)->getPublicKeyName(), (*it)->getPublicKey());
-
 }
 
 void
@@ -475,7 +471,6 @@ ControllerBackend::onNfdReconnect()
   std::lock_guard<std::mutex>lock(m_nfdConnectionMutex);
   m_isNfdConnected = true;
 }
-
 
 } // namespace chronochat
 

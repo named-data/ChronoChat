@@ -1,7 +1,7 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2020, Regents of the University of California
- *                     Yingdi Yu
+ * Copyright (c) 2013-2021, Regents of the University of California
+ *                          Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -44,7 +44,6 @@ using std::size_t;
 
 using std::shared_ptr;
 using std::unique_ptr;
-using std::make_shared;
 using std::function;
 using std::bind;
 

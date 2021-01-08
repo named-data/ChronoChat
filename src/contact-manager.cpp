@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013-2020, Regents of the University of California
+ * Copyright (c) 2013-2021, Regents of the University of California
  *                          Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -58,7 +58,7 @@ ContactManager::~ContactManager()
 void
 ContactManager::initializeSecurity()
 {
-  m_validator = make_shared<ndn::security::ValidatorConfig>(m_face);
+  m_validator = std::make_shared<ndn::security::ValidatorConfig>(m_face);
   m_validator->load("security/validation-contact-manager.conf");
 }
 
@@ -113,7 +113,7 @@ ContactManager::prepareEndorseInfo(const Name& identity)
 {
   const Profile& profile = m_bufferedContacts[identity].m_selfEndorseCert->getProfile();
 
-  shared_ptr<EndorseInfo> endorseInfo = make_shared<EndorseInfo>();
+  auto endorseInfo = std::make_shared<EndorseInfo>();
   m_bufferedContacts[identity].m_endorseInfo = endorseInfo;
 
   map<string, size_t> endorseCount;
@@ -163,8 +163,7 @@ ContactManager::onDnsSelfEndorseCertValidated(const Data& data,
   try {
     Data plainData;
     plainData.wireDecode(data.getContent().blockFromValue());
-    shared_ptr<EndorseCertificate> selfEndorseCertificate =
-      make_shared<EndorseCertificate>(boost::cref(plainData));
+    auto selfEndorseCertificate = std::make_shared<EndorseCertificate>(plainData);
 
     if (ndn::security::verifySignature(plainData, *selfEndorseCertificate)) {
       m_bufferedContacts[identity].m_selfEndorseCert = selfEndorseCertificate;
@@ -208,8 +207,7 @@ ContactManager::onDnsCollectEndorseValidated(const Data& data,
                                              const Name& identity)
 {
   try {
-    shared_ptr<EndorseCollection> endorseCollection =
-      make_shared<EndorseCollection>(data.getContent().blockFromValue());
+    auto endorseCollection = std::make_shared<EndorseCollection>(data.getContent().blockFromValue());
     m_bufferedContacts[identity].m_endorseCollection = endorseCollection;
     fetchEndorseCertificateInternal(identity, 0);
   }
@@ -245,7 +243,7 @@ ContactManager::onEndorseCertificateInternal(const Interest&, const Data& data,
   }
 
   if (ss.str() == hash) {
-    auto endorseCertificate = make_shared<EndorseCertificate>(data);
+    auto endorseCertificate = std::make_shared<EndorseCertificate>(data);
     m_bufferedContacts[identity].m_endorseCertList.push_back(std::move(endorseCertificate));
   }
 
@@ -332,7 +330,7 @@ ContactManager::publishCollectEndorsedDataInDNS()
   Name dnsName = m_identity;
   dnsName.append("DNS").append("ENDORSED").appendVersion();
 
-  shared_ptr<Data> data = make_shared<Data>();
+  auto data = std::make_shared<Data>();
   data->setName(dnsName);
   data->setFreshnessPeriod(time::milliseconds(1000));
 
@@ -350,7 +348,7 @@ ContactManager::publishCollectEndorsedDataInDNS()
 void
 ContactManager::onIdentityCertValidated(const Data& data)
 {
-  shared_ptr<Certificate> cert = make_shared<Certificate>(boost::cref(data));
+  auto cert = std::make_shared<Certificate>(data);
   m_bufferedIdCerts[cert->getName()] = cert;
   decreaseIdCertCount();
 }
@@ -402,10 +400,7 @@ ContactManager::getSignedSelfEndorseCertificate(const Profile& profile)
   for (auto it = profile.begin(); it != profile.end(); it++)
     endorseList.push_back(it->first);
 
-  shared_ptr<EndorseCertificate> selfEndorseCertificate =
-    make_shared<EndorseCertificate>(boost::cref(signCert),
-                                    boost::cref(profile),
-                                    boost::cref(endorseList));
+  auto selfEndorseCertificate = std::make_shared<EndorseCertificate>(signCert, profile, endorseList);
 
   m_keyChain.sign(*selfEndorseCertificate,
                   ndn::security::signingByIdentity(m_identity).setSignatureInfo(
@@ -420,7 +415,7 @@ ContactManager::publishSelfEndorseCertificateInDNS(const EndorseCertificate& sel
   Name dnsName = m_identity;
   dnsName.append("DNS").append("PROFILE").appendVersion();
 
-  shared_ptr<Data> data = make_shared<Data>();
+  auto data = std::make_shared<Data>();
   data->setName(dnsName);
   data->setContent(selfEndorseCertificate.wireEncode());
   data->setFreshnessPeriod(time::milliseconds(1000));
@@ -472,7 +467,7 @@ ContactManager::publishEndorseCertificateInDNS(const EndorseCertificate& endorse
     .append("ENDORSEE")
     .appendVersion();
 
-  shared_ptr<Data> data = make_shared<Data>();
+  auto data = std::make_shared<Data>();
   data->setName(dnsName);
   data->setContent(endorseCertificate.wireEncode());
   data->setFreshnessPeriod(time::milliseconds(1000));
@@ -582,7 +577,7 @@ ContactManager::onIdentityUpdated(const QString& identity)
 {
   m_identity = Name(identity.toStdString());
 
-  m_contactStorage = make_shared<ContactStorage>(m_identity);
+  m_contactStorage = std::make_shared<ContactStorage>(m_identity);
 
   m_dnsListenerHandle = m_face.setInterestFilter(
     Name(m_identity).append("DNS"),

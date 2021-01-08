@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013-2020, Regents of the University of California
+ * Copyright (c) 2013-2021, Regents of the University of California
  *                          Yingdi Yu
  *
  * BSD license, See the LICENSE file for more information
@@ -104,20 +104,20 @@ ChatDialogBackend::initializeSync()
 {
   BOOST_ASSERT(m_sock == nullptr);
 
-  m_face = make_shared<ndn::Face>();
-  m_scheduler = unique_ptr<ndn::Scheduler>(new ndn::Scheduler(m_face->getIoService()));
+  m_face = std::make_shared<ndn::Face>();
+  m_scheduler = std::make_unique<ndn::Scheduler>(m_face->getIoService());
 
   // initialize validator
-  m_validator = make_shared<ndn::security::ValidatorConfig>(*m_face);
+  m_validator = std::make_shared<ndn::security::ValidatorConfig>(*m_face);
   m_validator->load("security/validation-chat.conf");
 
   // create a new SyncSocket
-  m_sock = make_shared<chronosync::Socket>(m_chatroomPrefix,
-                                           m_routableUserChatPrefix,
-                                           ref(*m_face),
-                                           bind(&ChatDialogBackend::processSyncUpdate, this, _1),
-                                           m_signingId,
-                                           m_validator);
+  m_sock = std::make_shared<chronosync::Socket>(m_chatroomPrefix,
+                                                m_routableUserChatPrefix,
+                                                ref(*m_face),
+                                                bind(&ChatDialogBackend::processSyncUpdate, this, _1),
+                                                m_signingId,
+                                                m_validator);
 
   // schedule a new join event
   m_scheduler->schedule(time::milliseconds(600),

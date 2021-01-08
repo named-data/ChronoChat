@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2020, Regents of the University of California
+ * Copyright (c) 2013-2021, Regents of the University of California
  *
  * BSD license, See the LICENSE file for more information
  *
@@ -99,11 +99,11 @@ ChatroomDiscoveryBackend::initializeSync()
   m_face = shared_ptr<ndn::Face>(new ndn::Face);
   m_scheduler = unique_ptr<ndn::Scheduler>(new ndn::Scheduler(m_face->getIoService()));
 
-  m_sock = make_shared<chronosync::Socket>(m_discoveryPrefix,
-                                           Name(),
-                                           ref(*m_face),
-                                           bind(&ChatroomDiscoveryBackend::processSyncUpdate,
-                                                this, _1));
+  m_sock = std::make_shared<chronosync::Socket>(m_discoveryPrefix,
+                                                Name(),
+                                                ref(*m_face),
+                                                bind(&ChatroomDiscoveryBackend::processSyncUpdate,
+                                                     this, _1));
 
   // add an timer to refresh front end
   m_refreshPanelId = m_scheduler->schedule(REFRESH_INTERVAL,
